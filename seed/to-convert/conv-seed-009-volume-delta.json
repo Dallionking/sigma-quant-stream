@@ -1,0 +1,22 @@
+{
+  "id": "conv-seed-009",
+  "name": "Cumulative Volume Delta",
+  "description": "Estimates buying vs selling pressure using candle body position within range",
+  "source_url": "https://www.tradingview.com/script/example-cvd/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 2,
+  "reason": "Order flow approximation without tick data",
+  "indicatorType": "oscillator",
+  "parameters": {
+    "reset": "session",
+    "smoothing": 1
+  },
+  "signals": {
+    "buying_pressure": "CVD rising",
+    "selling_pressure": "CVD falling",
+    "divergence": "Price vs CVD divergence"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

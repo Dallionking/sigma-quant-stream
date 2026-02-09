@@ -1,0 +1,463 @@
+{
+  "meta": {
+    "paneId": 3,
+    "workerType": "converter",
+    "targetIterations": 50,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:08:37.278187",
+    "lastUpdatedAt": "2026-01-18T16:08:37.278188",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "convert-001",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-006",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert MetaTrader RSI implementation",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-009",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-012",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-018",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate SuperTrend indicator in Python",
+      "description": "Find SuperTrend PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/supertrend/. Include: supertrend.py (class with calculate() and get_signal()), test_supertrend.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/supertrend/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-020",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-022",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-025",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert ATR Trailing Stop from PineScript to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-002",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate Keltner Channels indicator in Python",
+      "description": "Find Keltner Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/keltner_channels/. Include: keltner_channels.py (class with calculate() and get_signal()), test_keltner_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/keltner_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-011",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-014",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-004",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Port TradingView Volume Weighted RSI to Python",
+      "description": "Find Volume Weighted RSI PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/volume_weighted_rsi/. Include: volume_weighted_rsi.py (class with calculate() and get_signal()), test_volume_weighted_rsi.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/volume_weighted_rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-005",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-010",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert Volume Weighted RSI from PineScript to Python",
+      "description": "Find Volume Weighted RSI PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/volume_weighted_rsi/. Include: volume_weighted_rsi.py (class with calculate() and get_signal()), test_volume_weighted_rsi.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/volume_weighted_rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-017",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-019",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Port TradingView Order Block Detector to Python",
+      "description": "Find Order Block Detector PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/order_block_detector/. Include: order_block_detector.py (class with calculate() and get_signal()), test_order_block_detector.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/order_block_detector/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-021",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate RSI from MetaTrader to Python",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-023",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate Donchian Channels indicator in Python",
+      "description": "Find Donchian Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/donchian_channels/. Include: donchian_channels.py (class with calculate() and get_signal()), test_donchian_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/donchian_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-003",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Recreate Keltner Channels indicator in Python",
+      "description": "Find Keltner Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/keltner_channels/. Include: keltner_channels.py (class with calculate() and get_signal()), test_keltner_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/keltner_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-007",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView ATR Trailing Stop to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-015",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Recreate RSI from TradingView to Python",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-016",
+      "type": "convert_indicator",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Convert MetaTrader RSI implementation",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ]
+    },
+    {
+      "id": "convert-024",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView Keltner Channels to Python",
+      "description": "Find Keltner Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/keltner_channels/. Include: keltner_channels.py (class with calculate() and get_signal()), test_keltner_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/keltner_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-008",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Convert Fair Value Gap Finder from PineScript to Python",
+      "description": "Find Fair Value Gap Finder PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/fair_value_gap_finder/. Include: fair_value_gap_finder.py (class with calculate() and get_signal()), test_fair_value_gap_finder.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/fair_value_gap_finder/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "convert-013",
+      "type": "convert_pinescript",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Recreate SMT Divergence indicator in Python",
+      "description": "Find SMT Divergence PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/smt_divergence/. Include: smt_divergence.py (class with calculate() and get_signal()), test_smt_divergence.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/smt_divergence/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    }
+  ]
+}

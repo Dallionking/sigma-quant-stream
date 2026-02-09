@@ -1,0 +1,73 @@
+version: 2
+
+project_name: sigma-quant
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: sigma-quant
+    main: ./cmd/sigma-quant
+    binary: sigma-quant
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/Dallionking/sigma-quant-stream/internal/cmd.Version={{.Version}}
+      - -X github.com/Dallionking/sigma-quant-stream/internal/cmd.GitCommit={{.ShortCommit}}
+      - -X github.com/Dallionking/sigma-quant-stream/internal/cmd.BuildDate={{.Date}}
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - CONTRIBUTING.md
+      - config.json
+      - profiles/**
+      - prompts/**
+      - patterns/**
+      - seed/**
+      - scripts/**
+      - lib/**
+      - .claude/**
+      - docs/**
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+
+brews:
+  - name: sigma-quant
+    repository:
+      owner: Dallionking
+      name: homebrew-tap
+    homepage: "https://github.com/Dallionking/sigma-quant-stream"
+    description: "Autonomous strategy research factory — your own hedge fund research team"
+    license: "AGPL-3.0"
+    install: |
+      bin.install "sigma-quant"
+
+release:
+  github:
+    owner: Dallionking
+    name: sigma-quant-stream
+  prerelease: auto
+  draft: false

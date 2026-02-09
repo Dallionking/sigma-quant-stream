@@ -1,0 +1,1061 @@
+{
+  "meta": {
+    "paneId": 4,
+    "workerType": "optimizer",
+    "targetIterations": 100,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:18:21.131275",
+    "lastUpdatedAt": "2026-01-18T16:18:21.131408",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "optimize-001",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:21:55Z"
+    },
+    {
+      "id": "optimize-004",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:31:19Z"
+    },
+    {
+      "id": "optimize-015",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:35:54Z"
+    },
+    {
+      "id": "optimize-025",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:43:27Z"
+    },
+    {
+      "id": "optimize-033",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:46:57Z"
+    },
+    {
+      "id": "optimize-035",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:58:01Z"
+    },
+    {
+      "id": "optimize-036",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:01:14Z"
+    },
+    {
+      "id": "optimize-038",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:03:55Z"
+    },
+    {
+      "id": "optimize-003",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:09:17Z"
+    },
+    {
+      "id": "optimize-007",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:21:27Z"
+    },
+    {
+      "id": "optimize-011",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:22:40Z"
+    },
+    {
+      "id": "optimize-012",
+      "type": "optimize_params",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:28:18Z"
+    },
+    {
+      "id": "optimize-013",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:31:12Z"
+    },
+    {
+      "id": "optimize-014",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:36:57Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-020",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:21Z"
+    },
+    {
+      "id": "optimize-023",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:59Z"
+    },
+    {
+      "id": "optimize-027",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:39:37Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-028",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:39:56Z"
+    },
+    {
+      "id": "optimize-030",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:41:15Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-039",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:40Z"
+    },
+    {
+      "id": "optimize-041",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:08Z"
+    },
+    {
+      "id": "optimize-048",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:43:50Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-049",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:45:09Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-008",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:46:38Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-019",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:00Z"
+    },
+    {
+      "id": "optimize-029",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:24Z"
+    },
+    {
+      "id": "optimize-037",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:49Z"
+    },
+    {
+      "id": "optimize-042",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:49:19Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-047",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:55Z"
+    },
+    {
+      "id": "optimize-006",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:23Z"
+    },
+    {
+      "id": "optimize-009",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:58Z"
+    },
+    {
+      "id": "optimize-018",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:52:39Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-022",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:59Z"
+    },
+    {
+      "id": "optimize-026",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:53:17Z"
+    },
+    {
+      "id": "optimize-032",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:53:37Z"
+    },
+    {
+      "id": "optimize-034",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:53:56Z"
+    },
+    {
+      "id": "optimize-043",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:54:15Z"
+    },
+    {
+      "id": "optimize-044",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:55:23Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-045",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:55:46Z"
+    },
+    {
+      "id": "optimize-046",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:56:04Z"
+    },
+    {
+      "id": "optimize-050",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:57:18Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-002",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T22:58:28Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-005",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:58:44Z"
+    },
+    {
+      "id": "optimize-010",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Find optimal settings for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T23:00:04Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-016",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T23:00:20Z"
+    },
+    {
+      "id": "optimize-017",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Optimize loss MFE cash exit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T23:00:40Z"
+    },
+    {
+      "id": "optimize-021",
+      "type": "optimize_params",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Optimize parameters for momentum",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ],
+      "failed_at": "2026-01-18T23:01:59Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "optimize-024",
+      "type": "optimize_base_hit",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Run Base Hit analysis on momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T23:02:13Z"
+    },
+    {
+      "id": "optimize-031",
+      "type": "optimize_base_hit",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Calculate Base Hit for momentum",
+      "description": "Analyze losing trades for momentum to find average Maximum Favorable Excursion (MFE). Set cash exit at loss MFE average. Calculate expected savings from converting losses to small wins. Save base_hit_config.json to output/strategies/momentum/.",
+      "expectedOutput": "output/strategies/momentum/base_hit_config.json",
+      "acceptanceCriteria": [
+        {
+          "type": "base_hit_complete"
+        },
+        {
+          "type": "file_exists",
+          "path": "output/strategies/{strategy}/base_hit_config.json"
+        }
+      ]
+    },
+    {
+      "id": "optimize-040",
+      "type": "optimize_params",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 3,
+      "title": "Run grid search for momentum params",
+      "description": "Optimize momentum parameters using coarse grid search (e.g., [7,10,14,21,28] not [10,11,12...]). Test \u00b120% perturbation - reject knife-edge optima. Ensure range ratio <30%. Save optimization results with robustness analysis to output/strategies/optimizations/.",
+      "expectedOutput": "output/strategies/optimizations/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        }
+      ]
+    }
+  ]
+}

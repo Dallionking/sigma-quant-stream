@@ -1,0 +1,24 @@
+{
+  "id": "conv-seed-008",
+  "name": "RSI Divergence Scanner",
+  "description": "Automatically detects regular and hidden RSI divergences",
+  "source_url": "https://www.tradingview.com/script/example-rsi-div/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 1,
+  "reason": "Classic divergence detection for reversal identification",
+  "indicatorType": "oscillator",
+  "parameters": {
+    "rsi_length": 14,
+    "pivot_lookback": 5,
+    "max_lookback": 60
+  },
+  "signals": {
+    "bullish_regular": "Price lower low, RSI higher low",
+    "bearish_regular": "Price higher high, RSI lower high",
+    "bullish_hidden": "Price higher low, RSI lower low",
+    "bearish_hidden": "Price lower high, RSI higher high"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,25 @@
+{
+  "id": "conv-seed-001",
+  "name": "Squeeze Momentum Pro",
+  "description": "LazyBear's Squeeze Momentum indicator - combines Bollinger Bands squeeze with momentum oscillator",
+  "source_url": "https://www.tradingview.com/script/nqQ1DT5a-Squeeze-Momentum-Indicator-LazyBear/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 1,
+  "reason": "One of the most popular TradingView indicators, identifies consolidation breakouts",
+  "indicatorType": "oscillator",
+  "parameters": {
+    "bb_length": 20,
+    "bb_mult": 2.0,
+    "kc_length": 20,
+    "kc_mult": 1.5,
+    "momentum_length": 12
+  },
+  "signals": {
+    "squeeze_on": "BB inside KC",
+    "squeeze_off": "BB outside KC",
+    "momentum": "Linear regression of close"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,229 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International  
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © BigBeluga
+
+//@version=6
+indicator("Trading Sessions [BigBeluga]", overlay=true, max_labels_count=500, max_boxes_count = 500, max_lines_count = 500)
+
+groupd_     = "Sessions" + "  UTC+0"
+tk          = "Tokyoㅤㅤ  " + "  Time:"
+lo          = "Londonㅤ   " + "  Time:"
+ny          = "New York    " + "  Time:"
+si          = "Sydney         " + "  Time:"
+
+// ＩＮＰＵＴＳ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+display_mid_range = input.bool(true, "Middle Range", group = "Range")
+extend            = input.bool(false, "Future Range", group = "Range")
+history           = input.bool(false, "History", group = "Range")
+
+show_tokyo          = input.bool(true, tk, inline = "Tokyo", group = groupd_)
+tk_ss               = input.session("0000-0900", "", inline = "Tokyo", group = groupd_)
+tokyo_color         = input.color(color.rgb(0, 137, 123), "", inline = "Tokyo", group = groupd_)
+
+show_london         = input.bool(false, lo, inline = "London", group = groupd_)
+lo_ss               = input.session("0700-1600", "", inline = "London", group = groupd_)
+london_color        = input.color(#ff9900, "", inline = "London", group = groupd_)
+
+show_ny             = input.bool(true, ny, inline = "NY", group = groupd_)
+ny_ss               = input.session("1300-2200", "", inline = "NY", group = groupd_)
+ny_color            = input.color(#ff5252, "", inline = "NY", group = groupd_)
+
+show_si             = input.bool(false, si, inline = "Sidney", group = groupd_)
+si_ss               = input.session("2100-0600", "", inline = "Sidney", group = groupd_)
+si_color            = input.color(#bd52ff, "", inline = "Sidney", group = groupd_)
+// }
+
+
+// ＣＡＬＣＵＬＡＴＩＯＮＳ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+
+
+// Function to format session string from "HHMM-HHMM" to "HH:MM-HH:MM"
+formatSessionString(sessionStr) =>
+    // Extract start and end times
+    startStr = str.substring(sessionStr, 0, 4)
+    endStr   = str.substring(sessionStr, 5, 9)
+    // Insert colons
+    formattedStart = str.format("{0}:{1}", str.substring(startStr, 0, 2), str.substring(startStr, 2, 4))
+    formattedEnd   = str.format("{0}:{1}", str.substring(endStr, 0, 2), str.substring(endStr, 2, 4))
+    // Combine into final formatted string
+    str.format("{0}-{1}", formattedStart, formattedEnd)
+
+
+in_session(i_sess) =>
+    t = time(timeframe.period, i_sess + ":23456", "UTC")
+    time == t
+
+session_dash(dash, row, session, range_)=>
+    dash.cell(0,row, session, text_halign = text.align_left, text_color = chart.fg_color)
+    dash.cell(1,row, formatSessionString(range_), text_color = chart.fg_color)
+    dash.cell(2,row, in_session(range_) ? "✔" : "✖", text_color = in_session(range_) ? color.lime : color.red)
+
+
+box_session(session, sessionss, display, color)=>
+
+    sessions   = in_session(sessionss)
+    var boxx = box(na)
+    var mid = line(na)
+
+    // New: extended midline across session gap
+    var line ext_mid = na
+    var line ext_h = na
+    var line ext_l = na
+
+    var labl = label(na)
+
+    var highh = array.new<float>()
+    var loww = array.new<float>()
+    var vol = array.new<float>()
+    var delta = array.new<float>()
+
+
+    // When session changes (start of new session)
+    if sessions and not sessions[1]
+
+        // Clear arrays for new session
+        highh.clear()
+        loww.clear()
+        vol.clear()
+        delta.clear()
+
+        // New box and midline
+        boxx := box.new(bar_index, na, na, na
+                         , bgcolor = color.new(color, 90)
+                         , border_color = color.new(color, 50)
+                         )
+
+        if display_mid_range
+            mid := line.new(bar_index, na, na, na, color = color.new(color, 30))
+            
+        
+        labl := label.new(bar_index, na
+                         , style = label.style_label_upper_left
+                         , color = color(na)
+                         , textcolor = chart.fg_color
+                         , size = size.small
+                         , textalign = text.align_left
+                         )
+
+    // During session, update everything
+    if display and sessions  
+   
+        highh.push(high)
+        loww.push(low)
+        vol.push(volume)
+        delta.push(close > open ? volume : -volume)
+
+        h = array.max(highh)
+        l = array.min(loww)
+
+        boxx.set_right(bar_index+1)
+        boxx.set_top(h)
+        boxx.set_bottom(l)
+
+
+        mid_y = (h + l) / 2
+        data = session + ": " + formatSessionString(sessionss) + "\n\n" + "Volume:  " + str.tostring(array.sum(vol), format.volume) + "\n" + "Delta:     " + str.tostring(array.sum(delta), format.volume)
+
+        if display_mid_range
+            mid.set_x2(bar_index+1)
+            mid.set_y1(mid_y)
+            mid.set_y2(mid_y)
+
+
+        labl.set_y(l)
+        labl.set_text(data)
+
+    if sessions and not sessions[1] and not history
+        (mid[1]).delete()
+        (labl[1]).delete()
+        (boxx[1]).delete()
+
+
+
+    if extend 
+        if sessions[1] and not sessions
+            h = array.max(highh)
+            l = array.min(loww)
+
+            mid_y = (h + l) / 2
+            ext_mid := line.new(bar_index, mid_y, bar_index, mid_y, style=line.style_dashed, color=color.new(color, 30))
+            ext_h := line.new(bar_index, h, bar_index, h, style=line.style_dashed, color=color.new(color, 30))
+            ext_l := line.new(bar_index, l, bar_index, l, style=line.style_dashed, color=color.new(color, 30))
+
+
+        if not sessions
+
+            ext_mid.set_x2(bar_index)
+            ext_h.set_x2(bar_index)
+            ext_l.set_x2(bar_index)
+
+        if sessions and not sessions[1] and not history
+            ext_mid.delete()
+            ext_h.delete()
+            ext_l.delete()
+
+
+
+// }
+
+
+// ＰＬＯＴ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+box_session("Tokyo", tk_ss, show_tokyo, tokyo_color)
+box_session("London", lo_ss, show_london, london_color)
+box_session("New York", ny_ss, show_ny, ny_color)
+box_session("Sydney", si_ss, show_si, si_color)
+
+if barstate.islast
+    dash = table.new(position.top_right, 10, 10, bgcolor = color.new(chart.fg_color, 90), border_color = chart.bg_color, border_width = 3)
+
+    dash.cell(0, 0, "Session", text_halign = text.align_left, text_color = chart.fg_color)
+    dash.cell(1, 0, "Time", text_color = chart.fg_color)
+    dash.cell(2, 0, "Now", text_color = chart.fg_color)
+       
+    session_dash(dash, 1, "Tokyo", tk_ss)
+    session_dash(dash, 2, "London", lo_ss)
+    session_dash(dash, 3, "New York", ny_ss)
+    session_dash(dash, 4, "Sydney", si_ss)
+// }
+
+
+//
+This indicator brings Smart Money Concept (ICT) session logic to life by plotting key global trading sessions with volume and delta analytics. It not only highlights session ranges but also tracks their midpoints — which often act as intraday support/resistance levels.
+
+🔵 KEY FEATURES
+Visual session boxes: Plots boxes for Tokyo, London, New York, and Sydney sessions based on user-defined UTC+0 time ranges.
+snapshot
+Volume & delta metrics: Displays total volume and delta volume (buy–sell difference) within each session.
+snapshot
+Mid, High & Low Range Extension: Once a session ends, the high, low, and midpoint levels automatically extend — ideal for detecting SR zones.
+snapshot
+Session labels: Each box includes a label with session name, time, volume, and delta for quick reference.
+Custom session control: Enable or disable sessions individually and configure start/end times.
+Clean aesthetics: Transparent shaded boxes with subtle borders make it easy to overlay without clutter.
+Sessions Dashboard: Shows the time range of each session and tells you whether the session is currently active.
+snapshot
+
+
+🔵 USAGE
+Enable the sessions you want to monitor (e.g., New York or Tokyo) from the settings.
+Use session volume and delta values to gauge the strength and direction of institutional activity.
+Watch for price interaction with the extended range — it often acts as dynamic support/resistance after the session ends.
+Overlay it with liquidity tools or breaker blocks for intraday strategy alignment.
+
+
+🔵 EXAMPLES
+Extended Future Range acted as resistance/support.
+snapshot
+Delta value helped confirm bullish pressure during New York open.
+snapshot
+Multiple sessions helped identify kill zone overlaps and high-volume turns.
+
+
+
+Trading Sessions [BigBeluga] is more than just a visual scheduler — it's a precision tool for traders who align with session-based volume dynamics and ICT methodology. Use it to define high-probability zones, confirm volume shifts, and read deeper into the true intent behind market structure.
+Apr 18, 2025
+Release Notes
+-
+Jan 1
+Release Notes
+- Hide/Display Historical Sessions

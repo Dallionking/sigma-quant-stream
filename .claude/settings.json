@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(uv *)",
+      "Bash(pip *)",
+      "Bash(pytest *)",
+      "Bash(freqtrade *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(jq *)",
+      "Bash(curl *)",
+      "Bash(which *)",
+      "Bash(date *)",
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "mcp__exa__web_search_exa",
+      "mcp__exa__get_code_context_exa",
+      "mcp__exa__crawling_exa",
+      "mcp__ref__ref_search_documentation",
+      "mcp__context7__get-library-docs"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)"
+    ]
+  },
+  "env": {
+    "SIGMA_QUANT_PROJECT": "SigmaQuantStream",
+    "SIGMA_QUANT_MODE": "standalone"
+  }
+}

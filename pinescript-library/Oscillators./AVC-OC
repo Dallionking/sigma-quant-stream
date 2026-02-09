@@ -1,0 +1,384 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Assembled by ©ClassicScott
+
+//@version=6
+indicator('+ Average Candle Bodies Range', shorttitle = '+ AVG CBR', timeframe = '')
+
+//----- Inputs -----\\
+//-----  Average candle bodies range
+smoothingType     = input.string(defval = 'HMA', options = ['EMA', 'HMA', 'RMA', 'SMA', 'VWMA', 'WMA'], title = 'Smoothing Type', group = 'Candle Bodies Inputs')
+smoothingPeriod   = input.int(defval = 55, title = 'Period', group = 'Candle Bodies Inputs')
+
+//---- Baseline
+volPeriodType = input.string(defval = 'User Selected', options = ['RexDog Self-Adjusting', 'User Selected'], title = 'Baseline Period Type', group = 'Baseline Inputs', tooltip = 'RexDog Self-Adjusting is based on the RexDog Average by xkavalis. It is an average of six different averages, thus it is dynamic, or self-adjusting, and can not be changed by the user. If you want to be able to choose an averaging period yourself select User Selected.')
+volPeriod     = input.int(defval = 55, title = 'Period', group = 'Baseline Inputs', tooltip = 'You can ignore this if using the RexDog BPT above, otherwise, a smaller number is going to be more reactive to changes in volatility, whereas a larger number will not. There is no right or wrong answer here.')
+divisor       = input.float(defval = 3, title = 'Donchian Calculated Height', minval = 0.1, step = 0.1, group = 'Baseline Inputs', tooltip = 'This adjusts the height or width of your baseline/baseline zone, and, if using the RexDog BPT, is the only way to adjust the sensitivity. A smaller number makes for a baseline farther away from zero. Probably want to stay above two. Somewhere from two to not much over three is probably good. Of course this depends on how you want to use the indicator as well.')
+
+//----- Signal line
+signalType   = input.string(defval = 'HMA', options = ['EMA', 'HMA', 'RMA', 'SMA', 'VWMA', 'WMA'], title = 'Signal Type', group = 'Signal Line Inputs')
+signalPeriod = input.int(defval = 14, title = 'Period', group = 'Signal Line Inputs')
+
+//----- General Options
+signalLineStrongInput = input.bool(defval = true, title = 'Require Increasing Momentum of Signal Line', group = 'General Options', tooltip = 'Require that the signal line be rising in non-directional mode, or, when in oscillator mode, rising when the ACBR is above zero and falling when it is below zero. A signal line is a measure of momentum of the underlying, in this case the ACBR, which is a measure of volatility, therefore the signal line here is a measure of the momentum of the volatily of the market. Could be useful on its own. ;)')
+acbrIsDirectional     = input.bool(defval = true, title = 'ACBR is Directional', group = 'General Options', tooltip = 'If checked the ACBR oscillates around a zero line indicating bullish or bearish volatility. If unchecked it is a measure of market volatility only, and does not indicate a direction to trade in.')
+
+//----- Baseline bar color and background color boolean inputs
+blineBgInput       = input.bool(defval = true, title = 'Color Background', group = 'Baseline Options', tooltip = 'Colors background if the ACBR is beyond the baseline(s).')
+blineBarcolorInput = input.bool(defval = true, title = 'Color Bars', group = 'Baseline Options', tooltip = 'Colors bars if the ACBR is beyond the baseline(s).')
+blineStrongXInput  = input.bool(false, 'Volatility Advancing', group = 'Baseline Options', tooltip = 'Colors the bar when the ACBR crosses above the baseline in non-directional mode. Colors the bar when the ACBR crosses above the upper baseline or below the lower baseline when in oscillator mode.')
+blineWeakXInput    = input.bool(false, 'Volatility Declining', group = 'Baseline Options', tooltip = 'Colors the bar when the ACBR crosses below the baseline in non-directional mode. Colors the bar when the ACBR crosses below the upper baseline or above the lower baseline when in oscillator mode.')
+
+//----- Signal line bar color and background color boolean inputs
+signalBgInput       = input.bool(defval = false, title = 'Color Background', group = 'Signal Line Options', tooltip = 'Colors background if the ACBR is beyond the signal line.')
+signalBarcolorInput = input.bool(defval = false, title = 'Color Bars', group = 'Signal Line Options', tooltip = 'Colors bars if the ACBR is beyond the signal line.')
+signalStrongXInput  = input.bool(false, 'Volatility Advancing', group = 'Signal Line Options', tooltip = 'Colors the bar when the ACBR crosses above the signal line in non-directional mode. Colors the bar when the ACBR crosses above the signal line when above zero or below the signal line when below zero in oscillator mode.')
+signalWeakXInput    = input.bool(false, 'Volatility Declining', group = 'Signal Line Options', tooltip = 'Colors the bar when the ACBR crosses below the signal line when in non-directional mode. Colors the bar when the ACBR crosses below the signal line when above zero or above the signal line when below zero in oscillator mode.')
+
+//----- Color options
+bgSwatchAbove         = input.color(defval = color.new(#448484, 50), title = ' + ', inline = 'bgcolor', group = 'Background Color Options')
+bgSwatchBelow         = input.color(defval = color.new(#5a4484, 50), title = ' - ', inline = 'bgcolor', group = 'Background Color Options')
+bgSwatchNeutral       = input.color(defval = color.new(#808080, 100), title = ' ± ', inline = 'bgcolor', group = 'Background Color Options')
+xoverSwatch           = input.color(defval = color.new(#448484, 0), title = ' + ', inline = 'cross', group = 'Barcolor Cross Options')
+xunderSwatch          = input.color(defval = color.new(#5a4484, 0), title = ' - ', inline = 'cross', group = 'Barcolor Cross Options')
+barcolorSwatchAbove   = input.color(defval = color.new(#448484, 0), title = ' + ', inline = 'barcolor', group = 'Barcolor Options')
+barcolorSwatchBelow   = input.color(defval = color.new(#5a4484, 0), title = ' - ', inline = 'barcolor', group = 'Barcolor Options')
+barcolorSwatchNeutral = input.color(defval = color.new(#808080, 0), title = ' ± ', inline = 'barcolor', group = 'Barcolor Options')
+
+
+//----- Determining the candle body range
+float cbRange = 0.0
+if not acbrIsDirectional and close > open
+    cbRange := close - open
+    cbRange
+else if not acbrIsDirectional and close < open
+    cbRange := open - close
+    cbRange
+else if acbrIsDirectional
+    cbRange := close - open
+    cbRange
+
+
+//----- Moving average selection for smoothing the candle body range
+acbr = switch smoothingType
+    
+    'EMA'  => ta.ema(cbRange, smoothingPeriod)
+    'HMA'  => ta.hma(cbRange, smoothingPeriod)
+    'SMA'  => ta.sma(cbRange, smoothingPeriod)
+    'RMA'  => ta.rma(cbRange, smoothingPeriod)
+    'VWMA' => ta.vwma(cbRange, smoothingPeriod)
+    'WMA'  => ta.wma(cbRange, smoothingPeriod)
+    => 
+        runtime.error("No matching MA type found.")
+        float(na)
+
+
+//----- Signal line selection
+signalLine = switch signalType
+    
+    'EMA'  => ta.ema(acbr, signalPeriod)
+    'HMA'  => ta.hma(acbr, signalPeriod)
+    'SMA'  => ta.sma(acbr, signalPeriod)
+    'RMA'  => ta.rma(acbr, signalPeriod)
+    'VWMA' => ta.vwma(acbr, signalPeriod)
+    'WMA'  => ta.wma(acbr, signalPeriod)
+    => 
+        runtime.error("No matching MA type found.")
+        float(na)
+
+
+//----- Calculations for baseline volatility
+//--- Donchian channel
+highestBaseline = volPeriodType == 'RexDog Self-Adjusting' ? (ta.highest(acbr, 5) + ta.highest(acbr, 9) + ta.highest(acbr, 24) + ta.highest(acbr, 50) + ta.highest(acbr, 100) + ta.highest(acbr, 200)) / 6 : ta.highest(acbr, volPeriod)
+lowestBaseline  = volPeriodType == 'RexDog Self-Adjusting' ? (ta.lowest(acbr, 5) + ta.lowest(acbr, 9) + ta.lowest(acbr, 24) + ta.lowest(acbr, 50) + ta.lowest(acbr, 100) + ta.lowest(acbr, 200)) / 6 : ta.lowest(acbr, volPeriod)
+
+upperBaseline = acbrIsDirectional ? highestBaseline / divisor : not acbrIsDirectional ? (highestBaseline + lowestBaseline ) / divisor : na
+lowerBaseline = acbrIsDirectional ? lowestBaseline  / divisor : na
+
+
+//----- Defining a rising signal line - useful as an additional filter
+signalRising  = signalLineStrongInput and signalLine > signalLine[1]
+signalFalling = signalLineStrongInput and signalLine < signalLine[1]
+
+
+//----- Defining variables for crosses
+blineUpperXover  = ta.crossover(acbr, upperBaseline)
+blineUpperXunder = ta.crossunder(acbr, upperBaseline)
+blineLowerXover  = ta.crossover(acbr, lowerBaseline)
+blineLowerXunder = ta.crossunder(acbr, lowerBaseline)
+
+signalXover  = ta.crossover(acbr, signalLine)
+signalXunder = ta.crossunder(acbr, signalLine)
+
+
+//----- Determining the relation of acbr to the baseline -----\\
+//--- Non-directional acbr - requires simpler code because there is no need to account for negative values and bi-directional movement
+bgAboveBline          = blineBgInput and not acbrIsDirectional and acbr > upperBaseline
+bgBelowBline          = blineBgInput and not acbrIsDirectional and acbr < upperBaseline
+barcolorAboveBline    = blineBarcolorInput and not acbrIsDirectional and acbr > upperBaseline
+barcolorBelowBline    = blineBarcolorInput and not acbrIsDirectional and acbr < upperBaseline
+barcolorBlineStrongX  = blineStrongXInput and blineUpperXover and not acbrIsDirectional
+barcolorBlineWeakX    = blineWeakXInput and blineUpperXunder and not acbrIsDirectional
+
+//--- Directional acbr
+dirBgAboveBline                = blineBgInput and acbrIsDirectional and acbr > upperBaseline
+dirBgBelowBline                = blineBgInput and acbrIsDirectional and acbr < lowerBaseline
+dirBgNeutralBline              = blineBgInput and acbrIsDirectional and acbr < upperBaseline and acbr > lowerBaseline or blineBgInput and acbrIsDirectional and signalFalling and acbr > upperBaseline or blineBgInput and acbrIsDirectional and signalRising and acbr < lowerBaseline
+
+dirBarcolorAboveBline          = blineBarcolorInput and acbrIsDirectional and acbr > upperBaseline
+dirBarcolorBelowBline          = blineBarcolorInput and acbrIsDirectional and acbr < lowerBaseline
+dirBarcolorNeutralBline        = blineBarcolorInput and acbrIsDirectional and acbr < upperBaseline and acbr > lowerBaseline or blineBarcolorInput and acbrIsDirectional and signalFalling and acbr > upperBaseline or blineBarcolorInput and acbrIsDirectional and signalRising and acbr < lowerBaseline
+
+dirBarcolorBlineStrongXUp      = blineStrongXInput and acbrIsDirectional and blineUpperXover
+dirBarcolorBlineStrongXDown    = blineStrongXInput and acbrIsDirectional and blineLowerXunder
+dirBarcolorBlineWeakXUp        = blineWeakXInput and acbrIsDirectional and blineUpperXunder
+dirBarcolorBlineWeakXDown      = blineWeakXInput and acbrIsDirectional and blineLowerXover
+
+
+//----- Determining the relation of acbr to the signal line -----\\
+//--- Non-directional acbr
+bgAboveSignal         = signalBgInput and not acbrIsDirectional and acbr > signalLine
+bgBelowSignal         = signalBgInput and not acbrIsDirectional and acbr < signalLine
+barcolorAboveSignal   = signalBarcolorInput and not acbrIsDirectional and acbr > signalLine
+barcolorBelowSignal   = signalBarcolorInput and not acbrIsDirectional and acbr < signalLine
+barcolorSignalStrongX = signalStrongXInput and signalXover and not acbrIsDirectional
+barcolorSignalWeakX   = signalWeakXInput and signalXunder and not acbrIsDirectional
+
+//--- Directional acbr
+dirBgAboveSignal                = signalBgInput and acbrIsDirectional and acbr > 0 and acbr > signalLine
+dirBgBelowSignal                = signalBgInput and acbrIsDirectional and acbr < 0 and acbr < signalLine
+dirBgNeutralSignal              = signalBgInput and acbrIsDirectional and acbr > 0 and acbr < signalLine or signalBgInput and acbrIsDirectional and acbr < 0 and acbr > signalLine or signalBgInput and acbrIsDirectional and acbr > 0 and acbr > signalLine and signalFalling or signalBgInput and acbrIsDirectional and acbr < 0 and acbr < signalLine and signalRising
+
+dirBarcolorAboveSignal          = signalBarcolorInput and acbrIsDirectional and acbr > 0 and acbr > signalLine
+dirBarcolorBelowSignal          = signalBarcolorInput and acbrIsDirectional and acbr < 0 and acbr < signalLine
+dirBarcolorNeutralSignal        = signalBarcolorInput and acbrIsDirectional and acbr > 0 and acbr < signalLine or signalBarcolorInput and acbrIsDirectional and acbr < 0 and acbr > signalLine or signalBarcolorInput and acbrIsDirectional and acbr > 0 and acbr > signalLine and signalFalling or signalBarcolorInput and acbrIsDirectional and acbr < 0 and acbr < signalLine and signalRising
+
+dirBarcolorSignalStrongXUp      = signalStrongXInput and acbrIsDirectional and acbr > 0 and signalXover
+dirBarcolorSignalStrongXDown    = signalStrongXInput and acbrIsDirectional and acbr < 0 and signalXunder
+dirBarcolorSignalWeakX          = signalWeakXInput and acbrIsDirectional and acbr > 0 and signalXunder or signalWeakXInput and acbrIsDirectional and acbr < 0 and signalXover
+
+
+//----- Color Functionality -----\\
+//----- Acbr
+acbrColor = if not acbrIsDirectional and acbr > acbr[1]
+    color.new(#445b84, 0)
+else if not acbrIsDirectional and acbr < acbr[1]
+    color.new(#844444, 0)
+else if acbr > 0 and acbr > acbr[1] and acbrIsDirectional
+    color.new(#445b84, 0)
+else if acbr > 0 and acbr < acbr[1] and acbrIsDirectional
+    color.new(#844444, 0)
+else if acbr < 0 and acbr < acbr[1] and acbrIsDirectional
+    color.new(#445b84, 0)
+else if acbr < 0 and acbr > acbr[1] and acbrIsDirectional
+    color.new(#844444, 0)
+
+//----- Signal line
+signalColor = if signalLine > 0 and signalLine > signalLine[1] or signalLine < 0 and signalLine < signalLine[1]
+    color.new(#448484, 0)
+else if signalLine < 0 and signalLine > signalLine[1] or signalLine > 0 and signalLine < signalLine[1]
+    color.new(#5a4484, 0)
+
+
+//----- Baseline - the acbr vs. the baseline -----\\
+//---Background color requiring strong signal line
+AboveBaselineStrongSignal = if signalRising and bgAboveBline
+    bgSwatchAbove
+else if signalRising and bgBelowBline or signalFalling and bgAboveBline or signalFalling and bgBelowBline
+    bgSwatchBelow
+else if signalRising and dirBgAboveBline
+    bgSwatchAbove
+else if signalFalling and dirBgBelowBline
+    bgSwatchBelow
+else if dirBgNeutralBline
+    bgSwatchNeutral
+
+//---Background color not requiring strong signal line
+AboveBaseline = if not signalLineStrongInput and bgAboveBline
+    bgSwatchAbove
+else if not signalLineStrongInput and bgBelowBline
+    bgSwatchBelow
+else if not signalLineStrongInput and dirBgAboveBline
+    bgSwatchAbove
+else if not signalLineStrongInput and dirBgBelowBline
+    bgSwatchBelow
+else if dirBgNeutralBline
+    bgSwatchNeutral
+
+//--- Barcolor requiring strong signal line
+BarColorAboveBaselineStrongSignal = if signalRising and barcolorAboveBline
+    barcolorSwatchAbove
+else if signalRising and barcolorBelowBline or signalFalling and barcolorAboveBline or signalFalling and barcolorBelowBline
+    barcolorSwatchBelow
+else if signalRising and dirBarcolorAboveBline
+    barcolorSwatchAbove
+else if signalFalling and dirBarcolorBelowBline
+    barcolorSwatchBelow
+else if dirBarcolorNeutralBline 
+    barcolorSwatchNeutral
+
+//--- Barcolor not requiring strong signal line
+BarColorAboveBaseline = if not signalLineStrongInput and barcolorAboveBline
+    barcolorSwatchAbove
+else if not signalLineStrongInput and barcolorBelowBline
+    barcolorSwatchBelow
+else if not signalLineStrongInput and dirBarcolorAboveBline
+    barcolorSwatchAbove
+else if not signalLineStrongInput and dirBarcolorBelowBline
+    barcolorSwatchBelow
+else if dirBarcolorNeutralBline 
+    barcolorSwatchNeutral
+
+//--- Barcolor crosses requiring strong signal line
+BarColorBaselineCrossStrongSignal = if signalRising and barcolorBlineStrongX
+    xoverSwatch
+else if barcolorBlineWeakX
+    xunderSwatch
+else if signalRising and dirBarcolorBlineStrongXUp or signalFalling and dirBarcolorBlineStrongXDown
+    xoverSwatch
+else if dirBarcolorBlineWeakXUp or dirBarcolorBlineWeakXDown
+    xunderSwatch
+
+//--- Barcolor crosses not requiring strong signal line
+BarColorBaselineCross = if not signalLineStrongInput and barcolorBlineStrongX
+    xoverSwatch
+else if not signalLineStrongInput and barcolorBlineWeakX
+    xunderSwatch
+else if not signalLineStrongInput and dirBarcolorBlineStrongXUp
+    xoverSwatch
+else if not signalLineStrongInput and dirBarcolorBlineStrongXDown
+    xoverSwatch
+else if not signalLineStrongInput and dirBarcolorBlineWeakXUp
+    xunderSwatch
+else if not signalLineStrongInput and dirBarcolorBlineWeakXDown
+    xunderSwatch
+
+
+//----- Signal line - the acbr vs. the signal line -----\\
+//--- Background color requiring strong signal line
+AboveSignalLineStrongSignal = if signalRising and bgAboveSignal
+    bgSwatchAbove
+else if signalRising and bgBelowSignal or signalFalling and bgAboveSignal or signalFalling and bgBelowSignal
+    bgSwatchBelow
+else if signalRising and dirBgAboveSignal
+    bgSwatchAbove
+else if signalFalling and dirBgBelowSignal
+    bgSwatchBelow
+else if signalLineStrongInput and dirBgNeutralSignal
+    bgSwatchNeutral
+
+//--- Background color not requiring strong signal line
+AboveSignalLine = if not signalLineStrongInput and bgAboveSignal
+    bgSwatchAbove
+else if not signalLineStrongInput and bgBelowSignal
+    bgSwatchBelow
+else if not signalLineStrongInput and dirBgAboveSignal
+    bgSwatchAbove
+else if not signalLineStrongInput and dirBgBelowSignal
+    bgSwatchBelow
+else if not signalLineStrongInput and dirBgNeutralSignal
+    bgSwatchNeutral
+
+//--- Barcolor requiring strong signal line
+BarColorAboveSignalLineStrongSignal = if signalRising and barcolorAboveSignal
+    barcolorSwatchAbove
+else if signalRising and barcolorBelowSignal or signalFalling and barcolorAboveSignal or signalFalling and barcolorBelowSignal
+    barcolorSwatchBelow
+else if signalRising and dirBarcolorAboveSignal
+    barcolorSwatchAbove
+else if signalFalling and dirBarcolorBelowSignal
+    barcolorSwatchBelow
+else if signalLineStrongInput and dirBarcolorNeutralSignal
+    barcolorSwatchNeutral
+
+//--- Barcolor not requiring strong signal line
+BarColorAboveSignalLine = if not signalLineStrongInput and barcolorAboveSignal
+    barcolorSwatchAbove
+else if not signalLineStrongInput and barcolorBelowSignal
+    barcolorSwatchBelow
+else if not signalLineStrongInput and dirBarcolorAboveSignal
+    barcolorSwatchAbove
+else if not signalLineStrongInput and dirBarcolorBelowSignal
+    barcolorSwatchBelow
+else if not signalLineStrongInput and dirBarcolorNeutralSignal
+    barcolorSwatchNeutral
+
+//--- Barcolor crosses requiring strong signal line
+BarColorSignalLineCrossStrongSignal = if signalRising and barcolorSignalStrongX
+    xoverSwatch
+else if barcolorSignalWeakX
+    xunderSwatch
+else if signalRising and dirBarcolorSignalStrongXUp
+    xoverSwatch
+else if signalFalling and dirBarcolorSignalStrongXDown
+    xoverSwatch
+else if dirBarcolorSignalWeakX
+    xunderSwatch
+
+//--- Barcolor crosses not requiring strong signal line
+BarColorSignalLineCross = if not signalLineStrongInput and barcolorSignalStrongX
+    xoverSwatch
+else if not signalLineStrongInput and barcolorSignalWeakX
+    xunderSwatch
+else if not signalLineStrongInput and dirBarcolorSignalStrongXUp
+    xoverSwatch
+else if not signalLineStrongInput and dirBarcolorSignalStrongXDown
+    xoverSwatch
+else if not signalLineStrongInput and dirBarcolorSignalWeakX
+    xunderSwatch
+
+
+//----- Visuals -----\\
+plot(acbr, title = 'Average Candle Bodies Range', color = acbrColor, style = plot.style_columns)
+plot(signalLine, title = 'Signal Line', color = signalColor, linewidth = 2, style = plot.style_line)
+plot(upperBaseline, title = 'Upper Baseline', color = color.new(#000000, 75), style = plot.style_area)
+plot(acbrIsDirectional ? lowerBaseline : na, title = 'Lower Baseline', color = color.new(#000000, 75), style = plot.style_area)
+
+bgcolor(AboveBaselineStrongSignal, title = 'Background | ACBR > Baseline & Signal Rising')
+bgcolor(AboveBaseline, title = 'Background | ACBR > Baseline')
+bgcolor(AboveSignalLineStrongSignal, title = 'Background | ACBR > Signal Line & Signal Rising')
+bgcolor(AboveSignalLine, title = 'Background | ACBR > Signal Line')
+
+barcolor(BarColorBaselineCrossStrongSignal, title = 'Bar Color | ACBR Baseline Cross & Signal Rising')
+barcolor(BarColorBaselineCross, title = 'Bar Color | ACBR Baseline Cross ')
+barcolor(BarColorSignalLineCrossStrongSignal, title = 'Bar Color | ACBR Signal Line Cross & Signal Rising')
+barcolor(BarColorSignalLineCross, title = 'Bar Color | ACBR Signal Line Cross')
+
+barcolor(BarColorAboveBaselineStrongSignal, title = 'Bar Color | ACBR > Baseline & Signal Rising')
+barcolor(BarColorAboveBaseline, title = 'Bar Color | ACBR > Baseline')
+barcolor(BarColorAboveSignalLineStrongSignal, title = 'Bar Color | ACBR > Signal Line & Signal Rising')
+barcolor(BarColorAboveSignalLine, title = 'Bar Color | ACBR > Signal Line')
+
+
+//----- Continuation trades - these are rare since they require a good strong trend which has the signal line maintaining on the same side of the oscillator as the ACBR
+bullContTrade = acbrIsDirectional and acbr > 0 and acbr[1] < signalLine and signalXover
+bearContTrade = acbrIsDirectional and acbr < 0 and acbr[1] > signalLine and signalXunder
+
+plotshape(bullContTrade, title = 'Bullish Continuation', style = shape.arrowup, location = location.bottom, color = #445b84)
+plotshape(bearContTrade, title = 'Bearish Continuation', style = shape.arrowdown, location = location.top, color = #844444)
+
+
+//----- Trade exits - can also work as continuation trades
+exitLongQuickly = signalLine > 0 and signalXunder
+exitLongSlowly = ta.crossunder(acbr,upperBaseline)
+exitShortQuickly = signalLine < 0 and signalXover
+exitShortSlowly = ta.crossover(acbr, lowerBaseline)
+
+plotshape(exitShortQuickly, title = 'Quick Exit Short', style = shape.xcross, location = location.bottom, color = #445b84, display = display.none)
+plotshape(exitShortSlowly, title = 'Slow Exit Short', style = shape.xcross, location = location.bottom, color = #445b84)
+plotshape(exitLongQuickly, title = 'Quick Exit Long', style = shape.xcross, location = location.top, color = #844444, display = display.none)
+plotshape(exitLongSlowly, title = 'Slow Exit Long', style = shape.xcross, location = location.top, color = #844444)
+
+hline(0, title = 'Zero Line', color = #000000, linestyle = hline.style_dotted)
+
+
+//----- Alerts
+alertcondition(bullContTrade, title = 'Continuation Trade - Bullish', message = 'Bullish continuation trade by ACBR.')
+alertcondition(bearContTrade, title = 'Continuation Trade - Bearish', message = 'Bearish continuation trade by ACBR.')
+alertcondition(exitLongQuickly, title = 'Exit Long Quickly', message = 'Exit long trade, by ACBR.')
+alertcondition(exitLongSlowly, title = 'Exit Long Slowly', message = 'Exit long trade, by ACBR.')
+alertcondition(exitShortQuickly, title = 'Exit Short Quickly', message = 'Exit short trade, by ACBR.')
+alertcondition(exitShortSlowly, title = 'Exit Short Slowly', message = 'Exit short trade, by ACBR.')
+alertcondition(upperBaseline > 0 and blineUpperXover or lowerBaseline > 0 and blineLowerXover, title = 'ACBR Crossing Above Upper Baseline', message = 'ACBR has crossed above the upper baseline.')
+alertcondition(upperBaseline < 0 and blineUpperXunder or lowerBaseline < 0 and blineLowerXunder, title = 'ACBR Crossing Below Lower Baseline', message = 'ACBR has crossed below the lower baseline.')
+alertcondition(acbr > 0 and signalXover, title = 'ACBR Crossing Above Signal Line Trade Entry', message = 'ACBR has crossed above the signal line. Possible trade entry.')
+alertcondition(acbr < 0 and signalXunder, title = 'ACBR Crossing Below Signal Line Trade Entry', message = 'ACBR has crossed below the signal line. Possible trade entry.')

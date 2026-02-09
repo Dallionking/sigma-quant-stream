@@ -1,0 +1,61 @@
+{
+  "profileId": "crypto-dex-hyperliquid",
+  "displayName": "Crypto DEX (Hyperliquid)",
+  "marketType": "crypto-dex",
+  "dataProvider": {
+    "adapter": "hyperliquid",
+    "apiUrl": "https://api.hyperliquid.xyz",
+    "walletEnv": "HYPERLIQUID_WALLET",
+    "sampleDataDir": "data/crypto-dex/",
+    "sampleFiles": ["BTC-PERP_5min_sample.csv", "ETH-PERP_5min_sample.csv"]
+  },
+  "symbols": {
+    "mode": "dynamic",
+    "discovery": {
+      "method": "oi_rank",
+      "minOpenInterestUSD": 10000000,
+      "maxSymbols": 15,
+      "refreshInterval": "24h"
+    },
+    "pinned": [],
+    "excluded": [],
+    "current": []
+  },
+  "costs": {
+    "model": "percentage",
+    "makerFee": 0.0002,
+    "takerFee": 0.0005,
+    "slippageBps": 3,
+    "gasEstimateUSD": 0.10,
+    "alwaysInclude": true
+  },
+  "compliance": {
+    "type": "protocol-rules",
+    "maxLeverage": 50,
+    "liquidationBuffer": 0.01,
+    "positionLimitUSD": 500000,
+    "vaultInteraction": true,
+    "builderCodes": true
+  },
+  "researchSources": {
+    "people": ["Hyperliquid team", "Jeff (HyperTrades)", "DeFi researchers"],
+    "web": ["Hyperliquid docs", "DeFi Llama", "Dune Analytics", "DeBank"],
+    "books": []
+  },
+  "tradingHours": "24/7",
+  "specificFeatures": {
+    "onChainCLOB": true,
+    "vaultFlow": true,
+    "blockFinality": "400-600ms",
+    "builderCodes": true
+  },
+  "paperTrading": {
+    "engine": "hyperliquid-testnet",
+    "config": {
+      "network": "testnet"
+    }
+  },
+  "output": {
+    "validatedDir": "output/strategies/protocol_validated"
+  }
+}

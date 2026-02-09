@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-007",
+  "title": "ATR Channel Breakout",
+  "hypothesis": "Breakout beyond N*ATR from recent average signals trend continuation with favorable risk/reward",
+  "counterparty": "Mean reversion traders who fade breakouts prematurely",
+  "edgeSource": "Momentum - volatility expansion indicates institutional participation",
+  "markets": ["ES", "NQ", "GC", "CL"],
+  "timeframes": ["15m", "1h"],
+  "parameterCount": 3,
+  "priority": 2,
+  "source": "Keltner Channel variations + Clenow trend following",
+  "references": [
+    "Clenow 'Following the Trend'",
+    "Keltner Channel original methodology"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [0.8, 1.5],
+    "winRateRange": [0.40, 0.50],
+    "tradesPerMonth": 8
+  },
+  "testConditions": {
+    "atrPeriod": [14, 20],
+    "atrMultiple": [1.5, 2.0, 2.5],
+    "emaPeriod": [20, 50],
+    "trailingStop": true
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,23 @@
+{
+  "id": "conv-seed-003",
+  "name": "Fair Value Gaps (FVG)",
+  "description": "Identifies imbalances in price action where gaps exist between candle wicks",
+  "source_url": "https://www.tradingview.com/script/example-fvg/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 1,
+  "reason": "Core ICT/SMC concept - price tends to fill FVGs, useful for entry/exit zones",
+  "indicatorType": "overlay",
+  "parameters": {
+    "min_gap_atr": 0.5,
+    "show_filled": false,
+    "lookback": 100
+  },
+  "signals": {
+    "bullish_fvg": "Gap between candle 1 high and candle 3 low",
+    "bearish_fvg": "Gap between candle 1 low and candle 3 high",
+    "filled": "Price returns to fill the gap"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

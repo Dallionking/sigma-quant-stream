@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H001",
+  "hypothesis": "Delta-neutral carry: long spot + short perp when funding rate > 0.05%",
+  "edgeType": "behavioral",
+  "edgeSource": "Retail over-leverages in bull markets, paying excessive funding",
+  "counterparty": "Leveraged longs paying funding rate",
+  "expectedSharpe": 1.5,
+  "expectedWinRate": 0.65,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "8h",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

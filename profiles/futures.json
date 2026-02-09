@@ -1,0 +1,64 @@
+{
+  "profileId": "futures",
+  "displayName": "CME Futures (ES, NQ, YM, GC)",
+  "marketType": "futures",
+  "dataProvider": {
+    "adapter": "databento",
+    "apiKeyEnv": "DATABENTO_API_KEY",
+    "sampleDataDir": "data/",
+    "sampleFiles": ["ES_5min_sample.csv", "NQ_5min_sample.csv"]
+  },
+  "symbols": {
+    "mode": "dynamic",
+    "discovery": {
+      "method": "volume_rank",
+      "minDailyVolumeUSD": 100000000,
+      "maxSymbols": 10,
+      "refreshInterval": "24h"
+    },
+    "pinned": ["ES", "NQ", "YM", "GC"],
+    "excluded": [],
+    "current": []
+  },
+  "costs": {
+    "model": "per_contract",
+    "commission": 2.50,
+    "slippage": 0.5,
+    "slippageUnit": "ticks",
+    "alwaysInclude": true
+  },
+  "compliance": {
+    "type": "prop-firm",
+    "firms": [
+      "Apex",
+      "Topstep",
+      "FTMO",
+      "Earn2Trade",
+      "Bulenox",
+      "My Funded Futures",
+      "Leeloo",
+      "Trade Day",
+      "UProfit",
+      "Take Profit Trader",
+      "Elite Trader Funding",
+      "The Trading Pit",
+      "Funding Pips",
+      "Funded Next"
+    ],
+    "minPassing": 3,
+    "defaultAccountSizes": [50000, 100000]
+  },
+  "researchSources": {
+    "people": ["Jim Simons", "Marcos Lopez de Prado", "Ernest Chan", "David Aronson", "Andreas Clenow"],
+    "web": ["TradingView", "ArXiv", "QuantConnect", "Futures.io", "SSRN"],
+    "books": ["Advances in Financial ML (De Prado)", "Quantitative Trading (Chan)", "Evidence-Based TA (Aronson)"]
+  },
+  "tradingHours": "CME",
+  "specificFeatures": {
+    "propFirmValidation": true,
+    "tickBasedSlippage": true
+  },
+  "output": {
+    "validatedDir": "output/strategies/prop_firm_ready"
+  }
+}

@@ -1,0 +1,2703 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Sigma Algo
+
+//@version=5
+
+InitCapital = 100000
+InitPosition = 100
+InitCommission = 0
+InitPyramidMax = 10
+CalcOnorderFills = true
+strategy("Renko Suite Bot-Discord",
+ 
+ overlay=true,
+ max_bars_back=541,
+ pyramiding=InitPyramidMax,
+ initial_capital=InitCapital,
+ default_qty_type=strategy.fixed,
+ default_qty_value = 1,
+ commission_type=strategy.commission.percent,
+ commission_value=InitCommission,
+ calc_on_order_fills=CalcOnorderFills,
+ precision=6,
+ max_lines_count=500,
+ max_labels_count=500,
+ max_boxes_count=500,
+ close_entries_rule="ANY"
+ 
+ )
+
+
+var user_consensus = input.string(defval="", title="TYPE 'agree' TO ADD TO CHART. \nTrading involves a risk of loss, and may not be appropriate for every one. Please consider carefully if trading is appropriate for you. Past performance is not indicative of future results. Any and all indicator signals provided by SigmaAlgo.io Systems are for educational purposes only. Is your responsibility knowing that by typing 'agree' you are accepting that the AI would trade on your behalf at your own risk. \nRELEASE INFORMATION 2021 © SigmaAlgo.io", confirm = true, group="consensus")
+var icc = false
+if user_consensus == "agree"
+	icc := true
+else
+	icc := false
+
+var label lbl_agree_err = na
+if not icc
+	label.delete(lbl_agree_err)
+	lbl_agree_err := label.new(bar_index + 5, close, color = color.red, style=label.style_label_left, textcolor = color.white, text="Type 'agree' first in order to show the algo!")
+
+//Imports
+//{
+import thealgorithmictrader/_RenkoEngineTheATRLibrary/14 as _renglib
+import thealgorithmictrader/SessionInBoxesPro/13 as SessInBoxes
+//}
+
+// MM SETTINGS
+//{
+
+g_bot = "-----------------System's Bot Settings-----------------"
+
+i_disc = input.bool(true, "Discord Signals",inline = "bot00", group = g_bot)
+//i_pc_id = input.string("", "|Pineconnector ID", tooltip = "bot00", group = g_bot)
+//i_adj_sym = input.bool(false, "Adjust Broker Symbol",group = g_bot,inline="bot11")
+//broker_sym = input.string("", "|Custom Symbol ",group = g_bot,inline="bot11")
+//v_broker_sym = i_adj_sym?broker_sym:syminfo.ticker
+
+dec_d = input.int(0, title = "Asset decimal digits on Broker used", group = "BOT", tooltip="Specify asset decimal digits (Non Forex only)" )
+round_pips(pips_unrounded) =>
+	float rounded = 0
+	if (syminfo.type == "forex")
+    	rounded   := pips_unrounded / syminfo.mintick / 10
+	else // other instrument
+    	rounded   := pips_unrounded
+	rounded
+    
+
+tradeMon = input.bool(false, "Mon", group=g_bot, inline="trdays1")
+tradeTue = input.bool(false, "Tue", group=g_bot, inline="trdays1")
+tradeWed = input.bool(false, "Wed <- Disable Trade", group=g_bot, inline="trdays1")
+tradeThu = input.bool(false, "Thu", group=g_bot, inline="trdays2")
+tradeFri = input.bool(false, "Fri", group=g_bot, inline="trdays2")
+tradeSat = input.bool(false, "Sat", group=g_bot, inline="trdays2")
+tradeSun = input.bool(false, "Sun", group=g_bot, inline="trdays3")
+Fri_hfilt = input.bool(false, "Hour To Close Friday", group = g_bot, inline="frifilt")
+hourToCloseFriday = input.float(title=":", defval=17, group = g_bot, inline="frifilt")
+start = input.time(timestamp("2022-10-01T00:00:00"), title="Backtest: Start Date",group=g_bot, tooltip = "Backtesting start date.")
+finish = input.time(timestamp("3000-12-12T00:00:00"), title="Finish Date",group=g_bot, tooltip = "Backtesting end date.")
+backtest() =>
+	time >= start and time <= finish ? true : false
+var inTradingZone = false
+inTradingZone:=(tradeMon? dayofweek!=dayofweek.monday : true) and (tradeTue? dayofweek!=dayofweek.tuesday : true) and (tradeWed? dayofweek!=dayofweek.wednesday : true) and (tradeThu? dayofweek!=dayofweek.thursday : true) and (tradeFri? dayofweek!=dayofweek.friday : true) and (tradeSat? dayofweek!=dayofweek.saturday : true) and (tradeSun? dayofweek!=dayofweek.sunday : true)  
+inTradingZone:=Fri_hfilt? (dayofweek==dayofweek.friday and (hour > hourToCloseFriday-1)?false:inTradingZone):inTradingZone
+
+
+g_rtbl= "------------System's Visual Recap Tables------------"
+i_ps_rtable = input.bool(true, "Active Position", group = g_rtbl, inline = "rtbl0")
+r_show_tbl=input.bool(true, "Components <- Tables", group=g_rtbl,inline="rtbl0")
+tbl_t = input.string("Transp. White", "Theme", ["Black Bg", "White Bg", "Transp. White", "Transp. Black"], group=g_rtbl,inline="rtbl1")
+r_tbl_size = input.string(size.normal, "Size", [size.tiny, size.small, size.normal, size.large], group=g_rtbl,inline="rtbl1")
+r_tbl_width = input.float(30.0, "Width", 5.0, 100.0, group = g_rtbl, inline = 'rtbl1')
+
+
+g_mm = "------------System's Money Management------------"
+
+i_show_sign = input.bool(true, "Show Signals", group = g_mm, inline = "salgomm0")
+i_show_lvls = input.bool(true, "Show SL/TP Levels", group = g_mm, inline = "salgomm0")
+i_ps_tracker = input.bool(true, "Active Position Visual Tracker", group = g_mm, inline = "salgomm11")
+i_ps_tracker_lbls = input.string("Short", "|Additional Labels", ["None", "Short", "Full"] , group = g_mm, inline = "salgomm11")
+
+i_core_acct = input.float(100000.0, "Initial Balance", group = g_mm, inline = "salgocore0")
+i_core_rpt = input.float(2.0, "Risk Per Trade", group = g_mm, inline = "salgocore0")
+
+
+
+
+//Stop Loss Inputs
+g_mm_sl = "---------------Stop Loss Inputs---------------"
+
+i_sl_t = input.string("Pips/Points", "SL Type", ["ATR", "Pips/Points", "Bricks", "Directional Extreme Lookback"], group = g_mm_sl, inline = "salgomm1")
+
+i_sl_atrl = input.int(14, "If ATR: Len", group = g_mm_sl, inline = "salgomm2", minval = 2)
+i_sl_atrm = input.float(2.0, "Mult" , group = g_mm_sl, inline = "salgomm2", minval=0.1, step = 0.1)
+i_sl_atrv = ta.atr(i_sl_atrl)*i_sl_atrm
+
+i_sl_ppr = input.float(50.0, "If Pips/Points: Amount" , group = g_mm_sl, inline = "salgomm3")
+i_sl_pp = syminfo.type=="forex"? syminfo.currency == "JPY"?i_sl_ppr/100:i_sl_ppr/10000 : i_sl_ppr
+
+
+i_sl_bricks = input.int(3, "If Bricks: Amount", group = g_mm_sl, inline = "salgomm4", minval = 1)
+
+i_sl_extlb = input.int(3, "If Directional Extreme Lookback: Lookback", group = g_mm_sl, inline = "salgomm5", minval = 1)
+sl_extlb_low = ta.lowest(low,i_sl_extlb+1)
+sl_extlb_high = ta.lowest(high,i_sl_extlb+1)
+
+//Trailing Stop Inputs
+g_mm_ts = "---------------Traling Stop Inputs---------------"
+
+i_ts_be = input.string("BreakEven After TP1", "BreakEven Stop", ["None","BreakEven After TP1","BreakEven After TP2"], group = g_mm_ts, inline = "salgomm6")
+i_ts_beoff = input.float(5.0, "BreakEven Stop Offset", group = g_mm_ts, inline = "salgomm6")
+i_ts_on = input.string("Trailing Stop After TPs", "Trailing Stop", ["None","Trailing Stop Since Beginning","Trailing Stop After TP1","Trailing Stop After TP2","Trailing Stop After TP3","Trailing Stop After TPs"], group = g_mm_ts, inline = "salgomm6")
+
+
+i_ts_t = input.string("ATR", "Trailing Stop Type", ["ATR", "Pips/Points", "Bricks", "Directional Extreme Lookback"], group = g_mm_ts, inline = "salgomm7")
+
+i_ts_atrl = input.int(14, "If ATR: Len", group = g_mm_ts, inline = "salgomm8", minval = 2)
+i_ts_atrm = input.float(2.0, "Mult" , group = g_mm_ts, inline = "salgomm8", minval=0.1, step = 0.1)
+
+i_ts_ppr = input.float(50.0, "If Pips/Points: Amount" , group = g_mm_ts, inline = "salgomm9")
+i_ts_pp = syminfo.type=='forex'? syminfo.currency == 'JPY'?i_ts_ppr/100:i_ts_ppr/10000 : i_ts_ppr
+
+
+i_ts_bricks = input.int(3, "If Bricks: Amount", group = g_mm_ts, inline = "salgomm10", minval = 1)
+
+//Take Profit(s) Inputs
+g_mm_tps = "---------------Take Profit(s) Inputs---------------"
+
+i_tp2 = input.bool(true, "TP2", group = g_mm_tps, inline = "salgommtp0")
+i_tp3 = input.bool(true, "TP3", group = g_mm_tps, inline = "salgommtp0")
+
+i_tp1_rr =  input.float(0.5, "RR:TP1" , group = g_mm_tps, inline = "salgommtp1", minval=0.1, step = 0.1)
+i_tp2_rr =  input.float(1.0, "TP2" , group = g_mm_tps, inline = "salgommtp1", minval=0.1, step = 0.1)
+
+i_tp3_rr =  input.float(2.0, "TP3" , group = g_mm_tps, inline = "salgommtp1", minval=0.1, step = 0.1)
+
+
+i_tp1_ps =  input.float(60.0, "PS:TP1" , group = g_mm_tps, inline = "salgommtp2", minval=0.1, step = 0.1)
+i_tp2_ps =  input.float(10.0, "TP2" , group = g_mm_tps, inline = "salgommtp2", minval=0.1, step = 0.1)
+
+i_tp3_ps =  input.float(10.0, "TP3" , group = g_mm_tps, inline = "salgommtp2", minval=0.1, step = 0.1)
+i_ts_ps = input.float(20.0, "PS:TS" , group = g_mm_tps, inline = "salgommtp2", minval=0.1, step = 0.1)
+
+g_mm_al = "---------------General Alerts---------------"
+
+i_buy_al = input.bool(true, "Buy", group = g_mm_al, inline="genalerts0")
+i_sell_al = input.bool(true, "Sell", group = g_mm_al, inline="genalerts0")
+
+i_sl_al = input.bool(true, "SL", group = g_mm_al, inline="genalerts")
+i_tp1_al = input.bool(true, "TP1", group = g_mm_al, inline="genalerts")
+i_tp2_al = input.bool(true, "TP2", group = g_mm_al, inline="genalerts")
+i_tp3_al = input.bool(true, "TP3", group = g_mm_al, inline="genalerts")
+i_slbe_al = input.bool(true, "BreakEven Update", group = g_mm_al, inline="genalerts1")
+i_ts_al = input.bool(true, "Trailing Stop Update", group = g_mm_al, inline="genalerts1")
+
+
+//}
+
+//RENKO BAND
+//{
+
+//RENKO BAND SETTINGS
+//{
+g_hlband = "---------------RENKO BAND---------------"
+r_show = input.bool(true, "Show Band", group=g_hlband,inline="hlband0")
+r_thrlbls = input.string("None", "|Thresholds Labels", ["None", "Short", "Full"], group=g_hlband,inline="hlband0")
+
+r_type=input.string("Traditional", "Type", ["Traditional", "ATR", "%"], group=g_hlband,inline="h/l_b0")
+r_src = input.string(title="Src", group=g_hlband, options=["Close","H/L"], defval="Close",inline="h/l_b0")
+r_size = input.float(title="Trad./% Size", group=g_hlband, defval=20, minval=0, step=0.0000001,inline="h/l_b1")
+r_atrl = input.int(title="ATR Lenght", group=g_hlband, defval=14, minval=1,inline="h/l_b1")
+
+r_show_vb = input.bool(true, "Show Vol. Bricks", group=g_hlband,inline="hlband000")
+r_vb_amt = input.int(2, "| Min Amt", minval = 2,group=g_hlband,inline="hlband000", tooltip = "Vol. Bricks: Underlines candles that constitute more than 'Min Amt' bricks in one direction.")
+r_chopf = input.bool(true, "Renko Chop Filter", group=g_hlband,inline="hlband000-")
+r_chopff = input.bool(true, "Filter", group=g_hlband,inline="hlband000-")
+
+r_chopfd = input.int(1, "| Bricks Amt", minval = 1,group=g_hlband,inline="hlband000-")
+
+r_bull_col = input.color(#339b97, "Colors: Bull", group=g_hlband,inline="rcols")
+r_bear_col = input.color(#5c3c72, "Bear", group=g_hlband,inline="rcols")
+r_dbull_col = input.color(#00fdf5, "Colors: Strong Bull", group=g_hlband,inline="rcols2")
+r_dbear_col = input.color(#c56fff, "Strong Bear", group=g_hlband,inline="rcols2")
+
+g_hlband_al = "---------------RENKO BAND ALERTS---------------"
+
+r_al_bull_up = input.bool(true, "Bullish Update", group = g_hlband_al, inline = "bandal_00")
+r_al_bear_up = input.bool(true, "Bearish Update", group = g_hlband_al, inline = "bandal_00")
+
+
+
+r_al_tc = input.bool(true, "Trend Change", group = g_hlband_al, inline = "bandal_11")
+r_al_vb = input.bool(true, "Volume Brick", group = g_hlband_al, inline = "bandal_11")
+
+g_hlband_f = "----------RENKO BAND MAIN SIGNALS AND GENERAL FILTERS----------"
+
+
+
+
+i_abs_tconf = input.bool(true, "Absolute Confirmation", group = g_hlband_f, inline = "trsign0", tooltip = "With Absolute Confirmation On all confirmations need to be true to valid the signal, if not just one is sufficient.")
+i_tdir = input.string("Both", "|Trade Direction Bias", ["Both", "Just Long", "Just Short"], group = g_hlband_f, inline = "trsign0")
+i_r_vb_tconf = input.bool(false, "Renko Volume Update Confirmation", group = g_hlband_f, inline = "rbsign")
+
+
+i_tcc = input.bool(true, "Confirmation Candle", group = g_hlband_f, inline = "trsign.00")
+
+
+i_exit_renko = input.bool(false, "Renko Opposite Update Exit", group = g_hlband_f, inline = "exit00")
+
+
+
+ 
+
+//}
+
+//RENKO BAND CALCS AND PLOTS
+//{
+
+//Vars
+//{
+var r_ut=0.0
+var r_lt=0.0
+var r_close=0.0
+var r_open=0.0
+var r_brick=0.0
+var r_trend = ""
+var r_ischop = false
+
+var label r_testlbl = na
+//var label r_tstl = na
+
+var r_last_upds = array.new_float()
+var r_tupd_bars=0
+var r_tupd = array.new_int()
+var r_rupd_bars=0
+var r_rupd = array.new_int()
+var r_mupd_bars=0
+var r_mupd = array.new_int()
+
+var renko_bull_tdur = array.new_int()
+var renko_bear_tdur = array.new_int()
+var renko_bull_tupd = array.new_int()
+var renko_bear_tupd = array.new_int()
+var renko_bull_tsize = array.new_float()
+var renko_bear_tsize = array.new_float()
+var renko_cum_upd=0
+var renko_cum_size = 0.0
+renko_ismult=false
+renko_multupd=0
+
+var r_gcol_init_t = 0.0
+var r_gcol_ut = 0.0
+var r_gcol_lt = 0.0
+var color r_bull_gcol = na
+var color r_bear_gcol = na
+var color r_line_gcol = na
+
+rtrad_parser(value,option)=>
+	final=0.0
+	if option=="code"
+    	if syminfo.type=="forex"
+        	if syminfo.currency == "JPY"
+            	final:=value/100
+        	else
+            	final:=value/10000
+    	else
+        	final:=value
+	else if option == "decode"
+    	if syminfo.type=="forex"
+        	if syminfo.currency == "JPY"
+            	final:=value*100
+        	else
+            	final:=value*10000
+    	else
+        	final:=value
+	final
+//calc atr val
+ratr_parser(valu)=>
+	a = 0
+	num = syminfo.mintick
+	s = valu
+	if na(s)
+    	s := syminfo.mintick
+	if num < 1
+    	for i = 1 to 20
+        	num := num * 10
+        	if num > 1
+            	break
+        	a := a +1
+	for x = 1 to a
+    	s := s * 10
+	s := math.round(s)
+	for x = 1 to a
+    	s := s / 10
+	s := s < syminfo.mintick  ? syminfo.mintick : s
+	s
+
+
+var r_size_f=0.0
+var r_atrv = 0.0
+var label atr_test = na
+
+//ATR box size calculation
+r_atrv := ratr_parser(ta.atr(r_atrl))
+
+r_size_f := r_type == "Traditional"?rtrad_parser(r_size,"code"):r_type == "%"?(close*r_size/100):r_atrv
+
+//}
+
+
+//Main Logic
+//{
+if icc
+	[r_close_tmp, r_open_tmp, r_ut_tmp, r_lt_tmp, r_trend_tmp, renko_fv_upd, renko_tupd, renko_rudp] = _renglib.theatr_relib_r_band(r_size_f,r_src)
+
+	if r_close_tmp!= r_close
+
+    	r_open:=r_open_tmp
+    	r_ut:=r_ut_tmp
+    	r_lt:=r_lt_tmp
+    	r_trend:=r_trend_tmp
+    	r_brick:=renko_fv_upd
+
+    	if r_close_tmp>r_close and r_al_bull_up
+        	alert("Renko Band Bullish Update.\nNext Renko Band High Target="+str.tostring(r_ut)+"\nNext Renko Band Low Target="+str.tostring(r_lt))
+    	else if r_close_tmp<r_close and r_al_bear_up
+        	alert("Renko Band Bearish Update.\nNext Renko Band High Target="+str.tostring(r_ut)+"\nNext Renko Band Low Target="+str.tostring(r_lt))
+
+
+    	if renko_tupd>1
+        	renko_ismult:=true
+        	renko_multupd:=renko_tupd
+        	if r_al_vb
+            	alert("Renko Band Volume Brick Update.\nA single candle made "+str.tostring(renko_tupd)+"\n Renko Band Targets")
+
+        	for i = renko_tupd-1 to 1  
+            	if r_trend_tmp=="BULL"
+                	array.push(r_last_upds, r_close_tmp - (i*r_brick))               	 
+            	else
+                	array.push(r_last_upds, r_close_tmp + (i*r_brick))
+       	 
+       	 
+        	//label.delete(r_tstl[1])
+        	//r_tstl:=label.new(bar_index,close,idk)
+
+        	r_close:=r_close_tmp
+        	array.push(r_last_upds, r_close)
+    	else
+        	r_close:=r_close_tmp
+        	array.push(r_last_upds, r_close)
+   	 
+    	if array.size(r_last_upds)>1000
+        	for i = 0 to renko_tupd-1
+            	array.remove(r_last_upds,i)
+        	// label.delete(r_testlbl[1])
+        	// str_tmp=""
+        	// for i = array.size(r_last_upds)-1 to array.size(r_last_upds)-11
+        	// 	str_tmp:= str_tmp+ str.tostring(i)+": "+str.tostring( array.get(r_last_upds, i) ) + ",\n"
+        	// r_testlbl:=label.new(bar_index, close,str_tmp,style=label.style_label_left)
+
+   	 
+    	if renko_rudp>0
+       	 
+        	array.clear(r_tupd)
+
+        	if r_trend=="BULL"
+            	array.push(renko_bear_tdur,r_rupd_bars)
+            	array.push(renko_bear_tupd, renko_cum_upd)
+            	array.push(renko_bear_tsize, renko_cum_size)
+
+            	if r_al_tc
+                	alert("Renko Band Trend Change Update.\nRenko Band went from Bearish to Bullish.")
+
+        	else
+            	array.push(renko_bull_tdur,r_rupd_bars)
+            	array.push(renko_bull_tupd, renko_cum_upd)
+            	array.push(renko_bull_tsize, renko_cum_size)
+
+            	if r_al_tc
+                	alert("Renko Band Trend Change Update.\nRenko Band went from Bullish to Bearish.")
+
+        	renko_cum_upd:=0
+        	renko_cum_size:=renko_fv_upd
+
+        	array.push(r_rupd,r_rupd_bars)
+        	r_rupd_bars:=0
+
+        	if renko_tupd>0
+            	array.push(r_tupd,0)
+            	r_tupd_bars:=0
+
+        	r_ischop:=r_chopf?true:false
+       	 
+
+        	r_gcol_init_t := r_open
+
+        	r_gcol_ut:=r_open+(r_brick*5)
+        	r_gcol_lt:=r_open-(r_brick*5)
+
+    	if renko_tupd>0
+       	 
+        	renko_cum_upd:=renko_cum_upd+1
+        	renko_cum_size:=renko_cum_size+r_brick[1]
+
+        	array.push(r_tupd,r_tupd_bars)
+        	r_tupd_bars:=0
+
+        	if renko_tupd>1
+           	 
+            	array.push(r_mupd,r_mupd_bars)
+            	r_mupd_bars:=0
+
+        	for i = 1 to renko_tupd
+            	array.push(r_tupd,1)
+
+        	if r_ischop and array.size(r_tupd)>0
+            	if array.sum(r_tupd)>r_chopfd
+                	r_ischop:=false
+
+   	 
+       	 
+       	 
+
+	else
+    	r_tupd_bars := r_tupd_bars+1
+    	r_rupd_bars := r_rupd_bars+1
+    	r_mupd_bars := r_mupd_bars+1
+
+    
+
+//}
+
+
+//Plots
+//{
+
+r_bull_gcol := not r_ischop?color.from_gradient(close, r_gcol_init_t, r_gcol_ut, r_bull_col, r_dbull_col):color.gray
+r_bear_gcol := not r_ischop?color.from_gradient(close, r_gcol_lt, r_gcol_init_t, r_dbear_col, r_bear_col):color.gray
+
+r_line_gcol := not r_ischop?color.from_gradient(close, r_ut, r_lt, r_bull_col, r_bear_col):color.gray
+
+rcl_p=plot(r_show and icc?r_open:na,"Renko Open", color.new(color.gray,50) )
+rop_p=plot(r_show and icc?r_close:na,"Renko Close",r_trend=="BULL"?r_bull_gcol:r_bear_gcol)
+fill(rcl_p,rop_p,r_show and icc?r_trend=="BULL"?color.new(r_bull_gcol,65):color.new(r_bear_gcol,65):na)
+
+var label r_mupd_lbl = na
+if r_show and icc and renko_ismult and r_show_vb and renko_multupd >= r_vb_amt
+	r_mupd_lbl:=label.new(bar_index,na, (r_trend=="BULL"?"↑ ":"↓ ") +str.tostring(renko_multupd), xloc.bar_index, r_trend=="BULL"? yloc.belowbar:yloc.abovebar, r_trend=="BULL"?r_bull_col:r_bear_col,  r_trend=="BULL"?label.style_arrowup:label.style_arrowdown,r_trend=="BULL"?r_bull_col:r_bear_col)
+
+
+var label r_ut_lbl = na
+var label r_lt_lbl = na
+var line r_ut_line = na
+var line r_lt_line = na
+
+if r_show and icc and  r_thrlbls!="None" and barstate.islast
+	r_ut_str = (r_thrlbls=="Short"?"R.H.: ": "Renko High: ") + str.tostring(math.round(r_ut))
+	r_lt_str = (r_thrlbls=="Short"?"R.L.: ": "Renko Low: ") + str.tostring(math.round(r_lt))
+
+	label.delete(r_ut_lbl[1])
+	label.delete(r_lt_lbl[1])
+
+	r_ut_lbl:=label.new(time+((time-time[1])*5), r_ut,r_ut_str, xloc.bar_time, style = label.style_label_left, color=r_bull_gcol, textcolor=color.white)
+	r_lt_lbl:=label.new(time+((time-time[1])*5), r_lt,r_lt_str, xloc.bar_time, style = label.style_label_left, color=r_bear_gcol, textcolor=color.white)
+
+	line.delete(r_ut_line[1])
+	line.delete(r_lt_line[1])
+
+	r_ut_line:=line.new(time, r_ut, time+((time-time[1])*5), r_ut, xloc.bar_time,color=r_dbull_col)
+	r_lt_line:=line.new(time, r_lt, time+((time-time[1])*5), r_lt, xloc.bar_time,color=r_dbear_col)
+//}
+
+
+
+
+
+//}
+
+//}
+
+
+//RENKO MACD TREND
+//{
+//RENKO MACD TREND SETTINGS
+//{
+g_rmd = "---------------RENKO MACD---------------"
+
+i_rmd_trend_tconf = input.bool(false, "Trend", group = g_rmd, inline = "trsign1")
+i_rmd_zc_tconf = input.bool(false, "Zero-Cross <-Confirmations", group = g_rmd, inline = "trsign1")
+i_exit_rmdtw = input.bool(false, "Trend Weakening", group = g_rmd, inline = "exit01")
+i_exit_rmdtc = input.bool(false, "Trend Change<-Exits", group = g_rmd, inline = "exit01")
+i_exit_rmdzc = input.bool(false, "0 Line Cross Exit", group = g_rmd, inline = "exit01")
+
+
+rmd_show = input.bool(false, "Show Trend", group=g_rmd,inline="rmd0")
+rmd_showhist = input.bool(false, "Show Histo", group=g_rmd,inline="rmd0")
+rmd_showtlbl = input.string("Short", "|Label", ["None","Short","Full"], group=g_rmd,inline="rmd0")
+rmd_showzc = input.bool(false, "Show Zero Cross", group=g_rmd,inline="rmd00")
+rmd_showzclbl = input.string("None", "|Label", ["None","Short","Full"], group=g_rmd,inline="rmd00")
+rmd_hr = input.bool(false, "Hyper Focus", group=g_rmd,inline="rmd1")
+rmd_wta = input.bool(false, "Weakening Trend", group=g_rmd,inline="rmd1",tooltip = "Hyper Focus: Makes Renko MACD Trend more responsive and dynamic to price-action.\nWeakening Trend: Tells you when the Renko MACD Trend loses directional strenght")
+rmd_fastl = input.int(9, "Lenghts:Fast",minval = 2,group = g_rmd,inline = "rmd2")
+rmd_slowl = input.int(26, "Slow",minval = 2,group = g_rmd,inline = "rmd2")
+rmd_signl = input.int(10,"Signal",minval = 2,group = g_rmd,inline = "rmd2")
+rmd_bull_col = input.color(#4abbb7, "Colors: Bull", group=g_rmd,inline="rmdcols")
+rmd_bear_col = input.color(#b85bf7, "Bear", group=g_rmd,inline="rmdcols")
+rmd_dbull_col = input.color(#00fcf4, "Colors: Strong Bull", group=g_rmd,inline="rmdcols2")
+rmd_dbear_col = input.color(#54008c, "Strong  Bear", group=g_rmd,inline="rmdcols2")
+
+g_rmd_al = "---------------RENKO MACD ALERTS---------------"
+
+rmd_al_tc = input.bool(true, "Trend Change (Signal Cross)", group = g_rmd_al, inline = "macdal_00")
+rmd_al_wta = input.bool(true, "Weakening Trend", group = g_rmd_al, inline = "macdal_00")
+
+rmd_al_zeroc = input.bool(true, "0-Line Cross", group = g_rmd_al, inline = "macdal_11")
+
+//}
+
+//RENKO MACD TREND CALCS AND PLOTS
+//{
+var rmd_finalv = 0.0
+var rmd_line = 0.0
+var rmd_sign = 0.0
+var rmd_hist = 0.0
+var rmd_fastma = 0.0
+var rmd_slowma = 0.0
+var rmd_signma = 0.0
+var rmd_trend=""
+var rmd_zeroprj_i = 0
+var rmd_zeroprj_p = 0.0
+rmd_zeroch=false
+var rmd_fastfutprj = array.new_float()
+var rmd_slowfutprj = array.new_float()
+var rmd_signfutprj = array.new_float()
+var rmd_cross = 0.0
+
+var label rmd_str_lbl = na
+var color rmd_finalcol = na
+rmd_futrev = false
+rmd_trend_ch = false
+var rmd_weak = false
+
+
+rmd_fut(string dir, string r_prj) =>
+
+	result = false
+
+	rmd_fastma_fut1 =0.0
+	rmd_fastma_fut2 =0.0
+	fastma_cum=0.0
+	for i=0 to rmd_fastl-2
+    	fastma_cum:= fastma_cum+array.get(r_last_upds, array.size(r_last_upds)-1-i)
+
+	rmd_fastma_fut1:=fastma_cum+r_lt
+	rmd_fastma_fut1:=rmd_fastma_fut1/rmd_fastl
+
+	rmd_fastma_fut2:=fastma_cum+r_ut
+	rmd_fastma_fut2:=rmd_fastma_fut2/rmd_fastl
+
+	rmd_slowma_fut1 =0.0
+	rmd_slowma_fut2 =0.0
+	slowma_cum=0.0
+	for i=0 to rmd_slowl-2
+    	slowma_cum:= slowma_cum + array.get(r_last_upds, array.size(r_last_upds)-1-i)
+	rmd_slowma_fut1:=slowma_cum+r_lt
+	rmd_slowma_fut1:=rmd_slowma_fut1/rmd_slowl
+
+	rmd_slowma_fut2:=slowma_cum+r_ut
+	rmd_slowma_fut2:=rmd_slowma_fut2/rmd_slowl
+
+	rmd_line_fut1=rmd_fastma_fut1-rmd_slowma_fut1
+	rmd_line_fut2=rmd_fastma_fut2-rmd_slowma_fut2
+
+	signma_cum=0.0
+	rmd_signma_fut1 =0.0
+	rmd_signma_fut2 =0.0
+	for i=0 to rmd_signl - 2
+    	signma_cum:= signma_cum + rmd_line[i]
+
+	rmd_signma_fut1:=signma_cum+rmd_line_fut1
+	rmd_signma_fut1:=rmd_signma_fut1/rmd_signl
+
+	rmd_signma_fut2:=signma_cum+rmd_line_fut2
+	rmd_signma_fut2:=rmd_signma_fut2/rmd_signl
+
+	if dir == "BEAR" and r_prj == "S-CROSS"
+    	result:=rmd_line_fut1>rmd_signma_fut1 or rmd_line_fut2>rmd_signma_fut2
+	else if dir == "BULL" and r_prj == "S-CROSS"
+    	result:=rmd_line_fut1<rmd_signma_fut1 or rmd_line_fut2<rmd_signma_fut2
+	else if dir == "BEAR" and r_prj == "0-CROSS"
+    	result:=rmd_line_fut1<0.0 or rmd_line_fut2<0.0
+	else if dir == "BULL" and r_prj == "0-CROSS"
+    	result:=rmd_line_fut1>0.0 or rmd_line_fut2>0.0
+
+	result
+
+
+
+if icc and r_close!=r_close[1]
+    
+	if array.size(r_last_upds)>math.max(rmd_fastl,rmd_slowl,rmd_signl)
+
+    	fastma_cum=0.0
+    	for i=0 to rmd_fastl-1
+        	fastma_cum:= fastma_cum+array.get(r_last_upds, array.size(r_last_upds)-1-i)
+    	rmd_fastma:=fastma_cum/rmd_fastl
+
+    	slowma_cum=0.0
+    	for i=0 to rmd_slowl-1
+        	slowma_cum:= slowma_cum + array.get(r_last_upds, array.size(r_last_upds)-1-i)
+    	rmd_slowma:=slowma_cum/rmd_slowl
+
+   	 
+    	rmd_line:=rmd_fastma - rmd_slowma
+
+    	signma_cum=0.0
+    	for i=0 to rmd_signl - 1
+        	signma_cum:= signma_cum + rmd_line[i]
+    	rmd_signma:=signma_cum/rmd_signl
+
+    	rmd_hist:=math.abs(rmd_line-rmd_signma)
+
+    
+    
+
+
+	if rmd_show and array.size(r_last_upds)>math.max(rmd_fastl,rmd_slowl,rmd_signl)
+   	 
+    	if rmd_signma<rmd_line
+        	if rmd_signma[1] >= rmd_line[1]
+            	rmd_trend:="BULL"
+            	rmd_trend_ch:=true
+            	if rmd_wta
+                	rmd_weak := false    
+
+            	rmd_finalv:=r_lt-(r_brick*3)
+            	if rmd_al_tc
+                	alert("Renko MACD Trend Change, From Bearish to Bullish.\n New Signal Cross Projection"+ str.tostring(rmd_finalv))
+        	else
+
+
+            	is_scross_fut = rmd_fut("BEAR","S-CROSS")
+            	if is_scross_fut and rmd_hr
+                	rmd_finalv:=r_lt
+            	else
+                	if rmd_signma>rmd_signma[1] and rmd_line<rmd_line[1]
+                    	rmd_finalv:=(rmd_finalv+(r_brick*2))<r_lt?rmd_finalv+(r_brick*2):r_lt
+                	else if array.get(r_last_upds, array.size(r_last_upds)-1)>array.get(r_last_upds, array.size(r_last_upds)-2)
+                    	rmd_finalv:=(rmd_finalv+(r_brick/2))<r_lt?rmd_finalv+(r_brick/2):r_lt
+                	else if array.get(r_last_upds, array.size(r_last_upds)-1)<rmd_finalv
+                    	rmd_finalv:=r_lt
+                	else
+                    	rmd_finalv:=rmd_finalv
+            	if rmd_wta and rmd_finalv<rmd_finalv[1]
+                	rmd_weak:=true
+                	if rmd_al_tc
+                    	alert("Renko MACD Trend Weakening Alarm.\n The Bullish Renko MACD Strenght is weakening")
+
+    	else if rmd_signma>rmd_line
+        	if rmd_signma[1] <= rmd_line[1]
+            	rmd_trend:="BEAR"
+            	rmd_trend_ch:=true
+            	if rmd_wta
+                	rmd_weak := false   	 
+            	rmd_finalv:=r_ut+(r_brick*3)
+            	if rmd_al_tc
+                	alert("Renko MACD Trend Change, From Bullish to Bearish.\n New Signal Cross Projection"+ str.tostring(rmd_finalv))
+        	else
+            	is_scross_fut = rmd_fut("BULL","S-CROSS")
+            	if is_scross_fut and rmd_hr
+                	rmd_finalv:=r_ut
+            	else
+                	if rmd_signma<rmd_signma[1] and rmd_line>rmd_line[1]
+                    	rmd_finalv:=(rmd_finalv-(r_brick*2))>r_ut?rmd_finalv-(r_brick*2):r_ut
+                	else if array.get(r_last_upds, array.size(r_last_upds)-1)<array.get(r_last_upds, array.size(r_last_upds)-2)
+                    	rmd_finalv:=(rmd_finalv-(r_brick/2))>r_ut?rmd_finalv-(r_brick/2):r_ut
+                	else if array.get(r_last_upds, array.size(r_last_upds)-1)>rmd_finalv
+                    	rmd_finalv:=r_ut
+                	else
+                    	rmd_finalv:=rmd_finalv
+            	if rmd_wta and rmd_finalv>rmd_finalv[1]
+                	rmd_weak:=true
+                	if rmd_al_tc
+                    	alert("Renko MACD Trend Weakening Alarm.\n The Bearish Renko MACD Strenght is weakening")
+
+	if rmd_showzc and array.size(r_last_upds)>rmd_fastl
+
+    	if rmd_fastma > rmd_slowma
+
+        	if rmd_fastma[1] <= rmd_slowma[1]
+            	rmd_zeroch:=true
+            	rmd_zeroprj_p:= rmd_slowma
+            	if rmd_al_zeroc
+                	alert("Renko MACD Bullish 0-Line Cross.\n New 0-Line Cross Projection"+ str.tostring(rmd_zeroprj_p))
+       	 
+        	else
+            	is_0cross_fut = rmd_fut("BEAR","0-CROSS")
+            	if is_0cross_fut
+                	rmd_zeroprj_p:=r_lt
+            	else
+                	if rmd_line>rmd_line[1]
+                    	rmd_zeroprj_p:=(rmd_zeroprj_p+(r_brick/4))<r_lt?rmd_finalv+(r_brick/4):r_lt
+   	 
+    	else
+       	 
+        	if rmd_fastma[1] >= rmd_slowma[1]
+            	rmd_zeroch:=true
+            	rmd_zeroprj_p:= rmd_slowma
+            	if rmd_al_zeroc
+                	alert("Renko MACD Bearish 0-Line Cross.\n New 0-Line Cross Projection"+ str.tostring(rmd_zeroprj_p))
+       	 
+        	else
+            	is_0cross_fut = rmd_fut("BULL","0-CROSS")
+            	if is_0cross_fut
+                	rmd_zeroprj_p:=r_ut
+            	else
+                	if rmd_line<rmd_line[1]
+                    	rmd_zeroprj_p:=(rmd_zeroprj_p+(r_brick/4))>r_ut?rmd_finalv+(r_brick/4):r_ut
+
+if not ta.change(rmd_finalv)   	 
+	rmd_finalv:=rmd_finalv          	 
+   	 
+    
+rmd_zeroprj_gbullcol = color.from_gradient(rmd_line, 0, 80, rmd_bull_col, rmd_dbull_col)
+rmd_zeroprj_gbearcol = color.from_gradient(rmd_line, -80, 0, rmd_dbear_col, rmd_bear_col)
+
+plot(icc and rmd_showzc and rmd_fastma > rmd_slowma? rmd_zeroprj_p:na , "Renko MACD Zero Cross",rmd_zeroprj_gbullcol,2,plot.style_cross)
+plot(icc and rmd_showzc and rmd_fastma <= rmd_slowma? rmd_zeroprj_p:na , "Renko MACD Zero Cross",rmd_zeroprj_gbearcol,2,plot.style_cross)
+plotshape(icc and rmd_showzc and rmd_zeroch?rmd_zeroprj_p:na, "Renko MACD Zero Cross Change", shape.diamond, location.absolute,  rmd_fastma > rmd_slowma?rmd_zeroprj_gbullcol:rmd_zeroprj_gbearcol, size=size.small)
+
+var label rmd_zeroprj_lbl = na
+if barstate.islast and rmd_showzclbl!="None" and rmd_showzc
+	rmd_zeroprj_str=rmd_showzclbl=="Short"?"ZC: ": "Zero-Cross: "
+	label.delete(rmd_zeroprj_lbl[1])
+	rmd_zeroprj_lbl:=label.new(time + ((time-time[1])*10), rmd_zeroprj_p, rmd_zeroprj_str + str.tostring(rmd_zeroprj_p), xloc = xloc.bar_time, style = label.style_label_left, color = rmd_fastma > rmd_slowma?rmd_zeroprj_gbullcol:rmd_zeroprj_gbearcol, textcolor = color.white )
+
+
+
+var rmd_gthr=0.0
+rmd_gthr :=  rmd_trend_ch ? rmd_trend == "BULL" ? r_close+(r_brick*4):r_close-(r_brick*4) : rmd_gthr
+
+rmd_gbullcol = color.from_gradient(close, rmd_finalv, rmd_gthr, rmd_bull_col, rmd_dbull_col)
+rmd_gbearcol = color.from_gradient(close, rmd_gthr, rmd_finalv, rmd_dbear_col, rmd_bear_col)
+
+rmd_bullp = plot(icc and rmd_show and rmd_trend=="BULL"? rmd_finalv:na , "Renko MACD Trend Bull",rmd_weak? color.new(rmd_gbullcol,60):rmd_gbullcol,2,plot.style_linebr)
+rmd_bearp = plot(icc and rmd_show and rmd_trend=="BEAR"? rmd_finalv:na , "Renko MACD Zero Cross",rmd_weak? color.new(rmd_gbearcol,60):rmd_gbearcol,2,plot.style_linebr)
+rmd_bullp_hist = plot(icc and rmd_show and rmd_showhist and rmd_trend=="BULL"? rmd_finalv-rmd_hist:na , "Renko MACD Trend Bull",rmd_gbullcol,1,plot.style_linebr)
+rmd_bearp_hist = plot(icc and rmd_show and rmd_showhist and rmd_trend=="BEAR"? rmd_finalv+rmd_hist:na , "Renko MACD Zero Cross",rmd_gbearcol,1,plot.style_linebr)
+fill(rmd_bullp,rmd_bullp_hist,icc and rmd_show and rmd_showhist and rmd_trend=="BULL"?color.new(rmd_gbullcol,80):#00000000)
+fill(rmd_bearp,rmd_bearp_hist,icc and rmd_show and rmd_showhist and rmd_trend=="BEAR"?color.new(rmd_gbearcol,80):#00000000)
+plotshape(icc and rmd_show and rmd_trend_ch?rmd_finalv:na, "Renko MACD Zero Cross Change", shape.circle, location.absolute, rmd_trend=="BULL"?rmd_gbullcol:rmd_gbearcol, size=size.small)
+plotshape(icc and rmd_show and rmd_wta and ta.change(rmd_weak) and rmd_weak?rmd_finalv:na, "Renko MACD Weakening Trends", shape.xcross, location.absolute, rmd_trend=="BULL"?rmd_gbullcol:rmd_gbearcol, size=size.small)
+
+
+var label rmd_tr_lbl = na
+if barstate.islast and rmd_showtlbl!="None" and rmd_show
+	rmd_t_str=rmd_showtlbl=="Short"?"SC: ": "Signal-Cross: "
+	label.delete(rmd_tr_lbl[1])
+	rmd_tr_lbl:=label.new(time + ((time-time[1])*10), rmd_finalv, rmd_t_str + str.tostring(math.round(rmd_finalv,2)), xloc = xloc.bar_time, style = label.style_label_left, color =rmd_trend=="BULL"?rmd_gbullcol:rmd_gbearcol, textcolor = color.white )
+
+
+
+//}
+
+
+
+//}
+
+
+//RENKO CLOUDS
+//{
+
+g_rcloud = "---------------RENKO CLOUDS--------------- "
+
+i_rclouds_entry = input.bool(true, title="Entry", group = g_rcloud, inline = "rclo01000")
+i_rclouds_exit = input.bool(true, title="Exit|Renko Clouds", group = g_rcloud, inline = "rclo01000")
+
+showtrend = input.bool(true, title="Show Trend", group = g_rcloud, inline = "rclo01")
+showtrhold = input.bool(true, title="Show Threshold", group = g_rcloud, inline = "rclo01")
+tremalen = input.int(defval = 34, title="Trend EMA Length", minval = 1, group = g_rcloud, inline = "rclo00-")
+barcountwhip = input.int(defval = 3, title="Reversal Delayer", minval = 0, group = g_rcloud, inline = "rclo00-")
+thsreversal = input.float(defval = 3.0, title="Cloud Thresholds: First", minval = 0, step = 0.1, group = g_rcloud, inline = "rclo00")
+thsreversal2 = input.float(defval = 1.5, title="Second", minval = 0, step = 0.1, group = g_rcloud, inline = "rclo00")
+
+rclouds_bull_col = input.color(#4abbb7, "Colors: Bull", group=g_rcloud,inline="rclòcols")
+rclouds_bear_col = input.color(#b85bf7, "Bear", group=g_rcloud,inline="rclòcols")
+rclouds_chop_col = input.color(color.gray, "Bear", group=g_rcloud,inline="rclòcols")
+
+
+float tema = na
+tmp = ta.ema(r_close, tremalen)
+tema := r_close - math.floor((r_close - tmp) / r_size_f) * r_size_f
+
+Upt = tema - thsreversal * r_size_f
+Upt := Upt > r_close - 2 * r_size_f ? r_close - 2 * r_size_f : Upt
+Dnt = tema + thsreversal * r_size_f
+Dnt := Dnt < r_close + 2 * r_size_f ? r_close + 2 * r_size_f : Dnt
+
+
+float TrendUp = na, float TrendDown = na
+waitit = 0
+waitit := nz(waitit[1])
+var mtrend = 0
+mtrend := nz(mtrend[1],1)
+TrendUp  := ta.change(r_close) and waitit == 0 ? r_close[1] > TrendUp[1] ? math.max(Upt, TrendUp[1]) : Upt : nz(TrendUp[1])
+TrendUp := mtrend == 1 and ta.change(TrendUp) < 0 ? nz(TrendUp[1]) : TrendUp
+TrendDown:= ta.change(r_close) and waitit == 0  ? r_close[1] < TrendDown[1] ? math.min(Dnt, TrendDown[1]) : Dnt : TrendDown[1]
+TrendDown := mtrend == -1 and ta.change(TrendDown) > 0 ? nz(TrendDown[1]) : TrendDown
+
+mtrend := waitit == 0 ? r_close > TrendDown[1] ? 1 : r_close < TrendUp[1]? -1 : mtrend : mtrend
+
+if ta.change(mtrend) != 0 and waitit == 0 and nz(waitit[2]) == 0
+	waitit := 1
+else
+	waitit := waitit != 0 ? waitit + 1 : waitit
+
+if waitit > 0
+	mtrend := nz(mtrend[1])
+
+if waitit > barcountwhip
+	if mtrend == 1
+    	if r_close >= TrendUp + thsreversal2 * r_size_f
+        	waitit := 0
+    	if r_close <= TrendUp - thsreversal2 * r_size_f
+        	waitit := 0
+        	mtrend := -1
+        	TrendDown:= r_close[1] < TrendDown[1] ? math.min(Dnt, TrendDown[1]) : Dnt
+	else
+    	if r_close <= TrendDown - thsreversal2 * r_size_f
+        	waitit := 0
+    	if r_close >= TrendDown + thsreversal2 * r_size_f
+        	waitit := 0
+        	mtrend := 1
+        	TrendUp  := r_close[1] > TrendUp[1] ? math.max(Upt, TrendUp[1]) : Upt
+
+var Tsl = 0.0
+Tsl := mtrend==1 ? TrendUp : TrendDown
+
+var Tsl2 = 0.0
+Tsl2 := mtrend==1 ? TrendUp + thsreversal * r_size_f: TrendDown - thsreversal * r_size_f
+Tsl2 := (mtrend==1 and Tsl2 > r_close) or (mtrend==-1 and Tsl2 < r_close)? r_close : Tsl2
+Tsl2 :=Tsl2 < 0 ? 0 : Tsl2
+
+trendcol = mtrend == 1 and nz(mtrend[1]) == 1 ? waitit == 0 ? rclouds_bull_col :rclouds_chop_col: mtrend == -1 and nz(mtrend[1]) == -1 ? waitit == 0 ? rclouds_bear_col :rclouds_chop_col: na
+
+//plot(tema, "BASIS", color.yellow, 3)
+
+trendline = plot(showtrend and icc ? Tsl:na, linewidth = 3, color = Tsl !=0 and nz(Tsl[1]) !=0 ? trendcol : na, editable = false)
+trcol = showtrend and showtrhold and mtrend == nz(mtrend[1]) and Tsl !=0 and nz(Tsl[1]) !=0 ? waitit == 0 ? mtrend == 1 ? color.new(rclouds_bull_col, 80) : color.new(rclouds_bear_col, 80) : color.new(color.yellow, 80) : color.new(color.white, 100)
+trcol1 = showtrend and showtrhold and Tsl !=0 and nz(Tsl[1]) !=0 ? color.new(color.gray, 30) : color.new(color.white, 100)
+trline = plot(showtrend and icc ?Tsl2:na, linewidth = 1, style = plot.style_circles, color = na, editable = false)
+fill(trendline, trline, color = color.new(trendcol, 80), editable = false)
+
+plot(waitit > barcountwhip? mtrend == 1 ? TrendUp - thsreversal2 * r_size_f : TrendDown + thsreversal2 * r_size_f : na, color = waitit > barcountwhip ? color.maroon : na, style = plot.style_circles, editable = false)
+plot(icc and ( ta.change(mtrend) > 0 and showtrend or ta.change(mtrend) < 0 and showtrend  )? Tsl : na, linewidth = 6, color = ta.change(mtrend) > 0 and showtrend ? rclouds_bull_col : rclouds_bear_col, style = plot.style_circles, editable = false)
+
+
+//}
+
+
+
+//VWAPs
+//{
+
+//SETT
+//{
+
+g_vwaps="MTF VWAPS"
+
+
+
+i_vwap_1_s = input.bool(true, "VWAP 1 ", group = g_vwaps, inline = "vwaps00")
+i_vwap_1_slbl = input.string("Short", "|Label", ["None","Short","Full"], group=g_vwaps,inline="vwaps00")
+i_esp_vwap1 = input.bool(false, "Filter", group = g_vwaps, inline='vwaps00')
+
+i_vwap_2_s = input.bool(false, "VWAP 2 ", group = g_vwaps, inline = "vwaps11")
+i_vwap_2_slbl = input.string("None", "|Label", ["None","Short","Full"], group=g_vwaps,inline="vwaps11")
+i_esp_vwap2 = input.bool(false, "Filter", group = g_vwaps, inline='vwaps11')
+
+
+i_vwap_3_s = input.bool(false, "VWAP 3 ", group = g_vwaps, inline = "vwaps33")
+i_vwap_3_slbl = input.string("None", "|Label", ["None","Short","Full"], group=g_vwaps,inline="vwaps33")
+i_esp_vwap3 = input.bool(false, "Filter", group = g_vwaps, inline='vwaps33')
+
+
+i_vwap_t = input.string("Fixed", "VWAPs Type ", ["Fixed", "Dynamic"], group = g_vwaps, inline = "vwaps001")
+
+r_vwap_build  = input.int(1, "VWAP 1 HTF Builder: Value", group=g_vwaps,inline="rvwap1")
+r_vwap_res = input.string("Days", "Res", ["Minutes", "Hours", "Days", "Weeks", "Months"],group=g_vwaps,inline="rvwap1")
+
+r_vwap_build2  = input.int(1, "VWAP 2 HTF Builder: Value", group=g_vwaps,inline="rvwap21")
+r_vwap_res2 = input.string("Weeks", "Res", ["Minutes", "Hours", "Days", "Weeks", "Months"],group=g_vwaps,inline="rvwap21")
+
+r_vwap_build3  = input.int(1, "VWAP 3 HTF Builder: Value", group=g_vwaps,inline="rvwap31")
+r_vwap_res3 = input.string("Months", "Res", ["Minutes", "Hours", "Days", "Weeks", "Months"],group=g_vwaps,inline="rvwap31")
+
+
+
+i_vwap1_bullcol = input.color(#339b97, "VWAP 1 Colors: Bull", group = g_vwaps, inline = 'vwapsty0')
+i_vwap1_bearcol = input.color(#5c3c72, "Bear", group = g_vwaps, inline = 'vwapsty0')
+i_vwap1_ls = input.string("Solid", "Linestyle", ["Solid", "Circles", "Diamond"], group = g_vwaps, inline = 'vwapsty0')
+i_vwap1_lsf=i_vwap1_ls=="Solid"?plot.style_linebr:i_vwap1_ls=="Circles"?plot.style_circles:plot.style_stepline_diamond
+
+i_vwap2_bullcol = input.color(#339b97, "VWAP 2 Colors: Bull", group = g_vwaps, inline = 'vwapsty1')
+i_vwap2_bearcol = input.color(#5c3c72, "Bear", group = g_vwaps, inline = 'vwapsty1')
+i_vwap2_ls = input.string("Circles", "Linestyle", ["Solid", "Circles", "Diamond"], group = g_vwaps, inline = 'vwapsty1')
+i_vwap2_lsf=i_vwap2_ls=="Solid"?plot.style_linebr:i_vwap1_ls=="Circles"?plot.style_circles:plot.style_stepline_diamond
+
+i_vwap3_bullcol = input.color(#339b97, "VWAP 3 Colors: Bull", group = g_vwaps, inline = 'vwapsty3')
+i_vwap3_bearcol = input.color(#5c3c72, "Bear", group = g_vwaps, inline = 'vwapsty3')
+i_vwap3_ls = input.string("Diamond", "Linestyle", ["Solid", "Circles", "Diamond"], group = g_vwaps, inline = 'vwapsty3')
+i_vwap3_lsf=i_vwap3_ls=="Solid"?plot.style_linebr:i_vwap1_ls=="Circles"?plot.style_circles:plot.style_stepline_diamond
+
+
+//}
+
+//CALCS
+//{
+
+//CTF Checks and parsing
+var ctf=0.0
+ctf_tmp=timeframe.period
+ctf_od = str.endswith(ctf_tmp,"D") or str.endswith(ctf_tmp,"W") or str.endswith(ctf_tmp,"M")
+if ctf_od
+	if str.endswith(ctf_tmp,"D")
+    	ctf:=str.tonumber(str.substring(ctf_tmp,0,str.pos(ctf_tmp,"D")))
+	else if str.endswith(ctf_tmp,"W")
+    	ctf:=str.tonumber(str.substring(ctf_tmp,0,str.pos(ctf_tmp,"W")))
+	else if str.endswith(ctf_tmp,"M")
+    	ctf:=str.tonumber(str.substring(ctf_tmp,0,str.pos(ctf_tmp,"M")))
+else
+	ctf:=str.tonumber(ctf_tmp)
+
+//HTF Checks and parsing
+r_vwap_resv=r_vwap_res=="Minutes"?(i_vwap_1_slbl=="Short"?"Min":" Minutes"):r_vwap_res=="Hours"?(i_vwap_1_slbl=="Short"?"H":" Hours"):r_vwap_res=="Days"?(i_vwap_1_slbl=="Short"?"D":" Days"):r_vwap_res=="Weeks"?(i_vwap_1_slbl=="Short"?"W": " Weeks"):(i_vwap_1_slbl=="Short"?"Mon":" Months")
+r_vwap_str = str.tostring(r_vwap_build)+r_vwap_resv
+r_vwap_sec = r_vwap_res == "Minutes"?str.tostring(r_vwap_build):r_vwap_res == "Hours"?str.tostring(r_vwap_build*60):r_vwap_res == "Days"?str.tostring(r_vwap_build)+"D":r_vwap_res == "Weeks"?str.tostring(r_vwap_build)+"W":str.tostring(r_vwap_build)+"M"
+htf=r_vwap_res == "Minutes"?r_vwap_build:r_vwap_res == "Hours"?r_vwap_build*60:r_vwap_res == "Days"?r_vwap_build*1440:r_vwap_res == "Weeks"?r_vwap_build*1440*7:r_vwap_build*1440*7*31
+
+
+//HTF Checks and parsing
+r_vwap2_resv=r_vwap_res2=="Minutes"?(i_vwap_2_slbl=="Short"?"Min":" Minutes"):r_vwap_res2=="Hours"?(i_vwap_2_slbl=="Short"?"H":" Hours"):r_vwap_res2=="Days"?(i_vwap_2_slbl=="Short"?"D":" Days"):r_vwap_res2=="Weeks"?(i_vwap_2_slbl=="Short"?"W": " Weeks"):(i_vwap_2_slbl=="Short"?"Mon":" Months")
+r_vwap2_str = str.tostring(r_vwap_build2)+r_vwap2_resv
+r_vwap2_sec = r_vwap_res2 == "Minutes"?str.tostring(r_vwap_build2):r_vwap_res2 == "Hours"?str.tostring(r_vwap_build2*60):r_vwap_res2 == "Days"?str.tostring(r_vwap_build2)+"D":r_vwap_res2 == "Weeks"?str.tostring(r_vwap_build2)+"W":str.tostring(r_vwap_build2)+"M"
+htf2=r_vwap_res2 == "Minutes"?r_vwap_build2:r_vwap_res2 == "Hours"?r_vwap_build2*60:r_vwap_res2 == "Days"?r_vwap_build2*1440:r_vwap_res2 == "Weeks"?r_vwap_build2*1440*7:r_vwap_build2*1440*7*31
+
+//HTF Checks and parsing
+r_vwap3_resv=r_vwap_res3=="Minutes"?(i_vwap_3_slbl=="Short"?"Min":" Minutes"):r_vwap_res3=="Hours"?(i_vwap_3_slbl=="Short"?"H":" Hours"):r_vwap_res3=="Days"?(i_vwap_3_slbl=="Short"?"D":" Days"):r_vwap_res3=="Weeks"?(i_vwap_3_slbl=="Short"?"W": " Weeks"):(i_vwap_3_slbl=="Short"?"Mon":" Months")
+r_vwap3_str = str.tostring(r_vwap_build3)+r_vwap3_resv
+r_vwap3_sec = r_vwap_res3 == "Minutes"?str.tostring(r_vwap_build3):r_vwap_res3 == "Hours"?str.tostring(r_vwap_build3*60):r_vwap_res3 == "Days"?str.tostring(r_vwap_build3)+"D":r_vwap_res3 == "Weeks"?str.tostring(r_vwap_build3)+"W":str.tostring(r_vwap_build3)+"M"
+htf3=r_vwap_res3 == "Minutes"?r_vwap_build3:r_vwap_res3 == "Hours"?r_vwap_build3*60:r_vwap_res3 == "Days"?r_vwap_build3*1440:r_vwap_res3 == "Weeks"?r_vwap_build3*1440*7:r_vwap_build3*1440*7*31
+
+
+
+//CTF-HTF Check
+if i_vwap_1_s
+	if ctf>htf
+    	runtime.error("ERROR: The TF associated to the 'VWAP 1', has to be greater or equal then your Current Chart TF.")
+//CTF-HTF Check
+if i_vwap_2_s
+	if ctf>htf2
+    	runtime.error("ERROR: The TF associated to the 'VWAP 2', has to be greater or equal then your Current Chart TF.")
+//CTF-HTF Check
+if i_vwap_3_s
+	if ctf>htf3
+    	runtime.error("ERROR: The TF associated to the 'VWAP 3', has to be greater or equal then your Current Chart TF.")
+
+
+
+var vwap1_fv = 0.0, var vwap2_fv = 0.0, var vwap3_fv = 0.0
+
+vwap1_tmp=request.security(syminfo.tickerid, r_vwap_sec, ta.vwap(hlc3), i_vwap_t=="Fixed"? barmerge.gaps_off:barmerge.gaps_on) //
+vwap1_fv:= i_vwap_t=="Fixed" and timeframe.change(r_vwap_sec)? vwap1_tmp : vwap1_fv
+vwap1_fv:= i_vwap_t!="Fixed" and timeframe.change(timeframe.period)?  ta.vwap(hlc3, timeframe.change(r_vwap_sec)) : vwap1_fv
+
+var color vwap1_fcol = na
+vwap1_fcol:=close>vwap1_fv?i_vwap1_bullcol:i_vwap1_bearcol
+
+plot(i_vwap_1_s and (i_vwap_t=="Fixed"? not ta.change(vwap1_fv) : true)?vwap1_fv:na,"VWAP 1",vwap1_fcol,style=i_vwap1_lsf)
+var label vwap1_lbl = na
+if barstate.islast and i_vwap_1_slbl!="None" and i_vwap_1_s
+	label.delete(vwap1_lbl[1])
+	vwap1_lbl:=label.new(time + ((time-time[1])*10), vwap1_fv[1], r_vwap_str + " VWAP: " + str.tostring(math.round(vwap1_fv[1],2)) , xloc = xloc.bar_time, style = label.style_label_left, color = vwap1_fcol, textcolor = color.white )
+
+
+vwap2_tmp=request.security(syminfo.tickerid, r_vwap2_sec, ta.vwap(hlc3), i_vwap_t=="Fixed"? barmerge.gaps_off:barmerge.gaps_on) //
+vwap2_fv:= i_vwap_t=="Fixed" and timeframe.change(r_vwap2_sec)? vwap2_tmp : vwap2_fv
+vwap2_fv:= i_vwap_t!="Fixed" and timeframe.change(timeframe.period)?  ta.vwap(hlc3, timeframe.change(r_vwap2_sec)) : vwap2_fv
+
+var color vwap2_fcol = na
+vwap2_fcol:=close>vwap2_fv?i_vwap2_bullcol:i_vwap2_bearcol
+
+plot(i_vwap_2_s and (i_vwap_t=="Fixed"? not ta.change(vwap2_fv) : true)?vwap2_fv:na,"VWAP 1",vwap2_fcol,style=i_vwap2_lsf)
+var label vwap2_lbl = na
+if barstate.islast and i_vwap_2_slbl!="None" and i_vwap_2_s
+	label.delete(vwap2_lbl[1])
+	vwap2_lbl:=label.new(time + ((time-time[1])*10), vwap2_fv[1], r_vwap2_str + " VWAP: " + str.tostring(math.round(vwap2_fv[1],2)) , xloc = xloc.bar_time, style = label.style_label_left, color = vwap2_fcol, textcolor = color.white )
+
+
+vwap3_tmp=request.security(syminfo.tickerid, r_vwap3_sec, ta.vwap(hlc3), i_vwap_t=="Fixed"? barmerge.gaps_off:barmerge.gaps_on) //
+vwap3_fv:= i_vwap_t=="Fixed" and timeframe.change(r_vwap3_sec)? vwap3_tmp : vwap3_fv
+vwap3_fv:= i_vwap_t!="Fixed" and timeframe.change(timeframe.period)?  ta.vwap(hlc3, timeframe.change(r_vwap3_sec)) : vwap3_fv
+
+var color vwap3_fcol = na
+vwap3_fcol:=close>vwap3_fv?i_vwap3_bullcol:i_vwap3_bearcol
+
+plot(i_vwap_3_s and (i_vwap_t=="Fixed"? not ta.change(vwap3_fv) : true)?vwap3_fv:na,"VWAP 1",vwap3_fcol,style=i_vwap3_lsf)
+var label vwap3_lbl = na
+if barstate.islast and i_vwap_3_slbl!="None" and i_vwap_3_s
+	label.delete(vwap3_lbl[1])
+	vwap3_lbl:=label.new(time + ((time-time[1])*10), vwap3_fv[1], r_vwap3_str + " VWAP: " + str.tostring(math.round(vwap3_fv[1],2)) , xloc = xloc.bar_time, style = label.style_label_left, color = vwap3_fcol, textcolor = color.white )
+
+
+
+//}
+
+//}
+
+
+//SWING FAILURE PATTERN H/L STRUCTURE
+//{
+
+//SWP GENERAL SETTINGS
+//{
+g_swp_general = "---------------Swing Failure Pattern---------------"
+
+i_swp_show = input.bool(true, "Show", group = g_swp_general, inline="gen10")
+i_swp_lbls = input.bool(true, "Labels", group = g_swp_general, inline="gen10")
+i_swp_filt = input.bool(true, "Last Break Visual", group = g_swp_general, inline="gen10")
+
+i_swp_lb = input.int(100, "Lookback", 1, 400, 1, group = g_swp_general, inline="gen1")
+i_swp_skip = input.int(10, "Skip first", 1, 400, 1, group = g_swp_general, inline="gen1")
+
+if i_swp_skip>i_swp_lb
+	runtime.error("Init Error; Skipped bars cannot be greater than the whole lookback period.")
+
+i_swp_emoji = input.string("🧨", "|SWP Emoji", group = g_swp_general, inline="gen1" )
+
+//if str.length(i_swp_emoji)>1
+//	runtime.error("Init Error; Emoji can be just one char long.")
+
+i_swp_t = input.string("Zones", "Type", ["Levels", "Zones"], group = g_swp_general, inline="gen0")
+i_swp_zone_t = input.string("ATR","If Zone, Method", ["Standard", "ATR", "Pips/Points"], group = g_swp_general, inline="gen0")
+i_swp_zonef = input.float(50.0, "Zones = Pips/Points, Amount", group = g_swp_general, inline="gen00")
+i_swp_zone_mit = input.float(50.0, "Zone Mitigation %", group = g_swp_general, inline="gen00")
+i_swp_brksrc = input.string("Close", "Break Source", ["Close","H/L"], group = g_swp_general, inline="gen000")
+
+swp_brkbull = i_swp_brksrc=="Close"?close:high
+swp_brkbear = i_swp_brksrc=="Close"?close:low
+
+i_swp_max = input.int(3, "Max Amount X Side: Active", group = g_swp_general, inline="swp_00")
+i_swp_maxmit = input.int(3, "Mitigated", group = g_swp_general, inline="swp_00")
+i_swp_bullcol = input.color(color.blue, "Colors: Bull", group = g_swp_general, inline="swpcols" )
+i_swp_bearcol = input.color(color.purple, "Bear", group = g_swp_general, inline="swpcols" )
+
+g_swp_al = "----------Swing Failure Pattern Alerts----------"
+
+swp_al_nh = input.bool(true, "Highs", group = g_swp_al, inline = "swpal_00")
+swp_al_nl = input.bool(true, "Lows <- New Structure", group = g_swp_al, inline = "swpal_00")
+swp_al_bh = input.bool(true, "Highs", group = g_swp_al, inline = "swpal_11")
+swp_al_bl = input.bool(true, "Lows <- Break Of Structure", group = g_swp_al, inline = "swpal_11")
+
+
+
+//}
+
+//SWP CALCS AND PLOTS
+//{
+
+
+var last_h = 0.0, var last_l = 0.0
+var last_ht = 0, var last_lt = 0
+var skip_h = 0.0, var skip_l = 0.0
+var swp_highs_box = array.new_box(),var swp_lows_box = array.new_box()
+var swp_highs_lbls = array.new_label(),var swp_lows_lbls = array.new_label()
+var swp_highs_boxt = array.new_box(),var swp_lows_boxt = array.new_box()
+var swp_highs_boxmit = array.new_box(),var swp_lows_boxmit = array.new_box()
+last_h:=ta.highest(i_swp_lb)
+last_l:=ta.lowest(i_swp_lb)
+
+skip_h:=ta.highest(i_swp_skip)
+skip_l:=ta.lowest(i_swp_skip)
+
+
+
+swp_highs = false, swp_lows = false
+
+swp_highs:=high > last_h[1]  and close < last_h[1] and last_h[1] != skip_h[1]
+swp_lows:=low < last_l[1]  and close > last_l[1] and last_l[1] != skip_l[1]
+
+
+var swp_wait_next = false
+swp_wait_next := time!=time[1]?false:swp_wait_next
+
+plotchar(swp_highs ? close : na, char=i_swp_emoji, color = i_swp_bullcol, location=location.abovebar, size=size.auto)
+plotchar(swp_lows ? close : na, char=i_swp_emoji, color = i_swp_bearcol, location=location.belowbar, size=size.auto)
+
+swp_zonew_atr=ta.atr(14)*0.5
+
+var swp_break = 0
+
+if swp_highs or swp_lows and i_swp_show
+	if swp_highs
+    	for i = 0 to i_swp_lb
+        	if high[i] == last_h[1]
+            	last_ht:=time[i]
+            	break
+    	swp_med = high-(math.abs(high-last_h[1])/2)
+    	swp_top = i_swp_t == "Levels"?swp_med:(i_swp_zone_t == "ATR"?last_h[1]+swp_zonew_atr:i_swp_zone_t == "Standard"?high:last_h[1]+i_swp_zonef)
+    	swp_bot = i_swp_t == "Levels"?swp_med:last_h[1]
+    	array.push(swp_highs_box, box.new(last_ht, swp_top, time, swp_bot, i_swp_bearcol, xloc = xloc.bar_time, bgcolor = color.new(i_swp_bearcol,70)))
+    	array.push(swp_highs_boxt, box.new(last_ht, swp_top, time, swp_bot, i_swp_bearcol, xloc = xloc.bar_time, bgcolor = color.new(i_swp_bearcol,100)))
+    	swp_wait_next:=true
+    	if i_swp_lbls
+        	array.push(swp_highs_lbls, label.new( (last_ht+time)/2, swp_top, "SFP HIGHS", xloc.bar_time, yloc.price, #00000000, label.style_label_down, i_swp_bearcol) )
+
+    	if swp_al_nh
+        	alert("New Highs Structure Formed, Format->" + i_swp_t)
+
+	else if swp_lows
+    	for i = 0 to i_swp_lb
+        	if low[i] == last_l[1]
+            	last_lt:=time[i]
+            	break
+    	swp_med = low+(math.abs(low-last_l[1])/2)
+    	swp_top = i_swp_t == "Levels"?swp_med:last_l[1]
+    	swp_bot = i_swp_t == "Levels"?swp_med:(i_swp_zone_t == "ATR"?last_l[1]-swp_zonew_atr:i_swp_zone_t == "Standard"?low:last_l[1]-i_swp_zonef)
+    	array.push(swp_lows_box, box.new(last_lt, swp_top, time, swp_bot, i_swp_bullcol, xloc = xloc.bar_time, bgcolor = color.new(i_swp_bullcol,70)))
+    	array.push(swp_lows_boxt, box.new(last_lt, swp_top, time, swp_bot, i_swp_bullcol, xloc = xloc.bar_time, bgcolor = color.new(i_swp_bullcol,100)))
+    	swp_wait_next:=true
+    	if i_swp_lbls
+        	array.push(swp_lows_lbls, label.new( (last_lt+time)/2, swp_bot, "SFP LOWS", xloc.bar_time, yloc.price, #00000000, label.style_label_up, i_swp_bullcol) )
+
+    	if swp_al_nl
+        	alert("New Lows Structure Formed, Format->" + i_swp_t)
+
+if i_swp_show and array.size(swp_highs_box)>0 and not swp_wait_next
+	for i = array.size(swp_highs_box)-1 to 0
+    	//if array.size(swp_highs_box)==0
+    	//	break
+    	if i_swp_t == "Zones" and array.size(swp_highs_boxt)>0
+       	 
+        	swp_top = box.get_top(array.get(swp_highs_box,i))
+        	swp_bot = box.get_bottom(array.get(swp_highs_box,i))
+        	swp_bot_unmit = box.get_bottom(array.get(swp_highs_boxt,i))
+
+        	swp_mitr = math.abs(swp_bot_unmit-swp_top)*i_swp_zone_mit/100
+        	swp_mit = swp_bot_unmit+swp_mitr
+
+        	if swp_brkbull>=swp_mit
+            	//Transforming transparent box into mitigated zone
+            	array.push(swp_highs_boxmit, box.new( box.get_left(array.get(swp_highs_box,i)), box.get_top(array.get(swp_highs_boxt,i)), time, box.get_bottom(array.get(swp_highs_boxt,i)), color.new(i_swp_bearcol,15), xloc=xloc.bar_time, bgcolor=color.new(i_swp_bearcol,95), text = i_swp_lbls?"BR. SFP LOWS":"", text_color=color.new(i_swp_bearcol,35)   ))
+
+            	//Delete process
+            	box.delete(array.remove(swp_highs_box, i))
+            	box.delete(array.remove(swp_highs_boxt, i))
+            	if i_swp_lbls and array.size(swp_highs_lbls)>0
+                	label.delete(array.remove(swp_highs_lbls,i))
+
+            	swp_break:=1
+            	if swp_al_bh
+                	alert("Break Of Highs Zone Structure Alert.")
+        	else
+            	if swp_brkbull>swp_bot and swp_brkbull<swp_mit
+                	box.set_bottom(array.get(swp_highs_box,i),swp_brkbull)
+
+            	box.set_right(array.get(swp_highs_box,i),time)
+            	box.set_right(array.get(swp_highs_boxt,i),time)
+            	if i_swp_lbls and array.size(swp_highs_lbls)>0
+                	label.set_x(array.get(swp_highs_lbls,i), (box.get_left(array.get(swp_highs_box,i))+time)/2 )
+    	else
+        	swp_med = box.get_top(array.get(swp_highs_box,i))
+        	if swp_brkbull>swp_med
+            	//Transforming active level into mitigated
+            	array.push(swp_highs_boxmit, box.new( box.get_left(array.get(swp_highs_box,i)), box.get_top(array.get(swp_highs_box,i)), time, box.get_bottom(array.get(swp_highs_box,i)), color.new(i_swp_bearcol,15), xloc=xloc.bar_time, bgcolor=color.new(i_swp_bearcol,95), text = i_swp_lbls?"BR. SFP HIGHS":"", text_color=color.new(i_swp_bearcol,35)	) )
+            	//Delete process
+            	box.delete(array.remove(swp_highs_box, i))
+            	if i_swp_lbls and array.size(swp_highs_lbls)>0
+                	label.delete(array.remove(swp_highs_lbls,i))
+           	 
+            	swp_break:=1
+            	if swp_al_bh
+                	alert("Break Of Highs Level Structure Alert.")
+        	else
+            	box.set_right(array.get(swp_highs_box,i),time)
+            	if i_swp_lbls and array.size(swp_highs_lbls)>0
+                	label.set_x(array.get(swp_highs_lbls,i), (box.get_left(array.get(swp_highs_box,i))+time)/2 )
+
+
+if i_swp_show and array.size(swp_lows_box)>0 and not swp_wait_next
+	for i = array.size(swp_lows_box)-1 to 0
+
+    	//if array.size(swp_lows_box)==0
+    	//	break
+    	if i_swp_t == "Zones" and array.size(swp_lows_boxt)>0
+       	 
+       	 
+        	swp_top = box.get_top(array.get(swp_lows_box,i))
+        	swp_bot = box.get_bottom(array.get(swp_lows_box,i))
+        	swp_bot_unmit = box.get_top(array.get(swp_lows_boxt,i))
+
+        	swp_mitr = math.abs(swp_bot_unmit-swp_bot)*i_swp_zone_mit/100
+        	swp_mit = swp_bot_unmit-swp_mitr
+
+        	if swp_brkbear<=swp_mit
+            	//Transforming transparent box into mitigated zone
+            	array.push(swp_lows_boxmit, box.new( box.get_left(array.get(swp_lows_box,i)), box.get_top(array.get(swp_lows_boxt,i)), time, box.get_bottom(array.get(swp_lows_boxt,i)), color.new(i_swp_bullcol,15), xloc=xloc.bar_time, bgcolor=color.new(i_swp_bullcol,95), text = i_swp_lbls?"BR. SFP LOWS":"", text_color=color.new(i_swp_bullcol,35)   ))
+   	 
+            	//Delete process
+            	box.delete(array.remove(swp_lows_box, i))
+            	box.delete(array.remove(swp_lows_boxt, i))
+            	if i_swp_lbls and array.size(swp_lows_lbls)>0
+                	label.delete(array.remove(swp_lows_lbls,i))
+            	swp_break:=-1
+            	if swp_al_bl
+                	alert("Break Of Lows Zone Structure Alert.")
+        	else
+            	if swp_brkbear<swp_top and swp_brkbear>swp_mit
+                	box.set_top(array.get(swp_lows_box,i),swp_brkbear)
+
+            	box.set_right(array.get(swp_lows_box,i),time)
+            	box.set_right(array.get(swp_lows_boxt,i),time)
+            	if i_swp_lbls and array.size(swp_lows_lbls)>0
+                	label.set_x(array.get(swp_lows_lbls,i), (box.get_left(array.get(swp_lows_box,i))+time)/2 )
+    	else
+        	swp_med = box.get_top(array.get(swp_lows_box,i))
+        	if swp_brkbear<swp_med
+            	//Transforming active level into mitigated
+            	array.push(swp_lows_boxmit, box.new( box.get_left(array.get(swp_lows_box,i)), box.get_top(array.get(swp_lows_box,i)), time, box.get_bottom(array.get(swp_lows_box,i)), color.new(i_swp_bullcol,15), xloc=xloc.bar_time, bgcolor=color.new(i_swp_bullcol,95), text = i_swp_lbls?"BR. SFP LOWS":"", text_color=color.new(i_swp_bullcol,35)   ))
+            	//Delete process
+            	box.delete(array.remove(swp_lows_box, i))
+            	if i_swp_lbls and array.size(swp_lows_lbls)>0
+                	label.delete(array.remove(swp_lows_lbls,i))
+            	swp_break:=-1
+            	if swp_al_bl
+                	alert("Break Of Lows Level Structure Alert.")
+        	else
+            	box.set_right(array.get(swp_lows_box,i),time)
+            	if i_swp_lbls and array.size(swp_lows_lbls)>0
+                	label.set_x(array.get(swp_lows_lbls,i), (box.get_left(array.get(swp_lows_box,i))+time)/2 )
+
+if array.size(swp_highs_box)>i_swp_max
+	//Delete process
+	box.delete(array.remove(swp_highs_box, 0))
+	if i_swp_t == "Zones"
+    	box.delete(array.remove(swp_highs_boxt, 0))
+	if i_swp_lbls and array.size(swp_highs_lbls)>0
+    	label.delete(array.remove(swp_highs_lbls,0))
+
+
+if array.size(swp_lows_box)>i_swp_max
+	//Delete process
+	box.delete(array.remove(swp_lows_box, 0))
+	if i_swp_t == "Zones"
+    	box.delete(array.remove(swp_lows_boxt, 0))
+	if i_swp_lbls and array.size(swp_lows_lbls)>0
+    	label.delete(array.remove(swp_lows_lbls,0))
+
+if array.size(swp_highs_boxmit)>i_swp_maxmit
+	//Delete process
+	box.delete(array.remove(swp_highs_boxmit, 0))
+
+
+if array.size(swp_lows_boxmit)>i_swp_maxmit
+	//Delete process
+	box.delete(array.remove(swp_lows_boxmit, 0))
+
+
+
+
+
+swp_filt_ch = swp_break==1?"▲":"▼"
+swp_filt_col = swp_break==1?i_swp_bullcol:swp_break==-1?i_swp_bearcol:color.new(color.black, 100)
+plotchar(i_swp_filt?true:na, "Directional Filter", "⨂", location.bottom, swp_filt_col)
+
+
+//}
+
+//}
+
+//SESSIONS PRO
+//{
+//SESSIONS PRO SETTINGS
+//{
+g_sess_disp = "---------------Session Display---------------"
+bool SHOW = timeframe.isintraday and timeframe.multiplier <= 60 and timeframe.multiplier >= 1
+int LOOKBACKMINS = (9 * 60)
+// Timezone
+i_tz = input.string('America/Los_Angeles', title='Timezone', options=["America/Los_Angeles", "America/New_York","America/El_Salvador","America/Chicago","America/Argentina/Buenos_Aires","Europe/London","Europe/Berlin","Europe/Moscow","Asia/Dubai","Asia/Ashkhabad","Asia/Bangkok","Asia/Hong_Kong","Asia/Tokyo","Australia/Brisbane","Australia/Sydney", "Asia/Kolkata"], group=g_sess_disp, tooltip = "Make sure your chart timezone matches with the option selected to have reliable sessions identification.")
+i_show_history = input.string("YES", 'History', options=["YES", "NO"], group=g_sess_disp) == "YES"
+
+i_pre_sess = input.bool(false, "Pre Session's Range", group=g_sess_disp,inline="sessionsinit")
+i_pre_sess_str = input.bool(false, "Strict", group=g_sess_disp,inline="sessionsinit")
+i_pre_sess_tf = input.string("1h", "|Lookback", ["15m","30m","45m","1h","2h","4h"], group=g_sess_disp,inline="sessionsinit")
+
+
+
+// Sessions
+g_lon="---------------LONDON---------------"
+i_show_sess1 = input.bool(false, 'Show London', group=g_lon, inline="ss1") and SHOW
+i_sess1 = input.session('0400-1300', '|Session Show', group=g_lon, inline="ss1")
+i_sess1_str = input.session('0400-1300', 'Strict', group=g_lon, inline="ss1")
+strictLon = input.bool(false, title="Strict Entries", inline="LD-T", group=g_lon)
+strictLonOR = input.bool(false, title="Opening Range Strict Entries", inline="LD-T", group=g_lon)
+
+g_ny="---------------NEW YORK---------------"
+i_show_sess2 = input.bool(true, 'Show New York', group=g_ny, inline="ss2") and SHOW
+i_sess2 = input.session('0530-1330', '|Session Show', group=g_ny, inline="ss2")
+i_sess2_str = input.session('0530-1330', 'Strict', group=g_ny, inline="ss2")
+strictNy = input.bool(true, title="Strict Entries", inline="NY-T", group=g_ny)
+strictNyOR = input.bool(false, title="Opening Range Strict Entries", inline="NY-T", group=g_ny)
+
+g_tok="TOKYO"
+i_show_sess3 = input.bool(false, 'Show Tokyo', group=g_tok, inline="ss3") and SHOW
+i_sess3 = input.session('2000-0200', '|Session Show', group=g_tok, inline="ss3")
+i_sess3_str = '0000-0000'//input.session('2000-0200', 'Strict', group=g_tok, inline="ss3")
+strictTok = false//input(false, title="Strict Entries", inline="TK-T", group=g_tok)
+strictTokOR = false//input(false, title="Opening Range Strict Entries", inline="TK-T", group=g_tok)
+
+// g_kol="KOLKATA"
+// i_show_sess4 = input.bool(false, 'Show Kolkata', group=g_kol, inline="ss4") and SHOW
+// i_sess4 = input.session('0002-1000', '|Session Show', group=g_kol, inline="ss4")
+// i_sess4_str = '0000-0000'//input.session('2000-0200', 'Strict', group=g_kol, inline="ss4")
+// strictKol = false//input(false, title="Strict Entries", inline="KOL-T", group=g_kol)
+// strictKolOR = false//input(false, title="Opening Range Strict Entries", inline="KOL-T", group=g_kol)
+
+
+g_sof = "---------------SESSION OTHER FEATURES---------------"
+i_sess_extend = input.string("NO", 'Extend', inline="SOF", options=["NO", 'Extend + End line', 'Extend'], group=g_sof)
+i_sess_fib = input.string("NO", 'Fibonacci Lines', inline="SOF", group=g_sof, options=["YES", "NO"], tooltip='Experimental feature') != "NO"
+i_sess_op = input.string("NO", 'Opening Range', inline="SOF", group=g_sof, options=["YES", "NO"]) != "NO" and SHOW
+
+
+g4 = "---------------Sessions Boxes Show & Styles---------------"
+// Show & Styles
+i_sess_border_style = input.string("Solid", 'Sessions Line style', options=["Solid", "Dot", "Dash"], group=g4)
+i_sess_border_width = input.int(1, 'Sessions Line width', minval=1, group=g4)
+i_sess_bgopacity = input.int(94, 'Sessions Background opacity', minval=0, maxval=100, step=1, group=g4, tooltip='Setting the 100 is no background color')
+i_show_closed = input.string("NO", 'Sessions Closed icon', options=["YES", "NO"], group=g4) == "YES"
+
+// Labels
+i_label_show = input.bool(true, 'Labels', group=g4) and SHOW
+i_label_size = input.string(size.normal, 'Labels Size', options=[size.auto, size.tiny, size.small, size.normal, size.large, size.huge], group=g4)
+i_label_position = input.string('Inside', 'Position', options=['Inside', 'Outside'], group=g4) == 'Inside' ? label.style_label_upper_left : label.style_label_lower_left
+i_label_chg = input.string("NO", "Labels Change value", options=["NO", "YES", "YESPIP"], group=g4, inline="sessinl")
+i_label_format_day = input.bool(false, 'Day', group=g4, inline="sessinl")
+
+// Opening Range
+i_o_minutes = input.int(15, title='OR Lookback (minutes)', minval=1, step=1, tooltip='Minutes', group=g4, inline="sessinl1")
+i_o_opacity = input.int(84, title='OR Background opacity', minval=0, maxval=100, step=1, group=g4, inline="sessinl")
+
+// Fibonacci lines
+i_f_linestyle = input.string("Dash", title="FIB Line style", options=["Solid", "Dot", "Dash"], group=g4, inline="sessinl2")
+i_f_linewidth = input.int(1, title="FIB Line width", minval=1, group=g4, inline="sessin2")
+
+g0 = "---------------Sessions Boxes Alerts---------------"
+// Alerts
+i_alert1_show = input.bool(false, 'Sessions stard/end', group=g0)
+i_alert2_show = input.bool(false, 'Opening range breakouts', group=g0)
+i_alert3_show = input.bool(false, 'Price crossed session\'s High/Low after session closed', group=g0)
+
+
+RECT_LINESTYLE = i_sess_border_style == "Solid"?line.style_solid:(i_sess_border_style == "Dot"?line.style_dotted:line.style_dashed)
+FIB_LINESTYLE = i_f_linestyle == "Solid"?line.style_solid:(i_f_linestyle == "Dot"?line.style_dotted:line.style_dashed)
+string tz = (i_tz == "NO" or i_tz == '') ? na : i_tz
+//}
+
+//SESSION IN BOXES DISPLAY SECTION (START) -----------------------------------------------------------------------------------------------------------
+//{
+nyColour  = color.red
+lonColour = color.green
+tokColour = color.orange
+kolColour = color.yellow
+int sess1 = time(timeframe.period, i_sess1,tz)
+int sess2 = time(timeframe.period, i_sess2,tz)
+int sess3 = time(timeframe.period, i_sess3,tz)
+//int sess4 = time(timeframe.period, i_sess4,tz)
+
+
+int sess1_str = time(timeframe.period, i_sess1_str,tz)
+int sess2_str = time(timeframe.period, i_sess2_str,tz)
+int sess3_str = time(timeframe.period, i_sess3_str,tz)
+//int sess4_str = time(timeframe.period, i_sess4_str,tz)
+
+
+[sess1T, sess1B] = SessInBoxes.get_positions_func(sess1, LOOKBACKMINS)
+[sess2T, sess2B] = SessInBoxes.get_positions_func(sess2, LOOKBACKMINS)
+[sess3T, sess3B] = SessInBoxes.get_positions_func(sess3, LOOKBACKMINS)
+//[sess4T, sess4B] = SessInBoxes.get_positions_func(sess4, LOOKBACKMINS)
+
+[lon_co_s, lon_cu_s] = SessInBoxes.get_op_stricts(sess1, SessInBoxes.is_start(sess1), sess1T, sess1B,i_o_minutes)
+[ny_co_s, ny_cu_s] = SessInBoxes.get_op_stricts(sess2, SessInBoxes.is_start(sess2), sess2T, sess2B,i_o_minutes)
+[tok_co_s, tok_cu_s] = SessInBoxes.get_op_stricts(sess3, SessInBoxes.is_start(sess3), sess3T, sess3B,i_o_minutes)
+//[kol_co_s, kol_cu_s] = SessInBoxes.get_op_stricts(sess4, SessInBoxes.is_start(sess4), sess4T, sess4B,i_o_minutes)
+
+[lon_pmt_s_, lon_pmb_s_] = SessInBoxes.get_pm_stricts(i_show_sess1,i_pre_sess,i_pre_sess_tf, timeframe.period, sess1)
+[ny_pmt_s_, ny_pmb_s_] = SessInBoxes.get_pm_stricts(i_show_sess2,i_pre_sess,i_pre_sess_tf, timeframe.period, sess2)
+[tok_pmt_s_, tok_pmb_s_] = SessInBoxes.get_pm_stricts(i_show_sess3,i_pre_sess,i_pre_sess_tf, timeframe.period, sess3)
+//[kol_pmt_s_, kol_pmb_s_] = SessInBoxes.get_pm_stricts(i_show_sess4,i_pre_sess,i_pre_sess_tf, timeframe.period, sess4)
+
+
+lon_pmt_s =0.0
+lon_pmb_s =0.0
+ny_pmt_s  =0.0
+ny_pmb_s  =0.0
+tok_pmt_s =0.0
+tok_pmb_s =0.0
+
+lon_pmt_s := sess1 and not sess1[1] ? lon_pmt_s_:lon_pmt_s[1]
+lon_pmb_s := sess1 and not sess1[1] ? lon_pmb_s_:lon_pmb_s[1]
+ny_pmt_s  := sess2 and not sess2[1] ?ny_pmt_s_:ny_pmt_s[1]
+ny_pmb_s  := sess2 and not sess2[1] ?ny_pmb_s_:ny_pmb_s[1]
+tok_pmt_s := sess3 and not sess3[1] ? tok_pmt_s_:tok_pmt_s[1]
+tok_pmb_s := sess3 and not sess3[1] ? tok_pmb_s_:tok_pmb_s[1]
+
+
+lon_s = icc?SessInBoxes.draw(i_show_sess1,i_pre_sess,i_pre_sess_tf, timeframe.period, sess1, lonColour, "London", i_sess_extend, i_sess_fib, i_sess_op,i_label_chg,i_label_size,i_label_position,i_o_minutes,i_o_opacity,RECT_LINESTYLE,i_sess_border_width,i_sess_bgopacity,i_show_history,i_show_closed,i_label_show,i_f_linewidth,FIB_LINESTYLE, sess1T, sess1B,tz,i_label_format_day):false
+ny_s = icc?SessInBoxes.draw(i_show_sess2,i_pre_sess, i_pre_sess_tf, timeframe.period, sess2, nyColour, "New York", i_sess_extend, i_sess_fib, i_sess_op,i_label_chg,i_label_size,i_label_position,i_o_minutes,i_o_opacity,RECT_LINESTYLE,i_sess_border_width,i_sess_bgopacity,i_show_history,i_show_closed,i_label_show,i_f_linewidth,FIB_LINESTYLE, sess2T, sess2B,tz,i_label_format_day):false
+tok_s = icc?SessInBoxes.draw(i_show_sess3,i_pre_sess,i_pre_sess_tf, timeframe.period, sess3, tokColour, "Tokyo", i_sess_extend, i_sess_fib,  i_sess_op,i_label_chg,i_label_size,i_label_position,i_o_minutes,i_o_opacity,RECT_LINESTYLE,i_sess_border_width,i_sess_bgopacity,i_show_history,i_show_closed,i_label_show,i_f_linewidth,FIB_LINESTYLE, sess3T, sess3B,tz,i_label_format_day):false
+//kol_s = icc?SessInBoxes.draw(i_show_sess4,i_pre_sess,i_pre_sess_tf, timeframe.period, sess4, kolColour, "Kolkata", i_sess_extend, i_sess_fib,  i_sess_op,i_label_chg,i_label_size,i_label_position,i_o_minutes,i_o_opacity,RECT_LINESTYLE,i_sess_border_width,i_sess_bgopacity,i_show_history,i_show_closed,i_label_show,i_f_linewidth,FIB_LINESTYLE, sess4T, sess4B,tz,i_label_format_day):false
+
+////////////////////
+// Alerts
+////////////////////
+// Session alerts
+bool sess1_started = lon_s and not lon_s[1]
+bool sess1_ended = not lon_s and lon_s[1]
+bool sess2_started = ny_s and not ny_s[1]
+bool sess2_ended = not ny_s and ny_s[1]
+//bool sess3_started = tok_s and not tok_s[1]
+//bool sess3_ended = not tok_s and tok_s[1]
+//bool sess4_started = kol_s and not kol_s[1]
+//bool sess4_ended = not kol_s and kol_s[1]
+
+alertcondition(sess1_started,   'Session #1 started')
+alertcondition(sess1_ended, 	'Session #1 ended')
+alertcondition(sess2_started,   'Session #2 started')
+alertcondition(sess2_ended, 	'Session #2 ended')
+///alertcondition(sess3_started,   'Session #3 started')
+///alertcondition(sess3_ended, 	'Session #3 ended')
+///alertcondition(sess4_started,   'Session #4 started')
+///alertcondition(sess4_ended, 	'Session #4 ended')
+
+alertcondition((not lon_s) and ta.crossover(close, sess1T), 'Session #1 High crossed (after session closed)')
+alertcondition((not lon_s) and ta.crossunder(close, sess1B), 'Session #1 Low crossed (after session closed)')
+alertcondition((not ny_s) and ta.crossover(close, sess2T), 'Session #2 High crossed (after session closed)')
+alertcondition((not ny_s) and ta.crossunder(close, sess2B), 'Session #2 Low crossed (after session closed)')
+//alertcondition((not tok_s) and ta.crossover(close, sess3T), 'Session #3 High crossed (after session closed)')
+//alertcondition((not tok_s) and ta.crossunder(close, sess3B), 'Session #3 Low crossed (after session closed)')
+//alertcondition((not tok_s) and ta.crossover(close, sess4T), 'Session #4 High crossed (after session closed)')
+//alertcondition((not tok_s) and ta.crossunder(close, sess4B), 'Session #4 Low crossed (after session closed)')
+
+//}
+
+//}
+
+
+
+
+
+
+
+
+
+
+
+
+//SYSTEM SIGNAL GENERATION
+//{
+
+
+
+//Functions
+
+
+//GetEntrySignal
+GetEntrySignal(dir)=>
+
+	conf_check = i_r_vb_tconf or i_rmd_trend_tconf or i_rmd_zc_tconf or i_esp_vwap1 or i_esp_vwap2 or i_esp_vwap3 or i_rclouds_entry
+	entry = false
+	r1 = array.get(r_last_upds, array.size(r_last_upds)-1)
+	r2 = array.get(r_last_upds, array.size(r_last_upds)-2)
+
+
+	main_signal = dir == "LONG" ? r_close!=r_close[1] and r1>r2 : r_close!=r_close[1] and r1<r2
+
+	if dir == "LONG" and (i_tdir=="Both" or i_tdir=="Just Long")
+    	entry:= main_signal and
+     	(conf_check? i_abs_tconf ?
+     	(r_chopff? not r_ischop :true) and
+     	(i_r_vb_tconf?renko_ismult and renko_multupd >= r_vb_amt:true) and
+     	(i_rmd_trend_tconf?close>rmd_finalv:true) and
+     	(i_rmd_zc_tconf?close>rmd_zeroprj_p:true) and
+     	(i_rclouds_entry? mtrend == 1 and close>Tsl : true ) and
+     	(i_esp_vwap1?close>vwap1_fv:true) and
+     	(i_esp_vwap2?close>vwap2_fv:true) and
+     	(i_esp_vwap3?close>vwap3_fv:true)
+     	:
+     	(r_chopff? not r_ischop :false) or  
+     	(i_r_vb_tconf?renko_ismult and renko_multupd >= r_vb_amt:false) or
+     	(i_rmd_trend_tconf?rmd_trend=="BULL":false) or
+     	(i_rmd_zc_tconf?close>rmd_zeroprj_p:false) or
+     	(i_rclouds_entry?  mtrend == 1 and close>Tsl : false ) or
+     	(i_esp_vwap1?close>vwap1_fv:false) or
+     	(i_esp_vwap2?close>vwap2_fv:false) or
+     	(i_esp_vwap3?close>vwap3_fv:false)
+     	: true)
+	else if dir == "SHORT" and (i_tdir=="Both" or i_tdir=="Just Short")
+    	entry:= main_signal and
+     	(conf_check? i_abs_tconf ? (r_chopff? not r_ischop :true) and
+     	(i_r_vb_tconf?renko_ismult and renko_multupd >= r_vb_amt:true) and
+     	(i_rmd_trend_tconf?close<rmd_finalv:true) and
+     	(i_rmd_zc_tconf?close<rmd_zeroprj_p:true) and
+     	(i_rclouds_entry?  mtrend == -1 and close<Tsl : true ) and
+     	(i_esp_vwap1?close<vwap1_fv:true) and
+     	(i_esp_vwap2?close<vwap2_fv:true) and
+     	(i_esp_vwap3?close<vwap3_fv:true)
+     	:
+     	(r_chopff? not r_ischop :false) or
+     	(i_r_vb_tconf?renko_ismult and renko_multupd >= r_vb_amt:false) or
+     	(i_rmd_trend_tconf?rmd_trend=="BEAR":false) or
+     	(i_rmd_zc_tconf?close<rmd_zeroprj_p:false) or
+     	(i_rclouds_entry?  mtrend == -1 and close<Tsl : false ) or
+     	(i_esp_vwap1?close<vwap1_fv:false) or
+     	(i_esp_vwap2?close<vwap2_fv:false) or
+     	(i_esp_vwap3?close<vwap3_fv:false)
+     	: true)
+    
+    
+	entry:= i_tcc ? (dir=="LONG"?close>open:close<open) and entry: entry
+
+    
+    
+	entry
+
+
+
+//GetExitSignal
+GetExitSignal(dir)=>
+
+
+	r1 = array.get(r_last_upds, array.size(r_last_upds)-1)
+	r2 = array.get(r_last_upds, array.size(r_last_upds)-2)
+
+	is_exit = dir=="LONG"?
+ 	(i_exit_renko? r1<r2 :false) or
+ 	(i_esp_vwap1?close<vwap1_fv:false) or
+ 	(i_esp_vwap2?close<vwap2_fv:false) or
+ 	(i_esp_vwap3?close<vwap3_fv:false) or
+ 	(i_rclouds_exit? close<Tsl : false ) or
+ 	(i_exit_rmdtc?close<rmd_finalv:false) or
+ 	(i_exit_rmdtw?close<rmd_finalv:false)
+ 	:
+ 	(i_exit_renko? r1>r2 :false) or
+ 	(i_esp_vwap1?close>vwap1_fv:false) or
+ 	(i_esp_vwap2?close>vwap2_fv:false) or
+ 	(i_esp_vwap3?close>vwap3_fv:false) or
+ 	(i_rclouds_exit? close>Tsl  : false ) or
+ 	(i_exit_rmdtc?close>rmd_finalv:false) or
+ 	(i_exit_rmdtw?close>rmd_finalv:false)
+
+	is_exit
+
+
+long = false, short = false
+
+
+//Check to see if we are allowed to take trades based on the time restrictions
+strictTimeframe = strictLon or strictNy ?  ((strictLon and sess1_str  ) or (strictNy and sess2_str  )) : true
+strictTimeframeORb = strictLonOR or strictNyOR ? ((strictLonOR and lon_co_s) or (strictNyOR and ny_co_s)) : true
+strictTimeframeORs = strictLonOR or strictNyOR ? ((strictLonOR and lon_cu_s) or (strictNyOR and ny_cu_s)) : true
+
+strictTimeframePMT = strictLon or strictNy ?  ((strictLon and sess1_str and (i_pre_sess_str? (close>lon_pmt_s) :true ) ) or (strictNy and sess2_str and (i_pre_sess_str? (close>ny_pmt_s) :true ) )) : true
+strictTimeframePMB = strictLon or strictNy ?  ((strictLon and sess1_str and (i_pre_sess_str? (close<lon_pmb_s) :true ) ) or (strictNy and sess2_str and (i_pre_sess_str? (close<ny_pmb_s) :true ) )) : true
+
+var strictbout=false
+
+if strictTimeframe and not strictTimeframe[1]
+	strictbout:=false
+else if strictTimeframe and strictTimeframe[1]
+	if strictTimeframePMT or strictTimeframePMB
+    	strictbout:=true
+
+long:=array.size(r_last_upds)>1 and time!=time[1]? GetEntrySignal("LONG") : false
+short:=array.size(r_last_upds)>1 and time!=time[1]? GetEntrySignal("SHORT") : false
+
+long:=strictTimeframe and long
+short:=strictTimeframe and short
+long:=strictTimeframeORb and long
+short:=strictTimeframeORs and short
+long:=strictbout and long
+short:=strictbout and short
+
+
+
+//}
+
+
+//TRADE MANAGEMENT LOGIC
+//{
+
+var pmult = 0
+if (syminfo.type == "forex")
+	pmult:=1
+else
+	pmult:=dec_d==1?10:dec_d==2?10:dec_d==3?1000:dec_d==4?10000:dec_d==5?100000:1
+
+
+var trade_status=0
+var ep=0.0, var sl=0.0, var sl_abs=0.0, var tp1=0.0, var tp2=0.0, var tp3=0.0, var et = 0
+var ps_v = 0.0, var ps_tp1_v = 0.0,var ps_tp2_v = 0.0,var ps_tp3_v = 0.0,var ps_ts_v = 0.0
+var ts_trigger=false, var ts_upd=0, var ts_adv=false, var be_adv=false
+trade_vars_reinit = false
+t_won=false,t_lost=false
+var t_tp1_hitf = false,var t_tp2_hitf = false,var t_tp3_hitf = false
+t_tp1_hit = false,t_tp2_hit = false,t_tp3_hit = false
+
+var line v_ep=na,var line v_sl=na,var line v_tp1=na, var line v_tp2=na,var line v_tp3=na,var line v_tp4=na
+var label v_ep_lbl=na, var label v_sl_lbl=na, var label v_ts_lbl= na, var label v_tp1_lbl= na, var label v_tp2_lbl= na, var label v_tp3_lbl= na  
+var box v_loss = na, var box v_profit = na
+
+sl_hit = false
+long_exit = false, short_exit = false
+
+trade_status := time!=time[1]?long and trade_status==0?1:short and trade_status==0?-1:trade_status:trade_status
+trade_init = trade_status[1] == 0 and trade_status[1] != 0
+
+var trade_count = 0
+
+bot_execution()=>
+
+    
+	//Bot Execution
+	//{
+	dir_conf=trade_status>0?(i_tdir == "Just Long" or i_tdir == "Both"):(i_tdir == "Just Short" or i_tdir == "Both")
+	if inTradingZone and backtest() and dir_conf
+   	 
+    	dir_v = trade_status>0?"Buy":"Sell"
+    	dir_strat = trade_status>0?strategy.long:strategy.short
+    	sl_al = round_pips(math.abs(ep - sl))*pmult
+    	tp1_al = round_pips(math.abs(tp1 - ep))*pmult
+    	tp2_al = i_tp2?round_pips(math.abs(tp2 - ep))*pmult :0.0
+    	tp3_al = i_tp3?round_pips(math.abs(tp3 - ep))*pmult :0.0
+
+    	ps= (strategy.equity*i_core_rpt/100)/(syminfo.type == "forex"?math.abs(ep - sl):math.abs(ep - sl))
+    	ps_tp1=ps*i_tp1_ps/100
+    	ps_perc = i_core_rpt
+
+    	if i_disc
+        	discord_txt = "\\n🔊" + (trade_status>0?"📈 BUY-LONG TRADE SIGNAL!":"📉 SELL-SHORT TRADE SIGNAL!") +"\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💡🔎Entry Price="+str.tostring(ep)+".\\n❌Stop Loss, Price = " +str.tostring(sl)+ " Pips = "+str.tostring(math.abs(ep-sl))+".\\n💲Take Profit 1, Price = " +str.tostring(tp1)+ " Pips = "+str.tostring(math.abs(ep-tp1))+".\\n"
+        	if i_tp2
+            	discord_txt:=discord_txt+"💲Take Profit 2, Price = " +str.tostring(tp2)+ " Pips = "+str.tostring(math.abs(ep-tp2))+".\\n"
+        	if i_tp2
+            	discord_txt:=discord_txt+"💲Take Profit 3, Price = " +str.tostring(tp3)+ " Pips = "+str.tostring(math.abs(ep-tp3))+".\\n"
+        	if i_ts_be=="None"
+            	discord_txt:=discord_txt+"\\n👁‍🗨BreakEven Stop Rule = " + i_ts_be
+        	if i_ts_on!="None"
+            	discord_txt:=discord_txt+"\\n👁‍🗨Trailing Stop Trigger = " + i_ts_on
+        	alert( '{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+
+    	strategy.entry(dir_v,dir_strat,ps)
+    	strategy.exit(dir_v+" TP1",dir_v, qty_percent=i_tp1_ps, limit=tp1 , stop=sl, comment_loss = "SL")
+   	 
+    	// at_msg = str.format(
+    	//  "ALERT_TYPE: 'ENTRY',{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12}",
+    	//  "ID: {" + str.tostring(trade_count)+"}",
+    	//  "type: {" + dir_v+"}",
+    	//  "risk: {" + str.tostring(ps)+"}",
+    	//  "sl: {" + str.tostring(sl_al)+"}",
+    	//  "TP1: {" + str.tostring(tp1_al)+"}",
+    	//  "TP1_PCLOSE: {" + str.tostring(i_tp1_ps)+"}",
+    	//  "TP2: {" + str.tostring(i_tp2?tp2_al:0.0)+"}",
+    	//  "TP2_PCLOSE: {" + str.tostring(i_tp2?i_tp2_ps:0.0)+"}",
+    	//  "TP3: {" + str.tostring(i_tp3?tp3_al:0.0)+"}",
+    	//  "TP3_PCLOSE: {" + str.tostring(i_tp3?i_tp3_ps:0.0)+"}",
+    	//  "BE: {" + str.tostring(i_ts_be=="BreakEven After TP1"?tp1_al:i_ts_be=="BreakEven After TP2"?tp2_al:0.0)+"}",
+    	//  "BE: {" + str.tostring(0.0)+"}",
+    	//  "BE_PCLOSE: {" + str.tostring(0.0)+"}"
+    	//  )
+	 
+    	// alert(at_msg,alert.freq_once_per_bar_close)
+
+
+    	//ALERT_TYPE: "ENTRY",
+    	//ID: {Order_ID},
+    	//type: {order_type},
+    	//risk: { risk in % },
+    	//sl: { sl(in pips/points) },
+    	//TP1: { tp(in pips/points) },
+    	//TP1_PCLOSE: {partial %},
+    	//TP2: { tp(in pips/points) },
+    	//TP2_PCLOSE: {partial %},
+    	//TP3: { tp(in pips/points) },
+    	//TP3_PCLOSE: {partial %},
+    	//BE:{ after how many pips/points stop should move to be },
+    	//BE_OFFSET:{ offset to apply to sl moved to be (pips/points) },
+    	//BE_PCLOSE: {partial %}
+
+       	 
+    	// if i_ts_be=="None"
+    	// 	code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1)
+    	// 	alert(code_tp1,alert.freq_once_per_bar_close)
+    	// else if i_ts_be=="BreakEven After TP1"
+    	// 	code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1, tp1_al)
+    	// 	alert(code_tp1,alert.freq_once_per_bar_close)
+    	// else if i_ts_be=="BreakEven After TP2"
+    	// 	code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1, tp2_al)
+    	// 	alert(code_tp1,alert.freq_once_per_bar_close)
+   	 
+    
+    	if i_tp2
+        	ps_tp2 = ps*i_tp2_ps/100
+
+        	strategy.exit(dir_v+" TP2",dir_v, qty_percent=i_tp2_ps, limit=tp2 , stop=sl, comment_loss = "SL")
+
+        	// if i_ts_be!="None"
+        	// 	code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2)
+        	// 	alert(code_tp2,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP1"
+        	// 	code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2, tp1_al)
+        	// 	alert(code_tp2,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP2"
+        	// 	code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2, tp2_al)
+        	// 	alert(code_tp2,alert.freq_once_per_bar_close)
+   	 
+   	 
+       	 
+    	if i_tp3
+       	 
+        	ps_tp3 = ps*i_tp3_ps/100
+
+        	strategy.exit(dir_v+" TP3",dir_v, qty_percent=i_tp3_ps, limit=tp3 , stop=sl, comment_loss = "SL")
+       	 
+        	// if i_ts_be!="None"
+        	// 	code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3)
+        	// 	alert(code_tp3,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP1"
+        	// 	code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3, tp1_al)
+        	// 	alert(code_tp3,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP2"
+        	// 	code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3, tp2_al)
+        	// 	alert(code_tp3,alert.freq_once_per_bar_close)
+   	 
+       	 
+    	if i_ts_on!="None"
+
+        	ps_ts = ps*i_ts_ps/100
+
+        	strategy.exit(dir_v+" TS",dir_v, qty_percent=i_ts_ps, stop=sl, comment_loss = "SL")
+       	 
+        	// if i_ts_be!="None"
+        	// 	code_ts= str.format("{0},{1},{2},sl={3},risk={4}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts)
+        	// 	alert(code_ts,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP1"
+        	// 	code_ts= str.format("{0},{1},{2},sl={3},risk={4},betrigger={5}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts, tp1_al)
+        	// 	alert(code_ts,alert.freq_once_per_bar_close)
+        	// else if i_ts_be!="BreakEven After TP2"
+        	// 	code_ts= str.format("{0},{1},{2},sl={3},risk={4},betrigger={5}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts, tp2_al)
+        	// 	alert(code_ts,alert.freq_once_per_bar_close)
+   	 
+    	ps
+    
+    
+
+	//}
+
+if icc and i_show_sign  //and time!=time[1]
+
+	if trade_status > 0 and trade_status[1] > 0 and not trade_init
+
+    	long_exit := GetExitSignal("LONG")
+    	sl_hit := low<=sl//false
+               	 
+    	if not sl_hit and not long_exit
+        	if trade_status == 1
+            	if high>=tp1
+                	t_tp1_hit:=true
+               	 
+                	if i_tp2 or i_ts_be!="None"
+                    	if i_ts_be == "BreakEven After TP1"
+                        	sl_new=ep+i_ts_beoff
+                        	if close<=sl_new
+                            	sl_hit := true
+                            	a=0    //close the trade
+                        	else
+                            	sl:=sl_new
+                            	be_adv:=true
+                    	if i_ts_on == "Trailing Stop After TP1"
+                        	ts_adv:=true
+                        	trade_status:=2
+                    	else
+                        	trade_status:=2
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs"
+                        	ts_trigger:=true
+                        	trade_status:=5
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+
+        	if trade_status == 2
+            	if high>=tp2
+                	t_tp2_hit:=true
+               	 
+                	if i_tp3 or i_ts_be!="None"
+                    	if i_ts_be == "BreakEven After TP2"
+                        	sl_new=ep+i_ts_beoff
+                        	if close<=sl_new
+                            	sl_hit := true
+                            	a=0    //close the trade
+                        	else
+                            	sl:=sl_new
+                            	be_adv:=true
+                    	if i_ts_on == "Trailing Stop After TP2"
+                        	ts_adv:=true
+                        	trade_status:=3
+                    	else
+                        	trade_status:=3
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                        	ts_trigger:=true
+                        	trade_status:=5
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+       	 
+        	if trade_status == 3
+            	if high>=tp3
+                	t_tp3_hit:=true
+               	 
+                	if i_ts_be=="Trailing Stop After TPs"
+                    	trade_status:=5
+                    	ts_trigger:=true
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                        	trade_status:=5
+                        	ts_trigger:=true
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+        	if trade_status == 5 or i_ts_on == "Trailing Stop Since Beginning" or ts_adv
+            	ts_trigger:=true
+    	if t_won
+        	trade_vars_reinit:=true
+    	if long_exit and not sl_hit
+       	 
+        	trade_vars_reinit:=true
+   
+    	if sl_hit
+       	 
+        	trade_vars_reinit:=true
+
+       	 
+        	if close>ep
+            	t_won:=true
+        	else
+            	t_lost:=true
+
+        	trade_status:=0
+   	 
+    	else if ts_trigger
+      	 
+        	sl_new=i_ts_t=="ATR"? close-i_sl_atrv:i_ts_t=="Pips/Points"?close-i_ts_pp:i_ts_t=="Bricks"?close-(r_brick*i_sl_bricks):sl_extlb_low
+        	if time!=time[1] and sl_new>sl
+            	sl:=sl_new
+            	sl_abs:=math.abs(close-sl)
+            	ts_upd:=ts_upd+1
+            	//LicenseID,newsltplong,EURUSD,sl=10
+            	sl_al = round_pips(math.abs(close - sl))*pmult
+            	// at_msg = str.format(
+            	//  "ALERT_TYPE: 'UPDATING SL',{0},{1}",
+            	//  "ID: {" + str.tostring(trade_count)+"}",
+            	//  "sl: {" + str.tostring(sl_al)+"}"
+            	//  )
+            	// //ALERT_TYPE: "UPDATING SL",
+            	// //ID: {Order_ID},
+            	// //sl: { sl(in pips/points) from the entry price }
+            	// alert(at_msg,alert.freq_once_per_bar_close)
+            	//alert(str.format("{0},newsltplong,{1},sl={2}",i_pc_id, v_broker_sym,sl_al),alert.freq_once_per_bar_close)
+   	 
+  	 
+	else if trade_status < 0 and trade_status[1] < 0 and not trade_init
+   	 
+    	short_exit := GetExitSignal("SHORT")
+    	sl_hit := high>=sl//:false
+
+    	if not sl_hit and not short_exit
+
+        	if trade_status == -1
+            	if low<=tp1
+                	t_tp1_hit:=true
+                	if i_tp2 or i_ts_be!="None"
+                    	if i_ts_be == "BreakEven After TP1"
+                        	sl_new=ep-i_ts_beoff
+                        	if close>=sl_new
+                            	sl_hit := true
+                            	a=0    //close the trade
+                        	else
+                            	sl:=sl_new
+                            	be_adv:=true
+                    	if i_ts_on == "Trailing Stop After TP1"
+                        	ts_adv:=true
+                        	trade_status:=-2
+                    	else
+                        	trade_status:=-2
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs"
+                        	ts_trigger:=true
+                        	trade_status:=-5
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+        	if trade_status == -2
+            	if low<=tp2
+                	t_tp2_hit:=true
+                	if i_tp3 or i_ts_be!="None"
+                    	if i_ts_be == "BreakEven After TP2"
+                        	sl_new=ep-i_ts_beoff
+                        	if close>=sl_new
+                            	sl_hit := true
+                            	a=0    //close the trade
+                        	else
+                            	sl:=sl_new
+                            	be_adv:=true
+                    	if i_ts_on == "Trailing Stop After TP2"
+                        	ts_adv:=true
+                        	trade_status:=-3
+                    	else
+                        	trade_status:=-3
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                        	ts_trigger:=true
+                        	trade_status:=-5
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+       	 
+        	if trade_status == -3
+            	if low<=tp3
+                	t_tp3_hit:=true
+                	if i_ts_be=="Trailing Stop After TP4"
+                    	trade_status:=-5
+                    	ts_trigger:=true
+                	else
+                    	if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                        	ts_trigger:=true
+                        	trade_status:=-5
+                    	else
+                        	t_won:=true
+                        	trade_status:=0
+
+        	if trade_status == -5 or i_ts_on == "Trailing Stop Since Beginning" or ts_adv
+            	ts_trigger:=true   	 
+   	 
+    	if t_won
+        	trade_vars_reinit:=true
+    	if short_exit and not sl_hit
+        	trade_vars_reinit:=true
+
+
+    	if sl_hit
+       	 
+        	trade_vars_reinit:=true
+
+        	if close<ep
+            	t_won:=true
+        	else
+            	t_lost:=true
+
+        	trade_status:=0
+    	else if ts_trigger
+        	sl_new=i_ts_t=="ATR"? close+i_sl_atrv:i_ts_t=="Pips/Points"?close+i_ts_pp:i_ts_t=="Bricks"?close+(r_brick*i_sl_bricks):sl_extlb_high
+        	if time!=time[1] and sl_new<sl
+            	sl:=sl_new
+            	sl_abs:=math.abs(close-sl)
+            	ts_upd:=ts_upd+1
+            	//LicenseID,newsltpshort,EURUSD,sl=10
+            	sl_al = round_pips(math.abs(close - sl))*pmult
+            	// at_msg = str.format(
+            	//  "ALERT_TYPE: 'UPDATING SL',{0},{1}",
+            	//  "ID: {" + str.tostring(trade_count)+"}",
+            	//  "sl: {" + str.tostring(sl_al)+"}"
+            	//  )
+            	// //ALERT_TYPE: "UPDATING SL",
+            	// //ID: {Order_ID},
+            	// //sl: { sl(in pips/points) from the entry price }
+            	// alert(at_msg,alert.freq_once_per_bar_close)
+       	 
+            	//alert(str.format("{0},newsltpshort,{1},sl={2}",i_pc_id, v_broker_sym,sl_al),alert.freq_once_per_bar_close)
+
+
+
+  	 
+	sl_lbl_col = trade_status[1]>0? r_bear_col:r_bull_col
+	tp_lbl_col = trade_status[1]>0? r_bull_col:r_bear_col
+
+	if (short_exit or long_exit) and not sl_hit
+    	discord_txt="\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n"
+    	if i_disc
+        	discord_txt := discord_txt + "🔊" + (trade_status[1]>0?"📈 BUY/LONG EXIT SIGNAL!":"📉 SELL/SHORT EXIT SIGNAL!") +"\\n🏃‍♂️👋 TRADE IS GOING TO BE CLOSED."
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+    	label.new(time, trade_status[1]>0?low:high, "Exit", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+    	//LicenseID,closelong,EURUSD
+    	// if trade_status[1]>0
+    	// 	// at_msg = str.format(
+    	// 	//  "ALERT_TYPE: 'EXIT',{0}",
+    	// 	//  "ID: {" + str.tostring(trade_count)+"}"
+    	// 	//  )
+    	// 	// //ALERT_TYPE: "UPDATING SL",
+    	// 	// //ID: {Order_ID},
+    	// 	// //sl: { sl(in pips/points) from the entry price }
+    	// 	// alert(at_msg,alert.freq_once_per_bar_close)
+    	// 	//alert(str.format("{0},closelong,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar_close)
+    	// else
+    	// 	// at_msg = str.format(
+    	// 	//  "ALERT_TYPE: 'EXIT',{0}",
+    	// 	//  "ID: {" + str.tostring(trade_count)+"}"
+    	// 	//  )
+    	// 	// //ALERT_TYPE: "UPDATING SL",
+    	// 	// //ID: {Order_ID},
+    	// 	// //sl: { sl(in pips/points) from the entry price }
+    	// 	// alert(at_msg,alert.freq_once_per_bar_close)
+    	// 	//alert(str.format("{0},closeshort,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar_close)  
+    	strategy.close_all()
+	if sl_hit
+    	if ts_trigger
+        	label.new(time, trade_status[1]>0?low:high, "TS", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+        	alert(syminfo.tickerid +", TS Reached! Price: " +str.tostring(sl,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-sl),format.mintick),alert.freq_once_per_bar )
+        	if i_disc
+            	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n❌Trailing Stop Hit, Price = " +str.tostring(sl,format.mintick)+ ".\\n"
+            	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+
+    	else
+        	label.new(time, trade_status[1]>0?low:high, "SL", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+        	alert(syminfo.tickerid +", SL Reached! Price: " +str.tostring(sl,format.mintick)+"/Pips Points: "+(t_won?"+":"-"+"") + str.tostring(math.abs(ep-sl),format.mintick),alert.freq_once_per_bar )
+        	if i_disc
+            	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n❌Stop Loss Hit, Price = " +str.tostring(sl,format.mintick)+ ".\\n"
+            	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+    	strategy.close_all()
+    	//LicenseID,closelong,EURUSD
+    	if trade_status[1]>0
+        	at_msg = str.format(
+         	"ALERT_TYPE: 'EXIT',{0}",
+         	"ID: {" + str.tostring(trade_count)+"}"
+         	)
+        	//ALERT_TYPE: "UPDATING SL",
+        	//ID: {Order_ID},
+        	//sl: { sl(in pips/points) from the entry price }
+        	alert(at_msg,alert.freq_once_per_bar_close)
+        	//alert(str.format("{0},closelong,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar_close)
+    	else
+        	at_msg = str.format(
+         	"ALERT_TYPE: 'EXIT',{0}",
+         	"ID: {" + str.tostring(trade_count)+"}"
+         	)
+        	//ALERT_TYPE: "UPDATING SL",
+        	//ID: {Order_ID},
+        	//sl: { sl(in pips/points) from the entry price }
+        	alert(at_msg,alert.freq_once_per_bar_close)
+        	//alert(str.format("{0},closeshort,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar_close)  
+	if be_adv and not be_adv[1]
+    	alert(syminfo.tickerid +", Moving Stop to BE! Old SL: " +str.tostring(sl[1],format.mintick)+"/New SL: "+str.tostring(sl,format.mintick)+"/Offset: "+str.tostring(i_ts_beoff,format.mintick),alert.freq_once_per_bar_close )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💬✔ Moving Stop to BE! Old SL: " +str.tostring(sl[1],format.mintick)+"/New SL: "+str.tostring(sl,format.mintick)+"/Offset: "+str.tostring(i_ts_beoff,format.mintick)
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+	if ts_trigger and ts_upd!=ts_upd[1]
+    	alert(syminfo.tickerid +", Updating Trailing Stop! Old TS: " +str.tostring(sl[1],format.mintick)+"/New TS: "+str.tostring(sl,format.mintick)+"/, Update Number: "+str.tostring(ts_upd)+",Profit Gained: "+str.tostring(math.abs(sl-sl[1]),format.mintick),alert.freq_once_per_bar_close )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💬✔ Updating Trailing Stop! Old TS: " +str.tostring(sl[1],format.mintick)+"/New TS: "+str.tostring(sl,format.mintick)+"/, Update Number: "+str.tostring(ts_upd)+",Profit Gained: "+str.tostring(math.abs(sl-sl[1]),format.mintick)
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+	if (t_tp1_hit and t_tp2_hit) or (t_tp2_hit and t_tp3_hit)
+    	if (t_tp1_hit and t_tp2_hit)
+        	t_tp1_hitf := true
+        	t_tp2_hitf := true
+        	label.new(time, trade_status[1]>0?high:low, "TP(1/2)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+        	alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+        	alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+        	if i_disc
+            	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp1_rr,format.mintick)+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp2_rr,format.mintick)+"."
+            	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+    	else    
+        	t_tp2_hitf := true
+        	t_tp3_hitf := true
+        	label.new(time, trade_status[1]>0?high:low, "TP(2/3)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+        	alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+        	alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar  )
+        	if i_disc
+            	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp2_rr,format.mintick)+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp3_rr,format.mintick)+"."
+            	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+	else if t_tp1_hit and t_tp2_hit and t_tp3_hit
+    	t_tp1_hitf := true
+    	t_tp2_hitf := true
+    	t_tp3_hitf := true
+    	label.new(time, trade_status[1]>0?high:low, "TP(1/2/3)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+    	alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+    	alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+    	alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar  )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp1_rr,format.mintick)+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp2_rr,format.mintick)+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp3_rr,format.mintick)+"."
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+	else if t_tp1_hit
+    	t_tp1_hitf := true
+    	label.new(time, trade_status[1]>0?high:low, "TP1", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+   	 
+    	alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp1_rr,format.mintick)+".\\n"
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+	else if t_tp2_hit
+    	t_tp2_hitf := true
+    	label.new(time, trade_status[1]>0?high:low, "TP2", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+    
+    	alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp2_rr,format.mintick)+".\\n"
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+
+	else if t_tp3_hit
+    	t_tp3_hitf := true
+    	label.new(time, trade_status[1]>0?high:low, "TP3", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+    
+    	alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar  )
+    	if i_disc
+        	discord_txt = "\\n📊 Symbol = "+syminfo.ticker+",🕒 TF="+timeframe.period+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(sl_abs*i_tp3_rr,format.mintick)+".\\n"
+        	alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+	if trade_vars_reinit
+    	if i_ps_tracker
+        	line.delete(v_ep[1])
+        	line.delete(v_sl[1])
+        	line.delete(v_tp1[1])
+        	if i_tp2
+            	line.delete(v_tp2[1])
+        	if i_tp3
+            	line.delete(v_tp3[1])
+
+        	box.delete(v_loss[1])
+        	box.delete(v_profit[1])
+
+        	if i_ps_tracker_lbls!="None"
+            	label.delete(v_ep_lbl[1])
+            	label.delete(v_sl_lbl[1])
+            	label.delete(v_ts_lbl[1])
+            	label.delete(v_tp1_lbl[1])
+            	if i_tp2
+                	label.delete(v_tp2_lbl[1])
+            	if i_tp3
+                	label.delete(v_tp3_lbl[1])
+
+	if trade_status > 0 and trade_status[1] <= 0 and long
+    	sl:=math.round((i_sl_t=="ATR"? close-i_sl_atrv:i_sl_t=="Pips/Points"?close-i_sl_pp:i_sl_t=="Bricks"?close-(r_brick*i_sl_bricks):sl_extlb_low),5)
+    	sl_abs := math.round(i_sl_t=="ATR"?i_sl_atrv:i_sl_t=="Pips/Points"?i_sl_pp:i_sl_t=="Bricks"?(r_brick*i_sl_bricks):math.abs(close-sl_extlb_low),5)
+    	ep:=close
+    	et:=time
+    	tp1:=math.round(ep+(sl_abs*i_tp1_rr),5)
+    	tp2:=i_tp2?math.round(ep+(sl_abs*i_tp2_rr),5):0.0
+    	tp3:=i_tp3?math.round(ep+(sl_abs*i_tp3_rr),5):0.0
+    	trade_count:=trade_count+1
+    	ps_v:=bot_execution()
+
+    	//Trade Position Tracker Init
+    	//{
+    	if i_ps_tracker
+        	v_ep:=line.new(et, ep, et+(math.abs(time-time[2])*5),ep, xloc=xloc.bar_time, color=color.gray)
+        	v_sl:=line.new(et, sl, et+(math.abs(time-time[2])*5),sl, xloc=xloc.bar_time, color=r_bear_col)
+        	v_tp1:=line.new(et, tp1, et+(math.abs(time-time[2])*5),tp1, xloc=xloc.bar_time, color=r_bull_col)
+        	v_tp2:=i_tp2?line.new(et, tp2, et+(math.abs(time-time[2])*5),tp2, xloc=xloc.bar_time, color=r_bull_col):na
+        	v_tp3:=i_tp3?line.new(et, tp3, et+(math.abs(time-time[2])*5),tp3, xloc=xloc.bar_time, color=r_bull_col):na
+        	v_loss:=box.new(et,ep,et+(math.abs(time-time[2])*5),sl,r_bear_col,xloc=xloc.bar_time, bgcolor=color.new(r_bear_col,85))
+        	v_profit:=box.new(et,close,et+(math.abs(time-time[2])*5),ep,r_bull_col,xloc=xloc.bar_time, bgcolor=color.new(r_bull_col,85))
+
+        	//var label v_ep_lbl=na, var label v_sl_lbl=na, var label v_ts_lbl= na, var label v_tp1_lbl= na, var label v_tp2_lbl= na, var label v_tp3_lbl= na, var label v_tp4_lbl= na,  
+
+        	if i_ps_tracker_lbls!="None"
+            	v_ep_lbl:=label.new(et, ep, (i_ps_tracker_lbls!="None"?"EP: ":"Entry Price: ") + str.tostring(ep), xloc.bar_time, yloc.price, color.gray, label.style_label_right, color.white  )
+            	v_sl_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, (i_ps_tracker_lbls!="None"?"SL: ":"Stop Loss: ") + str.tostring(sl), xloc.bar_time, yloc.price, r_bear_col, label.style_label_left, color.white)
+            	v_ts_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, "", xloc.bar_time, yloc.price, color.new(color.black,100), label.style_label_left, color.white)
+            	v_tp1_lbl:=label.new(et+(math.abs(time-time[2])*7), tp1, (i_ps_tracker_lbls!="None"?"TP1: ":"Take-Profit 1: ") + str.tostring(tp1), xloc.bar_time, yloc.price, r_bull_col, label.style_label_left, color.white)
+            	v_tp2_lbl:=i_tp2?label.new(et+(math.abs(time-time[2])*7), tp2, (i_ps_tracker_lbls!="None"?"TP2: ":"Take-Profit 2: ") + str.tostring(tp2), xloc.bar_time, yloc.price, r_bull_col, label.style_label_left, color.white):na
+            	v_tp3_lbl:=i_tp3?label.new(et+(math.abs(time-time[2])*7), tp3, (i_ps_tracker_lbls!="None"?"TP3: ":"Take-Profit 3: ") + str.tostring(tp3), xloc.bar_time, yloc.price, r_bull_col, label.style_label_left, color.white):na
+       	 
+    	//}
+
+   	 
+	else if trade_status > 0 and trade_status[1] >= 0
+
+    	if i_ps_tracker
+        	line.set_x2(v_ep,time+(math.abs(time-time[2])*5))
+        	line.set_x2(v_sl,time+(math.abs(time-time[2])*5))
+        	line.set_x2(v_tp1,time+(math.abs(time-time[2])*5))
+        	if i_tp2
+            	line.set_x2(v_tp2,time+(math.abs(time-time[2])*5))
+        	if i_tp3
+            	line.set_x2(v_tp3,time+(math.abs(time-time[2])*5))
+
+        	box.set_right(v_loss,time+(math.abs(time-time[2])*5))
+        	box.set_right(v_profit,time+(math.abs(time-time[2])*5))
+        	if close>box.get_top(v_profit)
+            	box.set_top(v_profit,close)
+
+        	if sl!=sl[1]
+            	line.set_y1(v_sl,sl)
+            	line.set_y2(v_sl,sl)
+
+        	if t_tp1_hit
+            	line.set_width(v_tp1,2)
+        	if t_tp2_hit
+            	line.set_width(v_tp2,2)
+        	if t_tp3_hit
+            	line.set_width(v_tp3,2)
+        	if i_ps_tracker_lbls!="None"
+            	//label.set_x(v_ep_lbl,time+(math.abs(time-time[2])*7))
+            	label.set_x(v_sl_lbl,time+(math.abs(time-time[2])*7))
+            	label.set_x(v_ts_lbl,time+(math.abs(time-time[2])*7))
+            	if sl!=sl[1]
+                	label.set_y(v_ts_lbl,sl)
+                	label.set_color(v_ts_lbl,r_bear_col)
+                	label.set_text(v_ts_lbl, (i_ps_tracker_lbls!="None"?"TS: ":"Trailing Stop: ") + str.tostring(sl) )
+            	label.set_x(v_tp1_lbl,time+(math.abs(time-time[2])*7))
+            	if i_tp2
+                	label.set_x(v_tp2_lbl,time+(math.abs(time-time[2])*7))
+            	if i_tp3
+                	label.set_x(v_tp3_lbl,time+(math.abs(time-time[2])*7))
+
+           	 
+           	 
+           	 
+           	 
+           	 
+           	 
+           	 
+    
+	if trade_status < 0 and trade_status[1] >= 0 and short
+    	sl:=math.round((i_sl_t=="ATR"? close+i_sl_atrv:i_sl_t=="Pips/Points"?close+i_sl_pp:i_sl_t=="Bricks"?close+(r_brick*i_sl_bricks):sl_extlb_high),5)
+    	sl_abs := math.round(i_sl_t=="ATR"?i_sl_atrv:i_sl_t=="Pips/Points"?i_sl_pp:i_sl_t=="Bricks"?(r_brick*i_sl_bricks):math.abs(close+sl_extlb_high),5)
+    	ep:=close
+    	et:=time
+    	tp1:=math.round(ep-(sl_abs*i_tp1_rr),5)
+    	tp2:=i_tp2?math.round(ep-(sl_abs*i_tp2_rr),5):0.0
+    	tp3:=i_tp3?math.round(ep-(sl_abs*i_tp3_rr),5):0.0
+
+    	//Bot Execution
+    	//{
+    	trade_count:=trade_count+1
+    	ps_v:=bot_execution()
+
+    	//}
+
+    	//Trade Position Tracker Init
+    	//{
+    	if i_ps_tracker
+        	v_ep:=line.new(et, ep, et+(math.abs(time-time[2])*5),ep, xloc=xloc.bar_time, color=color.gray)
+        	v_sl:=line.new(et, sl, et+(math.abs(time-time[2])*5),sl, xloc=xloc.bar_time, color=r_bull_col)
+        	v_tp1:=line.new(et, tp1, et+(math.abs(time-time[2])*5),tp1, xloc=xloc.bar_time, color=r_bear_col)
+        	v_tp2:=i_tp2?line.new(et, tp2, et+(math.abs(time-time[2])*5),tp2, xloc=xloc.bar_time, color=r_bear_col):na
+        	v_tp3:=i_tp3?line.new(et, tp3, et+(math.abs(time-time[2])*5),tp3, xloc=xloc.bar_time, color=r_bear_col):na
+       	 
+        	v_loss:=box.new(et,sl,et+(math.abs(time-time[2])*5),ep,r_bull_col,xloc=xloc.bar_time, bgcolor=color.new(r_bull_col,85))
+        	v_profit:=box.new(et,ep,et+(math.abs(time-time[2])*5),close,r_bear_col,xloc=xloc.bar_time, bgcolor=color.new(r_bear_col,85))
+
+
+        	if i_ps_tracker_lbls!="None"
+            	v_ep_lbl:=label.new(et, ep, (i_ps_tracker_lbls!="None"?"EP: ":"Entry Price: ") + str.tostring(ep), xloc.bar_time, yloc.price, color.gray, label.style_label_left, color.white  )
+            	v_sl_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, (i_ps_tracker_lbls!="None"?"SL: ":"Stop Loss: ") + str.tostring(sl), xloc.bar_time, yloc.price, r_bull_col, label.style_label_left, color.white)
+
+            	v_ts_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, "", xloc.bar_time, yloc.price, color.new(color.black,100), label.style_label_left, color.white)
+
+            	v_tp1_lbl:=label.new(et+(math.abs(time-time[2])*7), tp1, (i_ps_tracker_lbls!="None"?"TP1: ":"Take-Profit 1: ") + str.tostring(tp1), xloc.bar_time, yloc.price, r_bear_col, label.style_label_left, color.white)
+            	v_tp2_lbl:=i_tp2?label.new(et+(math.abs(time-time[2])*7), tp2, (i_ps_tracker_lbls!="None"?"TP2: ":"Take-Profit 2: ") + str.tostring(tp2), xloc.bar_time, yloc.price, r_bear_col, label.style_label_left, color.white):na
+            	v_tp3_lbl:=i_tp3?label.new(et+(math.abs(time-time[2])*7), tp3, (i_ps_tracker_lbls!="None"?"TP3: ":"Take-Profit 3: ") + str.tostring(tp3), xloc.bar_time, yloc.price, r_bear_col, label.style_label_left, color.white):na
+           	 
+    	//}
+	else if trade_status < 0 and trade_status[1] <= 0
+
+    	if i_ps_tracker
+        	line.set_x2(v_ep,time+(math.abs(time-time[2])*5))
+        	line.set_x2(v_sl,time+(math.abs(time-time[2])*5))
+        	line.set_x2(v_tp1,time+(math.abs(time-time[2])*5))
+        	if i_tp2
+            	line.set_x2(v_tp2,time+(math.abs(time-time[2])*5))
+        	if i_tp3
+            	line.set_x2(v_tp3,time+(math.abs(time-time[2])*5))
+       	 
+        	box.set_right(v_loss,time+(math.abs(time-time[2])*5))
+        	box.set_right(v_profit,time+(math.abs(time-time[2])*5))
+        	if close<box.get_bottom(v_profit)
+            	box.set_bottom(v_profit,close)
+
+        	if sl!=sl[1]
+            	line.set_y1(v_sl,sl)
+            	line.set_y2(v_sl,sl)
+
+        	if t_tp1_hit
+            	line.set_width(v_tp1,2)
+        	if t_tp2_hit
+            	line.set_width(v_tp2,2)
+        	if t_tp3_hit
+            	line.set_width(v_tp3,2)
+       	 
+        	if i_ps_tracker_lbls!="None"
+            	//label.set_x(v_ep_lbl,time+(math.abs(time-time[2])*7))
+            	label.set_x(v_sl_lbl,time+(math.abs(time-time[2])*7))
+            	label.set_x(v_ts_lbl,time+(math.abs(time-time[2])*7))
+            	if sl!=sl[1]
+                	label.set_y(v_ts_lbl,sl)
+                	label.set_color(v_ts_lbl,r_bull_col)
+                	label.set_text(v_ts_lbl, (i_ps_tracker_lbls!="None"?"TS: ":"Trailing Stop: ") + str.tostring(sl) )
+            	label.set_x(v_tp1_lbl,time+(math.abs(time-time[2])*7))
+            	if i_tp2
+                	label.set_x(v_tp2_lbl,time+(math.abs(time-time[2])*7))
+            	if i_tp3
+                	label.set_x(v_tp3_lbl,time+(math.abs(time-time[2])*7))
+           	 
+
+
+
+
+
+
+
+if trade_vars_reinit
+	ts_upd:=0
+	ts_adv:=false
+	be_adv:=false
+	trade_status:=0
+	ep:=0.0
+	sl:=0.0
+	tp1:=0.0
+	tp2:=0.0
+	tp3:=0.0
+	ts_trigger:=false
+	t_tp1_hitf := false
+	t_tp2_hitf := false
+	t_tp3_hitf := false
+
+
+
+
+
+
+
+
+
+plotshape(icc and i_show_sign and long and trade_status>0 and trade_status[1]<=0, "Buy Signals", shape.labelup, location.belowbar, r_bull_col, text = "Buy", textcolor = color.white)
+plotshape(icc and i_show_sign and short and trade_status<0 and trade_status[1]>=0, "Sell Signals", shape.labeldown, location.abovebar, r_bear_col, text = "Sell", textcolor = color.white)
+
+
+//}
+
+
+
+//NEW TABLE
+//{
+_b="Black Bg"
+_w="White Bg"
+tbl_bgcol = tbl_t == _b ? color.black : tbl_t == _w ? color.white : na
+tbl_frcol = tbl_t == _b ? color.new(color.white,75) : tbl_t == _w ? color.new(color.black,75) : na
+tbl_bcol = tbl_t == _b ? color.new(color.white,75) : tbl_t == _w ? color.new(color.black,75) : na
+tbl_tcol = tbl_t == _b or tbl_t == "Transp. White" ? color.white : color.black
+
+var table final_tbl = na
+final_tbl:= table.new(position.top_right, 8, 28, tbl_bgcol, tbl_frcol, 1, tbl_bcol, 1)
+
+cell_width_main = r_tbl_width
+
+horizontal_merge( hr, c10, c11, c20, c21, c30, c31, c40, c41 )=>
+
+	table.merge_cells(final_tbl, c10, hr, c11, hr)
+	table.merge_cells(final_tbl, c20, hr, c21, hr)
+	table.merge_cells(final_tbl, c30, hr, c31, hr)
+	table.merge_cells(final_tbl, c40, hr, c41, hr)
+horizontal_merge_2( hr, c10, c11, c20, c21 )=>
+
+	table.merge_cells(final_tbl, c10, hr, c11, hr)
+	table.merge_cells(final_tbl, c20, hr, c21, hr)
+
+
+spar(v)=>
+	str.tostring(math.round(v,3))
+if barstate.islast and icc and r_show_tbl
+
+	//Merging the first row to create the header
+	table.merge_cells(final_tbl, 0, 0, 7, 0)
+	table.cell(final_tbl, 0, 0, " The Renko Suite Algo", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main )
+
+	tblr = 1
+	//Sessions
+	//{
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nSessions\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	tblr:=tblr+1
+    
+	//horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	table.merge_cells(final_tbl, 4, tblr, 5, tblr)
+	table.merge_cells(final_tbl, 6, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, "Type", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/2)
+	table.cell(final_tbl, 4, tblr, "Status", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4)
+	table.cell(final_tbl, 6, tblr, "Strict", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4)
+	tblr:=tblr+1
+
+	//horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	ny_st = not na(sess2)? "On":"Off"
+	ny_str_st = not na(sess2_str)? "On":"Off"
+    
+	table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	table.merge_cells(final_tbl, 4, tblr, 5, tblr)
+	table.merge_cells(final_tbl, 6, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, "New York", text_color = color.new(color.red,0), text_size = r_tbl_size, width = cell_width_main/2  )
+	table.cell(final_tbl, 4, tblr, ny_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(ny_st=="On"?color.red:tbl_bgcol,15)  )
+	table.cell(final_tbl, 6, tblr, ny_str_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(ny_str_st=="On"?color.red:tbl_bgcol,15)  )
+	tblr:=tblr+1
+
+	//horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	lon_st = not na(sess1)? "On":"Off"
+	lon_str_st = not na(sess1_str)? "On":"Off"
+    
+	table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	table.merge_cells(final_tbl, 4, tblr, 5, tblr)
+	table.merge_cells(final_tbl, 6, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, "London", text_color = color.new(color.green,0), text_size = r_tbl_size, width = cell_width_main/2  )
+	table.cell(final_tbl, 4, tblr, lon_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(lon_st=="On"?color.green:tbl_bgcol,15)  )
+	table.cell(final_tbl, 6, tblr, lon_str_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(lon_str_st=="On"?color.green:tbl_bgcol,15)  )
+	tblr:=tblr+1
+
+	//horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	tok_st = not na(sess3)? "On":"Off"
+	tok_str_st = not na(sess3_str)? "On":"Off"
+    
+	table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	table.merge_cells(final_tbl, 4, tblr, 5, tblr)
+	table.merge_cells(final_tbl, 6, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, "Tokyo", text_color = color.new(color.yellow,0), text_size = r_tbl_size, width = cell_width_main/2  )
+	table.cell(final_tbl, 4, tblr, tok_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(tok_st=="On"?color.yellow:tbl_bgcol,15)  )
+	table.cell(final_tbl, 6, tblr, tok_str_st, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor =  color.new(tok_str_st=="On"?color.yellow:tbl_bgcol,15)  )
+	tblr:=tblr+1
+
+	//}
+
+	//Position
+	//{
+    
+	if i_ps_rtable
+   	 
+    	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+    	table.cell(final_tbl, 0, tblr, " \nPosition Infos\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+    	tblr:=tblr+1
+
+    	if trade_status==0
+        	table.merge_cells(final_tbl, 0, tblr, 7, tblr+4)
+        	table.cell(final_tbl, 0, tblr, " No Open Positions ", text_color = tbl_tcol, text_size = r_tbl_size )
+        	tblr:=tblr+5
+    	else
+
+        	tpnl = trade_status>0?math.round(close-ep,2):math.round(ep-close,2)
+        	tpnlcol = trade_status>0?tpnl>0?r_bull_col:r_bear_col:tpnl>0?r_bear_col:r_bull_col
+
+
+        	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+        	table.cell(final_tbl, 0, tblr, "Trade Dir", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/4)
+        	table.cell(final_tbl, 2, tblr, trade_status>0?"Long":"Short", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = color.new(trade_status>0? r_bull_col:r_bear_col , 15) )
+        	table.cell(final_tbl, 4, tblr, "Trade PnL", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 6, tblr, str.tostring(tpnl), text_color = tpnlcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	tblr:=tblr+1
+
+        	t_cashr = i_core_acct*i_core_rpt/100
+        	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+        	table.cell(final_tbl, 0, tblr, "Risk", text_color = trade_status>0? r_bull_col:r_bear_col, text_size = r_tbl_size , width = cell_width_main/4)
+        	table.cell(final_tbl, 2, tblr, str.tostring(t_cashr)+"($)", text_color = trade_status>0? r_bull_col:r_bear_col, text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 4, tblr, "Pos. Size", text_color = trade_status>0? r_bull_col:r_bear_col, text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 6, tblr, str.tostring(t_cashr/sl_abs/10), text_color = trade_status>0? r_bull_col:r_bear_col, text_size = r_tbl_size, width = cell_width_main/4 )
+        	tblr:=tblr+1
+       	 
+       	 
+        	sl_status = be_adv and i_ts_be!="None"? ts_adv and i_ts_on!="None"? "Trailing, Upd: " + str.tostring(ts_upd) : "BE" : ts_adv and i_ts_on!="None"? "Trailing, Upd: " + str.tostring(ts_upd) :  "Initial"
+        	slcol= trade_status>0? r_bull_col:r_bear_col
+        	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+        	table.cell(final_tbl, 0, tblr, "SL", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/4)
+        	table.cell(final_tbl, 2, tblr, str.tostring(sl)+"/"+str.tostring(sl_abs), text_color = slcol , text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 4, tblr, "SL Status", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 6, tblr, sl_status, text_color = slcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	tblr:=tblr+1
+       	 
+        	tpcol= trade_status>0? r_bull_col:r_bear_col
+        	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+        	table.cell(final_tbl, 0, tblr, "TP1", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/4)
+        	table.cell(final_tbl, 2, tblr, str.tostring(tp1)+"/"+str.tostring(tp1-ep), text_color = tpcol , text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 4, tblr, "TP1 Status", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	table.cell(final_tbl, 6, tblr, (t_tp1_hitf? "Hit!":"In Progress.."), text_color = tpcol, text_size = r_tbl_size, width = cell_width_main/4 )
+        	tblr:=tblr+1
+
+        	if i_tp2
+            	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+            	table.cell(final_tbl, 0, tblr, "TP2", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/4)
+            	table.cell(final_tbl, 2, tblr, str.tostring(tp2)+"/"+str.tostring(tp2-ep), text_color = tpcol , text_size = r_tbl_size, width = cell_width_main/4 )
+            	table.cell(final_tbl, 4, tblr, "TP2 Status", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4 )
+            	table.cell(final_tbl, 6, tblr, (t_tp2_hitf? "Hit!":"In Progress.."), text_color = tpcol, text_size = r_tbl_size, width = cell_width_main/4 )
+            	tblr:=tblr+1
+        	if i_tp3
+            	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+            	table.cell(final_tbl, 0, tblr, "TP3", text_color = tbl_tcol, text_size = r_tbl_size , width = cell_width_main/4)
+            	table.cell(final_tbl, 2, tblr, str.tostring(tp3)+"/"+str.tostring(tp3-ep), text_color = tpcol , text_size = r_tbl_size, width = cell_width_main/4 )
+            	table.cell(final_tbl, 4, tblr, "TP3 Status", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4 )
+            	table.cell(final_tbl, 6, tblr, (t_tp3_hitf? "Hit!":"In Progress.."), text_color = tpcol, text_size = r_tbl_size, width = cell_width_main/4 )
+            	tblr:=tblr+1
+
+   	 
+
+	//}
+
+	//TS-OSC
+	//{
+    
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nRenko Band\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	tblr:=tblr+1
+
+	horizontal_merge_2(tblr, 0, 3, 4, 7)
+	//table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	renko_colf = not r_ischop? r_trend=="BULL"? r_bull_col : r_bear_col :color.gray
+	table.cell(final_tbl, 0, tblr, "Renko Trend", text_color = renko_colf, text_size = r_tbl_size , width = cell_width_main/4)
+	table.cell(final_tbl, 4, tblr, not r_ischop? r_trend=="BULL"? "BULL" : "BEAR" :"CHOP", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = renko_colf )
+	tblr:=tblr+1
+
+	horizontal_merge_2(tblr, 0, 3, 4, 7)
+    
+	biggest_str= array.max(renko_bull_tsize) > array.max(renko_bear_tsize)?"BULL":"BEAR"
+	biggest_v = array.max(renko_bull_tsize) > array.max(renko_bear_tsize)?array.max(renko_bull_tsize):array.max(renko_bear_tsize)
+	biggest_br = array.max(renko_bull_tsize) > array.max(renko_bear_tsize)?array.max(renko_bull_tupd):array.max(renko_bear_tupd)
+	biggest_str_col = biggest_str=="BULL"?r_bull_col:r_bear_col
+	table.cell(final_tbl, 0, tblr, "Biggest Trend", text_color = biggest_str_col, text_size = r_tbl_size, width = cell_width_main/4 )
+	table.cell(final_tbl, 4, tblr, str.tostring(biggest_br)+" (Bricks)/"+ str.tostring(biggest_v)+" (P/P)", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = biggest_str_col )
+	tblr:=tblr+1
+
+	//}
+
+	//Renko MACD Trend
+	//{
+    
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nRenko MACD Trend\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	tblr:=tblr+1
+
+	horizontal_merge_2(tblr, 0, 3, 4, 7)
+	//table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	table.cell(final_tbl, 0, tblr, "Status: " + rmd_trend, text_color = rmd_trend=="BULL"?rmd_gbullcol:rmd_gbearcol , text_size = r_tbl_size , width = cell_width_main/4)
+	table.cell(final_tbl, 4, tblr, "Histo: " + str.tostring(math.round(rmd_hist, syminfo.type=='forex'?5:2)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = rmd_trend=="BULL"?color.new(rmd_gbullcol,0):color.new(rmd_gbearcol,0) )
+	tblr:=tblr+1
+	horizontal_merge_2(tblr, 0, 3, 4, 7)
+	table.cell(final_tbl, 0, tblr, "Sign.Line: " + str.tostring(math.round(rmd_finalv, syminfo.type=='forex'?5:2)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = rmd_trend=="BULL"?color.new(rmd_gbullcol,0):color.new(rmd_gbearcol,0))
+	table.cell(final_tbl, 4, tblr, "0 Line: " + str.tostring(math.round(rmd_zeroprj_p, syminfo.type=='forex'?5:2)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = rmd_trend=="BULL"?color.new(rmd_gbullcol,0):color.new(rmd_gbearcol,0))
+	tblr:=tblr+1
+
+	//}
+
+	//Renko Clouds
+	//{
+    
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nRenko Clouds\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	tblr:=tblr+1
+
+	horizontal_merge_2(tblr, 0, 3, 4, 7)
+	//table.merge_cells(final_tbl, 0, tblr, 3, tblr)
+	cloud_st = mtrend == 1?"BULL":"BEAR"
+	table.cell(final_tbl, 0, tblr, "Status: " + cloud_st, text_color = cloud_st=="BULL"?rclouds_bull_col:rclouds_bear_col , text_size = r_tbl_size , width = cell_width_main/4)
+	table.cell(final_tbl, 4, tblr, "Rev. Bars: " + str.tostring(waitit), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = cloud_st=="BULL"?color.new(rmd_gbullcol,0):color.new(rmd_gbearcol,0) )
+	tblr:=tblr+1
+
+	//}
+
+	//VWAP/MAs
+	//{
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nVWAPs\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	tblr:=tblr+1
+
+
+	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	table.cell(final_tbl, 0, tblr, " ", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4  )
+	table.cell(final_tbl, 2, tblr, r_vwap_str, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4  )
+	table.cell(final_tbl, 4, tblr, r_vwap2_str, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4  )
+	table.cell(final_tbl, 6, tblr, "Monthly", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4  )
+	tblr:=tblr+1
+
+	horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	vwap_1_pct_d = 100*math.abs(close-vwap1_fv)/close
+	vwap_1_col =close>vwap1_fv?i_vwap1_bullcol:i_vwap1_bearcol
+	vwap_2_pct_d = 100*math.abs(close-vwap2_fv)/close
+	vwap_2_col =close>vwap2_fv?i_vwap2_bullcol:i_vwap2_bearcol
+	vwap_3_pct_d = 100*math.abs(close-vwap3_fv)/close
+	vwap_3_col =close>vwap3_fv?i_vwap3_bullcol:i_vwap3_bearcol
+	table.cell(final_tbl, 0, tblr, "VWAPs", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4  )
+	table.cell(final_tbl, 2, tblr, spar(vwap_1_pct_d)+"%", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = vwap_1_col  )
+	table.cell(final_tbl, 4, tblr, spar(vwap_2_pct_d)+"%", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = vwap_2_col  )
+	table.cell(final_tbl, 6, tblr, spar(vwap_3_pct_d)+"%", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/4, bgcolor = vwap_3_col  )
+	tblr:=tblr+1
+	//}
+
+
+	// //Mkt-Str
+	// //{
+    
+	// table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	// table.cell(final_tbl, 0, tblr, " \nMkt. Structure\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	// tblr:=tblr+1
+
+	// horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	// table.cell(final_tbl, 0, tblr, "Dir", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 2, tblr, "Last Break", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 4, tblr, "HH", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 6, tblr, "LL", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// tblr:=tblr+1
+
+	// horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	// i_mkt_col = i_mkts_dir==1?i_i_mkts_bullcol:i_i_mkts_bearcol
+	// i_mkt_hh = if array.size(mkt_h_l)>0
+	// 	str.tostring(math.round(line.get_y1(array.get(mkt_h_l, array.size(mkt_h_l)-1)),5))
+	// else
+	// 	"NA"
+	// i_mkt_ll = if array.size(mkt_l_l)>0
+	// 	str.tostring(math.round(line.get_y1(array.get(mkt_l_l, array.size(mkt_l_l)-1)),5))
+	// else
+	// 	"NA"
+   	 
+	// table.cell(final_tbl, 0, tblr, i_mkts_dir==1?"Bull":"Bear", text_color = tbl_tcol, text_size = size.auto, width = cell_width_main/5, bgcolor = i_mkt_col )
+	// table.cell(final_tbl, 2, tblr, int_lb, text_color = tbl_tcol, text_size = size.auto, width = cell_width_main/5, bgcolor = i_mkt_hh=="NA"? tbl_bgcol : i_mkt_col)
+	// table.cell(final_tbl, 4, tblr, i_mkt_hh, text_color = tbl_tcol, text_size = size.auto, width = cell_width_main/5, bgcolor = i_mkt_hh=="NA"? tbl_bgcol : i_i_mkts_bullcol )
+	// table.cell(final_tbl, 6, tblr, i_mkt_ll, text_color = tbl_tcol, text_size = size.auto, width = cell_width_main/5, bgcolor = i_mkt_ll=="NA"? tbl_bgcol : i_i_mkts_bearcol  )
+	// tblr:=tblr+1
+
+	// //}
+
+	//HTF Candle
+	//{
+    
+	// table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	// table.cell(final_tbl, 0, tblr, " \nCurrent Open Lines\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+	// tblr:=tblr+1
+
+	// table.merge_cells(final_tbl, 1, tblr, 2, tblr)
+	// table.merge_cells(final_tbl, 3, tblr, 4, tblr)
+	// table.merge_cells(final_tbl, 5, tblr, 6, tblr)
+	// //horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	// table.cell(final_tbl, 0, tblr, " ", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5)
+	// table.cell(final_tbl, 1, tblr, "Daily", text_color = daily_open_col, text_size = r_tbl_size, width = cell_width_main/3  )
+	// table.cell(final_tbl, 3, tblr, "Weekly", text_color = weekly_open_col, text_size = r_tbl_size, width = cell_width_main/3  )
+	// table.cell(final_tbl, 5, tblr, "Monthly", text_color = monthly_open_col, text_size = r_tbl_size, width = cell_width_main/3  )
+	// table.cell(final_tbl, 7, tblr, " ", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5)
+	// tblr:=tblr+1
+
+	// table.merge_cells(final_tbl, 1, tblr, 2, tblr)
+	// table.merge_cells(final_tbl, 3, tblr, 4, tblr)
+	// table.merge_cells(final_tbl, 5, tblr, 6, tblr)
+	// //horizontal_merge(tblr, 0, 1, 2, 3, 4, 5, 6, 7)
+	// table.cell(final_tbl, 0, tblr, " ", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5)
+	// table.cell(final_tbl, 1, tblr, str.tostring(daily_open[1]), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5, bgcolor = daily_open_col  )
+	// table.cell(final_tbl, 3, tblr, str.tostring(weekly_open[1]), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5, bgcolor = weekly_open_col  )
+	// table.cell(final_tbl, 5, tblr, str.tostring(monthly_open[1]), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5, bgcolor = monthly_open_col  )
+	// table.cell(final_tbl, 7, tblr, " ", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5)
+	// tblr:=tblr+1
+
+	//}
+
+	table.merge_cells(final_tbl, 0, tblr, 7, tblr)
+	table.cell(final_tbl, 0, tblr, " \nSigmaAlgo™\n ", text_color = tbl_tcol, text_size = r_tbl_size )
+
+	// horizontal_merge(24, 0, 1, 2, 3, 4, 5, 6, 7)
+	// table.cell(final_tbl, 0, 24, "CD", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 2, 24, "CDO", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 4, 24, "PDH", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 6, 24, "PDL", text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// horizontal_merge(25, 0, 1, 2, 3, 4, 5, 6, 7)
+	// table.cell(final_tbl, 0, 25, dof_str, text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5  )
+	// table.cell(final_tbl, 2, 25, str.tostring(math.round(cdo,5)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5, bgcolor = color.new(i_do_linecol,15)  )
+	// table.cell(final_tbl, 4, 25, str.tostring(math.round(pdhf,5)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5 , bgcolor = color.new(i_pdhl_linecol,15) )
+	// table.cell(final_tbl, 6, 25, str.tostring(math.round(pdlf,5)), text_color = tbl_tcol, text_size = r_tbl_size, width = cell_width_main/5 , bgcolor = color.new(i_pdhl_linecol,15) )
+

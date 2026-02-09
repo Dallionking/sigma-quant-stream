@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-009",
+  "title": "MACD Histogram Divergence",
+  "hypothesis": "Divergence between MACD histogram and price (histogram making higher low while price makes lower low) predicts reversals",
+  "counterparty": "Trend followers who stay in position too long",
+  "edgeSource": "Momentum exhaustion - histogram shows rate of change of momentum",
+  "markets": ["ES", "NQ", "GC"],
+  "timeframes": ["15m", "1h"],
+  "parameterCount": 3,
+  "priority": 2,
+  "source": "Gerald Appel MACD + Alexander Elder variations",
+  "references": [
+    "Appel 'Technical Analysis Power Tools'",
+    "Elder 'Trading for a Living'"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [0.9, 1.5],
+    "winRateRange": [0.48, 0.58],
+    "tradesPerMonth": 12
+  },
+  "testConditions": {
+    "fastPeriod": [8, 12],
+    "slowPeriod": [21, 26],
+    "signalPeriod": [9],
+    "divergenceLookback": [5, 10, 15]
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

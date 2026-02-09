@@ -1,0 +1,23 @@
+{
+  "id": "conv-seed-004",
+  "name": "Liquidity Zones Detector",
+  "description": "Identifies areas of resting liquidity based on swing highs/lows and equal highs/lows",
+  "source_url": "https://www.tradingview.com/script/example-liquidity/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 2,
+  "reason": "SMC concept - smart money targets liquidity pools for entries",
+  "indicatorType": "overlay",
+  "parameters": {
+    "swing_length": 10,
+    "equal_threshold_atr": 0.1,
+    "lookback": 200
+  },
+  "signals": {
+    "buy_side_liquidity": "Equal highs / swing highs",
+    "sell_side_liquidity": "Equal lows / swing lows",
+    "sweep": "Price takes out liquidity then reverses"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

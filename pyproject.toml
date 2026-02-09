@@ -1,0 +1,103 @@
+[project]
+name = "sigma-quant-stream"
+version = "1.0.0"
+description = "Autonomous strategy research factory — your own hedge fund research team"
+readme = "README.md"
+license = {text = "AGPL-3.0"}
+requires-python = ">=3.11"
+authors = [{name = "Dallion King"}]
+keywords = [
+    "trading",
+    "quantitative-finance",
+    "backtesting",
+    "strategy-research",
+    "agent-swarm",
+    "claude-code",
+    "futures",
+    "crypto",
+    "prop-firm",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/Dallionking/sigma-quant-stream"
+Repository = "https://github.com/Dallionking/sigma-quant-stream"
+Documentation = "https://github.com/Dallionking/sigma-quant-stream/tree/main/docs"
+Issues = "https://github.com/Dallionking/sigma-quant-stream/issues"
+
+[project.scripts]
+sigma-quant = "cli.main:main"
+
+[project.dependencies]
+# CLI
+typer = ">=0.12.0"
+rich = ">=13.0.0"
+
+# Data & Analysis
+pandas = ">=2.0.0"
+pandas-ta = ">=0.3.14b"
+numpy = ">=1.24.0"
+
+# Crypto
+ccxt = ">=4.0.0"
+pydantic = ">=2.0.0"
+
+# Utilities
+python-dotenv = ">=1.0.0"
+orjson = ">=3.9.0"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.0.0",
+]
+hyperliquid = [
+    "hyperliquid-python-sdk>=0.1.0",
+]
+databento = [
+    "databento>=0.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.setuptools.packages.find]
+include = ["cli*", "lib*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cli", "lib"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

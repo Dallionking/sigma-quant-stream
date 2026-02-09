@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H005",
+  "hypothesis": "When Cumulative Volume Delta rises to new highs while price remains flat (within 0.5%), large players are accumulating -- price catches up to CVD direction within 2-4 hours",
+  "edgeType": "information",
+  "edgeSource": "Large players accumulate positions through limit orders that absorb sell pressure without moving price",
+  "counterparty": "Retail sellers providing liquidity to accumulating whales",
+  "expectedSharpe": 1.15,
+  "expectedWinRate": 0.55,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "15m",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

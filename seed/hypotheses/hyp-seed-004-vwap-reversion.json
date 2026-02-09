@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-004",
+  "title": "VWAP Mean Reversion Strategy",
+  "hypothesis": "Price tends to revert to VWAP after extreme deviations (>2 standard deviations), especially during low-volume periods",
+  "counterparty": "Momentum traders who chase extended moves away from fair value",
+  "edgeSource": "Market microstructure - VWAP represents institutional fair value, extreme deviations attract mean reversion",
+  "markets": ["ES", "NQ"],
+  "timeframes": ["5m", "15m"],
+  "parameterCount": 3,
+  "priority": 1,
+  "source": "Market microstructure research + prop firm strategies",
+  "references": [
+    "Almgren & Chriss VWAP execution",
+    "Chan 'Quantitative Trading' mean reversion"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.2, 2.0],
+    "winRateRange": [0.60, 0.72],
+    "tradesPerMonth": 25
+  },
+  "testConditions": {
+    "deviationThreshold": [1.5, 2.0, 2.5],
+    "volumeFilter": true,
+    "timeOfDay": ["regular_hours"],
+    "holdPeriod": [5, 10, 20]
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

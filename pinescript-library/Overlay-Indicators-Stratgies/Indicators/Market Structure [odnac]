@@ -1,0 +1,247 @@
+//@version=6
+indicator('Market Structure [odnac]', overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+// ============================================================================
+// INPUT SETTINGS
+// ============================================================================
+versionSelect = input.string('V2', 'Version', options = ['V1', 'V2'], 
+     tooltip = 'V1: Use only pivot-detected swings | V2: Auto-update swing points between breaks')
+leftBars      = input.int(36, 'Swing Left Bars',  minval = 1, 
+     tooltip = 'Number of bars to the left to detect a pivot')
+rightBars     = input.int(6,  'Swing Right Bars', minval = 1, 
+     tooltip = 'Number of bars to the right to confirm a pivot')
+showSwings    = input.bool(true, 'Show Swing Points', 
+     tooltip = 'Toggle visibility of Swing High/Low circles')
+showLines     = input.bool(true, 'Show BOS/CHoCH', 
+     tooltip = 'Toggle visibility of structure break lines and labels')
+showTrendMode = input.string('Background', 'Trend Visualization', 
+     options = ['Background', 'Shape', 'None'], 
+     tooltip = 'Choose how to visualize the current market trend')
+
+// ============================================================================
+// PIVOT CONFIRMATION LOGIC
+// ============================================================================
+
+// V1 Confirmation: Checks both bearish candles and downward closes
+confirmBearish() =>
+    bearCount = 0
+    closeDownCount = 0
+    for i = 1 to rightBars by 1
+        if close[i] < open[i]
+            bearCount := bearCount + 1
+        if close[i] < close[i + 1]
+            closeDownCount := closeDownCount + 1
+    bearCount >= 3 or closeDownCount >= 3
+
+// V1 Confirmation: Checks both bullish candles and upward closes
+confirmBullish() =>
+    bullCount = 0
+    closeUpCount = 0
+    for i = 1 to rightBars by 1
+        if close[i] > open[i]
+            bullCount := bullCount + 1
+        if close[i] > close[i + 1]
+            closeUpCount := closeUpCount + 1
+    bullCount >= 3 or closeUpCount >= 3
+
+// V2 Confirmation: Simplified bearish confirmation
+confirmBearishV2() =>
+    bearCount = 0
+    for i = 1 to rightBars by 1
+        if close[i] < open[i]
+            bearCount := bearCount + 1
+    bearCount >= 3
+
+// V2 Confirmation: Simplified bullish confirmation
+confirmBullishV2() =>
+    bullCount = 0
+    for i = 1 to rightBars by 1
+        if close[i] > open[i]
+            bullCount := bullCount + 1
+    bullCount >= 3
+
+// Detect pivot highs and lows
+ph = ta.pivothigh(high, leftBars, rightBars)
+pl = ta.pivotlow(low, leftBars, rightBars)
+
+// ============================================================================
+// VARIABLE MANAGEMENT & TREND DETERMINATION
+// ============================================================================
+var float lastHighPrice = na  // Last detected swing high price
+var int   lastHighIndex = na  // Bar index of last swing high
+var float lastLowPrice  = na  // Last detected swing low price
+var int   lastLowIndex  = na  // Bar index of last swing low
+var int   trend         = 0   // Current trend: 1 = Bullish, -1 = Bearish, 0 = Neutral
+
+// Detect pivots based on selected version
+bool isValidHigh = versionSelect == 'V1' ? (not na(ph) and confirmBearish()) : (not na(ph) and confirmBearishV2())
+bool isValidLow  = versionSelect == 'V1' ? (not na(pl) and confirmBullish()) : (not na(pl) and confirmBullishV2())
+
+// Update swing high when valid pivot is detected
+if isValidHigh
+    lastHighPrice := ph
+    lastHighIndex := bar_index - rightBars
+
+// Update swing low when valid pivot is detected
+if isValidLow
+    lastLowPrice := pl
+    lastLowIndex := bar_index - rightBars
+
+// ============================================================================
+// STRUCTURE BREAK DETECTION (BOS / CHOCH)
+// ============================================================================
+colWhite = color.white
+
+// ------------------------------------
+// V1 LOGIC: Fixed Pivot Swings Only
+// ------------------------------------
+if versionSelect == 'V1'
+    // Bullish break: Price crosses above last swing high
+    if not na(lastHighPrice) and ta.crossover(close, lastHighPrice)
+        label_text = (trend == -1 or trend == 0) ? 'CHoCH' : 'BOS'
+        trend := 1
+        
+        if showLines
+            // Draw horizontal line at the broken level
+            line.new(lastHighIndex, lastHighPrice, bar_index, lastHighPrice, 
+                 color = color.new(colWhite, 50), width = 1)
+            // Add label at midpoint
+            midX = int(math.avg(lastHighIndex, bar_index))
+            label.new(midX, lastHighPrice, text = label_text, 
+                 style = label.style_label_down, 
+                 color = color.new(colWhite, 100), 
+                 textcolor = colWhite, size = size.tiny)
+        lastHighPrice := na
+
+    // Bearish break: Price crosses below last swing low
+    else if not na(lastLowPrice) and ta.crossunder(close, lastLowPrice)
+        label_text = (trend == 1 or trend == 0) ? 'CHoCH' : 'BOS'
+        trend := -1
+        
+        if showLines
+            // Draw horizontal line at the broken level
+            line.new(lastLowIndex, lastLowPrice, bar_index, lastLowPrice, 
+                 color = color.new(colWhite, 50), width = 1)
+            // Add label at midpoint
+            midX = int(math.avg(lastLowIndex, bar_index))
+            label.new(midX, lastLowPrice, text = label_text, 
+                 style = label.style_label_up, 
+                 color = color.new(colWhite, 100), 
+                 textcolor = colWhite, size = size.tiny)
+        lastLowPrice := na
+
+// ------------------------------------
+// V2 LOGIC: Auto-Update Swing Points
+// ------------------------------------
+else if versionSelect == 'V2'
+    // Bullish break: Price crosses above last swing high
+    if not na(lastHighPrice) and ta.crossover(close, lastHighPrice)
+        label_text = (trend == -1 or trend == 0) ? 'CHoCH' : 'BOS'
+        trend := 1
+        
+        // Find the lowest low between last high and current bar
+        float minLow = low
+        int minIdx = bar_index
+        for i = 0 to (bar_index - lastHighIndex)
+            if low[i] < minLow
+                minLow := low[i]
+                minIdx := bar_index[i]
+        
+        // Update swing low to the lowest point in the range
+        lastLowPrice := minLow
+        lastLowIndex := minIdx
+        
+        if showLines
+            // Draw horizontal line at the broken level
+            line.new(lastHighIndex, lastHighPrice, bar_index, lastHighPrice, 
+                 color = color.new(colWhite, 50), width = 1)
+            // Add label at midpoint
+            midX = int(math.avg(lastHighIndex, bar_index))
+            label.new(midX, lastHighPrice, text = label_text, 
+                 color = color.new(colWhite, 100), 
+                 textcolor = colWhite, size = size.tiny, 
+                 style = label.style_label_down)
+        
+        lastHighPrice := na
+
+    // Bearish break: Price crosses below last swing low
+    else if not na(lastLowPrice) and ta.crossunder(close, lastLowPrice)
+        label_text = (trend == 1 or trend == 0) ? 'CHoCH' : 'BOS'
+        trend := -1
+        
+        // Find the highest high between last low and current bar
+        float maxHigh = high
+        int maxIdx = bar_index
+        for i = 0 to (bar_index - lastLowIndex)
+            if high[i] > maxHigh
+                maxHigh := high[i]
+                maxIdx := bar_index[i]
+        
+        // Update swing high to the highest point in the range
+        lastHighPrice := maxHigh
+        lastHighIndex := maxIdx
+
+        if showLines
+            // Draw horizontal line at the broken level
+            line.new(lastLowIndex, lastLowPrice, bar_index, lastLowPrice, 
+                 color = color.new(colWhite, 50), width = 1)
+            // Add label at midpoint
+            midX = int(math.avg(lastLowIndex, bar_index))
+            label.new(midX, lastLowPrice, text = label_text, 
+                 color = color.new(colWhite, 100), 
+                 textcolor = colWhite, size = size.tiny, 
+                 style = label.style_label_up)
+        
+        lastLowPrice := na
+
+// ============================================================================
+// VISUALIZATION
+// ============================================================================
+
+// Plot swing high and low points as circles
+plot(showSwings and isValidHigh ? ph : na, 'Swing High', 
+     color = color.new(colWhite, 70), style = plot.style_circles, 
+     linewidth = 4, offset = -rightBars)
+plot(showSwings and isValidLow ? pl : na, 'Swing Low', 
+     color = color.new(colWhite, 70), style = plot.style_circles, 
+     linewidth = 4, offset = -rightBars)
+
+// Define trend colors
+trendColor = trend == 1 ? color.new(color.green, 90) : 
+             trend == -1 ? color.new(color.red, 90) : na
+
+// Background mode: Fill chart background with trend color
+bgcolor(showTrendMode == 'Background' ? trendColor : na, 
+     title = 'Trend Background')
+
+// Shape mode: Show small squares at bottom of chart
+plotshape(showTrendMode == 'Shape' and trend == 1, 
+     title = "Bullish Trend Shape", 
+     location = location.bottom, 
+     color = trendColor, 
+     style = shape.square, 
+     size = size.tiny)
+
+plotshape(showTrendMode == 'Shape' and trend == -1, 
+     title = "Bearish Trend Shape", 
+     location = location.bottom, 
+     color = trendColor, 
+     style = shape.square, 
+     size = size.tiny)
+
+     //This indicator is a comprehensive tool designed for traders utilizing Smart Money Concepts (SMC) and Price Action. It automatically identifies and labels significant market structure shifts, specifically BOS (Break of Structure) and CHoCH (Change of Character), helping you stay on the right side of the trend.
+
+
+Key Features
+
+Dual Logic Modes (V1 & V2):
+V1 (Fixed Pivot): Only utilizes confirmed pivot points. Ideal for conservative traders looking for major swing levels.
+V2 (Dynamic Update): Automatically updates swing points to the actual highest high or lowest low between breaks. This provides a more fluid and accurate representation of price flow.
+
+Smart Confirmation: Unlike basic pivot scripts, this indicator uses a multi-bar confirmation logic (checking candle polarity and close sequences) to filter out market noise and false pivots.
+
+Automatic Trend Detection: The indicator tracks the current market bias (Bullish/Bearish) and visualizes it through customizable background colors or shapes.
+
+Clear Visual Cues: * BOS: Indicates a continuation of the current trend.
+
+CHoCH: Signals a potential trend reversal.

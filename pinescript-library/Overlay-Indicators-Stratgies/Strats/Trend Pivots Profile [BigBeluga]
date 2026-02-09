@@ -1,0 +1,192 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International  
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © BigBeluga
+
+
+//@version=6
+indicator("Trend Pivots Profile [BigBeluga]", overlay = true, max_labels_count = 500, max_lines_count = 500, max_polylines_count = 100)
+
+
+// ＩＮＰＵＴＳ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+
+length      = input.int(10, "Pivot Length")
+trendLength = input.int(50, "Trend Length")
+Profile     = input.bool(true, "Pivot Profile")
+colorUp     = input.color(color.blue, "", inline = "c")
+colorDn     = input.color(color.orange, "", inline = "c")
+
+
+type draw 
+    polyline poly 
+    line pocc 
+    label lbl
+    label Pivot
+
+var drawObj = array.new<draw>()
+var trend    = bool(na)
+var PoClevel = line(na)
+var PoClbl   = label(na)
+var start    = bar_index
+
+volBins = array.new<float>(1000)
+// }
+
+
+// ＣＡＬＣＵＬＡＴＩＯＮＳ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+atr = ta.atr(200) * 0.1
+ph  = ta.pivothigh(length, length)
+pl  = ta.pivotlow(length, length)
+H   = ta.highest(high, trendLength)
+L   = ta.lowest(low, trendLength)
+TrendLine = math.avg(H, L)
+
+switch 
+    high == H => trend := true 
+    low  == L => trend := false
+
+pivot    = not trend ? not na(ph) : not na(pl)
+mColor   = not trend ? colorUp : colorDn
+srcP     = not trend ? ph : pl
+lblStyle = not trend ? label.style_label_down : label.style_label_up
+
+time_  = timeframe.in_seconds("")/60
+time_s = timeframe.in_seconds("")
+div    = 5
+
+tf = time_ <= 1 ? "5S" : str.tostring(math.ceil(time_/div))
+
+array<float> Close = request.security_lower_tf('', tf, close)
+array<float> Volume = request.security_lower_tf('', tf, volume)
+
+
+
+if (bar_index-length) - start > length
+    if pivot  
+        start := bar_index-length
+        PoClevel.set_x2(bar_index-length)
+        top = high 
+        bot = low
+
+ 
+        // Define bounderies
+        for i = 0 to length*2
+
+            top := math.max(high[i], top)
+            bot := math.min(low[i], bot)
+
+        levels = (top-bot) / atr
+        step   = (top-bot) / levels
+
+        for k = 0 to int(levels)
+            volBins.set(k, 0.)
+
+        // Collect Volume
+        if Close.size() > 0
+
+            for i = 0 to length*2
+                cc = Close[i]
+                vv = Volume[i]
+
+                if cc.size() > 0
+                    for j = 0 to cc.size()-1
+            
+                        c = cc.get(j)
+                        v = vv.get(j)
+            
+                        for k = 0 to int(levels)
+
+                            mid = bot + step * k + step/2
+
+                            if math.abs(mid-c) <= step *2
+                                volBins.set(k, volBins.get(k) + v) 
+// }
+
+
+// ＰＬＯＴ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+        chartP = array.new<chart.point>()
+        if volBins.sum() > 0
+
+            poc = false
+            for i = 0 to int(levels)
+
+                cp = bot + step * i + step/2
+                // line.new(start, cp, bar_index, cp, color = color.new(chart.fg_color, 50))
+                right = int(volBins.get(i)/volBins.max()*length)
+
+                if i == 0 
+                    chartP.push(chart.point.from_index(start, cp))
+                else if i == int(levels)
+                    chartP.push(chart.point.from_index(start, cp))
+                else 
+                    chartP.push(chart.point.from_index(start+right, cp))
+
+                if volBins.get(i) == volBins.max() and not poc 
+                    PoClevel := line.new(start+right, cp, start+right+15, cp, color = not Profile ? color(na) : mColor)
+                    PoClbl := label.new(start+right, cp, str.tostring(volBins.max(), format.volume), color = color(na), textcolor = not Profile ? color(na) : chart.fg_color, style = label.style_label_right, size = size.small)
+                    poc := true
+
+        polyline p = na
+        label PivotLabel = na
+        if Profile
+            p := polyline.new(chartP, fill_color = color.new(mColor, 80), line_color = mColor)
+            PivotLabel := label.new(bar_index-length, srcP, "●", textcolor = mColor, color = color(na), style = lblStyle, size = size.normal)
+
+        drawObj.push(draw.new(p, PoClevel, PoClbl, PivotLabel))
+
+        volBins.clear()
+
+PoClevel.set_x2(bar_index+5)
+
+plot(not Profile ? PoClevel.get_y1() : float(na), "PoC Level", color.new(mColor, 0), linewidth = 1, display = not Profile ? display.all : display.none, editable = not Profile)
+plot(TrendLine, "Trend", color.new(mColor, 70), linewidth = 4)
+
+if drawObj.size() > 25
+    dr = drawObj.shift()
+
+    dr.poly.delete()
+    dr.lbl.delete()
+    dr.pocc.delete()
+    dr.Pivot.delete()
+// }
+
+/////The Trend Pivots Profile [BigBeluga] is a dynamic volume profile tool that builds profiles around pivot points to reveal where liquidity accumulates during trend shifts. When the market is in an uptrend, the indicator generates profiles at low pivots. In a downtrend, it builds them at high pivots. Each profile is constructed using lower timeframe volume data for higher resolution, making it highly precise even in limited space. A colored trendline helps traders instantly recognize the prevailing trend and anticipate which type of profile (bullish or bearish) will form.
+
+🔵 CONCEPTS
+Pivot-Driven Profiles: Profiles are only created when a new pivot forms, aligning liquidity analysis with market structure shifts.
+snapshot
+Trend-Contextual: Profiles form at low pivots in uptrends and at high pivots in downtrends.
+snapshot
+Lower Timeframe Data: Volume and close values are pulled from smaller timeframes to provide detailed, high-resolution profiles inside larger pivot windows.
+Adaptive Bin Sizing: Bin size is automatically calculated relative to ATR, ensuring consistent precision across different markets and volatility conditions.
+snapshot
+Point of Control (PoC): The highest-volume level within each profile is marked with a PoC line that extends until the next pivot forms.
+snapshot
+Trendline Visualization: A wide, semi-transparent line follows the rolling average of highs and lows, colored blue in uptrends and orange in downtrends.
+snapshot
+
+
+🔵 FEATURES
+Pivot Length Control: Adjust how far back the script looks to detect pivots (e.g., length 5 → profiles cover 10 bars after pivot).
+snapshot
+Pivot Profile toggle:
+On → draw the filled pivot profile + PoC + pivot label.
+Off → hide profiles; show only PoC level (clean S/R mode).
+snapshot
+Trend Length Filter: Smooths trendline detection to ensure reliable up/down bias.
+Precise Volume Distribution: Volume is aggregated into bins, creating a smooth volume curve around the pivot range.
+PoC Extension: Automatically extends the most active price level until a new pivot is confirmed.
+Profile Visualization: Profiles appear as filled shapes anchored at the pivot candle, colored based on trend.
+Trendline Overlay: Thick, semi-transparent trendline provides visual guidance on directional bias.
+Automatic Cleanup: Old profiles are deleted once they exceed the chart’s capacity (default 25 stored profiles).
+
+
+🔵 HOW TO USE
+Spotting Trend Liquidity: In an uptrend, monitor profiles at low pivots to see where buyers concentrated. In downtrends, use high-pivot profiles to spot sell-side pressure.
+Watch the PoC: The PoC line highlights the strongest traded level of the pivot structure—expect reactions when price retests it.
+Anticipate Trend Continuation/Reversal: Use the trendline (blue = bullish, orange = bearish) together with pivot profiles to forecast directional momentum.
+Combine with HTF Context: Overlay with higher timeframe structure (order blocks, liquidity zones, or FVGs) for confluence.
+Fine-Tune with Inputs: Adjust Pivot Length for sensitivity and Trend Length for smoother or faster trend shifts.
+
+
+🔵 CONCLUSION
+The Trend Pivots Profile [BigBeluga] blends pivot-based structure with precise volume profiling. By dynamically plotting profiles on pivots aligned with the prevailing trend, highlighting PoCs, and overlaying a directional trendline, it equips traders with a clear view of liquidity clusters and directional momentum—ideal for anticipating reactions, pullbacks, or breakout

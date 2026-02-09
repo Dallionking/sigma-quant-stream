@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-005",
+  "title": "Opening Range Breakout (ORB)",
+  "hypothesis": "Breakout of the first 15-30 minute trading range predicts intraday trend direction with high probability",
+  "counterparty": "Traders who fade the initial move and get stopped out",
+  "edgeSource": "Institutional order flow - large players establish positions in opening range",
+  "markets": ["ES", "NQ", "YM"],
+  "timeframes": ["5m", "15m"],
+  "parameterCount": 4,
+  "priority": 1,
+  "source": "Toby Crabel 'Day Trading with Short-Term Price Patterns'",
+  "references": [
+    "Crabel opening range methodology",
+    "Linda Raschke ORB variations"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.0, 1.8],
+    "winRateRange": [0.48, 0.58],
+    "tradesPerMonth": 20
+  },
+  "testConditions": {
+    "openingRangeMinutes": [15, 30, 60],
+    "breakoutFilter": ["ATR", "fixed_ticks"],
+    "stopPlacement": ["range_low", "range_mid"],
+    "targetMultiple": [1.5, 2.0, 3.0]
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

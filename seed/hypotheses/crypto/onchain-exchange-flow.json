@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H007",
+  "hypothesis": "Large exchange inflows (>1000 BTC in 24h or >3x 30-day average) predict selling pressure within 24-48 hours -- coins move to exchanges to be sold",
+  "edgeType": "information",
+  "edgeSource": "On-chain data reveals intent before execution -- large holders moving coins to exchanges telegraph future sell orders",
+  "counterparty": "Large holders selling accumulated BTC at exchanges after transfer",
+  "expectedSharpe": 1.1,
+  "expectedWinRate": 0.56,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT"],
+  "timeframe": "4h",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

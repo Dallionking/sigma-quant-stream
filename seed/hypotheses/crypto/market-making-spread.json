@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H006",
+  "hypothesis": "Avellaneda-Stoikov optimal market making on BTC/ETH perpetual futures -- capture bid-ask spread while managing inventory risk through dynamic spread widening",
+  "edgeType": "structural",
+  "edgeSource": "Bid-ask bounce provides consistent small profits; inventory management through Avellaneda-Stoikov reservation price prevents adverse accumulation",
+  "counterparty": "Impatient traders crossing the spread with market orders",
+  "expectedSharpe": 1.8,
+  "expectedWinRate": 0.72,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "1m",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

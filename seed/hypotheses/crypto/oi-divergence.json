@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H002",
+  "hypothesis": "When Open Interest drops >10% while price holds within 2%, weak hands have been flushed -- remaining positions are stronger, setting up a reversal in the price hold direction",
+  "edgeType": "structural",
+  "edgeSource": "Forced liquidations and stop-outs remove weak positioning, leaving strong hands",
+  "counterparty": "Shorts who closed positions during the OI flush",
+  "expectedSharpe": 1.3,
+  "expectedWinRate": 0.58,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "4h",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

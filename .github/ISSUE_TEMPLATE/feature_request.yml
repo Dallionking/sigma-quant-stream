@@ -1,0 +1,83 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for Sigma-Quant Stream
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature. Please describe what you would like to see added or improved.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this feature solve? What is the motivation?
+      placeholder: |
+        I want to research strategies on Kraken, but there is no adapter for it.
+        Currently I have to manually download data and convert it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work? Be as specific as possible.
+      placeholder: |
+        Add a KrakenAdapter in lib/crypto/exchange_adapters.py that supports:
+        - OHLCV data via CCXT
+        - Funding rate fetching
+        - A market profile at profiles/crypto-cex-kraken.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: I could manually export data from Kraken, but that breaks the autonomous workflow.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area does this feature fall under?
+      options:
+        - New exchange adapter
+        - New market profile
+        - New agent or skill
+        - Backtest engine improvement
+        - CLI enhancement
+        - Pattern knowledge
+        - Compliance / validation
+        - Deployment / paper trading
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willingness
+    attributes:
+      label: Would you like to implement this?
+      description: Are you willing to submit a pull request for this feature?
+      options:
+        - "Yes, I can submit a PR"
+        - "I can help but need guidance"
+        - "No, I am requesting this feature"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or references for this feature request.
+    validations:
+      required: false

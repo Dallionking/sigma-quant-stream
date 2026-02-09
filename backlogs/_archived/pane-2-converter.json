@@ -1,0 +1,1039 @@
+{
+  "meta": {
+    "paneId": 2,
+    "workerType": "converter",
+    "targetIterations": 100,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:12:41.949176",
+    "lastUpdatedAt": "2026-01-18T16:12:41.949307",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "convert-001",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Port TradingView ATR Trailing Stop to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:18:11Z"
+    },
+    {
+      "id": "convert-004",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate MACD Histogram Divergence indicator in Python",
+      "description": "Find MACD Histogram Divergence PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/macd_histogram_divergence/. Include: macd_histogram_divergence.py (class with calculate() and get_signal()), test_macd_histogram_divergence.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/macd_histogram_divergence/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:23:09Z"
+    },
+    {
+      "id": "convert-005",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate Market Cipher indicator in Python",
+      "description": "Find Market Cipher PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/market_cipher/. Include: market_cipher.py (class with calculate() and get_signal()), test_market_cipher.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/market_cipher/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:29:32Z"
+    },
+    {
+      "id": "convert-008",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate RSI from TradingView to Python",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:32:05Z"
+    },
+    {
+      "id": "convert-012",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:34:17Z"
+    },
+    {
+      "id": "convert-013",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Port TradingView Squeeze Momentum to Python",
+      "description": "Find Squeeze Momentum PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/squeeze_momentum/. Include: squeeze_momentum.py (class with calculate() and get_signal()), test_squeeze_momentum.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/squeeze_momentum/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:37:56Z"
+    },
+    {
+      "id": "convert-015",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:40:32Z"
+    },
+    {
+      "id": "convert-025",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate RSI from QuantConnect to Python",
+      "description": "Find RSI implementation from QuantConnect. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:43:27Z"
+    },
+    {
+      "id": "convert-028",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Port TradingView Order Block Detector to Python",
+      "description": "Find Order Block Detector PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/order_block_detector/. Include: order_block_detector.py (class with calculate() and get_signal()), test_order_block_detector.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/order_block_detector/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:52:20Z"
+    },
+    {
+      "id": "convert-030",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert Order Block Detector from PineScript to Python",
+      "description": "Find Order Block Detector PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/order_block_detector/. Include: order_block_detector.py (class with calculate() and get_signal()), test_order_block_detector.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/order_block_detector/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:57:19Z"
+    },
+    {
+      "id": "convert-031",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert Market Cipher from PineScript to Python",
+      "description": "Find Market Cipher PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/market_cipher/. Include: market_cipher.py (class with calculate() and get_signal()), test_market_cipher.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/market_cipher/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:01:08Z"
+    },
+    {
+      "id": "convert-036",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate Squeeze Momentum indicator in Python",
+      "description": "Find Squeeze Momentum PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/squeeze_momentum/. Include: squeeze_momentum.py (class with calculate() and get_signal()), test_squeeze_momentum.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/squeeze_momentum/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:05:22Z"
+    },
+    {
+      "id": "convert-037",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:08:26Z"
+    },
+    {
+      "id": "convert-040",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Port TradingView Volume Weighted RSI to Python",
+      "description": "Find Volume Weighted RSI PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/volume_weighted_rsi/. Include: volume_weighted_rsi.py (class with calculate() and get_signal()), test_volume_weighted_rsi.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/volume_weighted_rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:17:04Z"
+    },
+    {
+      "id": "convert-045",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Convert Fair Value Gap Finder from PineScript to Python",
+      "description": "Find Fair Value Gap Finder PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/fair_value_gap_finder/. Include: fair_value_gap_finder.py (class with calculate() and get_signal()), test_fair_value_gap_finder.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/fair_value_gap_finder/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:29:14Z"
+    },
+    {
+      "id": "convert-014",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Convert ATR Trailing Stop from PineScript to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:33:48Z"
+    },
+    {
+      "id": "convert-018",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Port TradingView VWAP with Standard Deviation Bands to Python",
+      "description": "Find VWAP with Standard Deviation Bands PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/vwap_with_standard_deviation_bands/. Include: vwap_with_standard_deviation_bands.py (class with calculate() and get_signal()), test_vwap_with_standard_deviation_bands.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/vwap_with_standard_deviation_bands/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:35:29Z"
+    },
+    {
+      "id": "convert-020",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate RSI from TradingView to Python",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:35:50Z"
+    },
+    {
+      "id": "convert-022",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:36:12Z"
+    },
+    {
+      "id": "convert-033",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:36:50Z"
+    },
+    {
+      "id": "convert-034",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Convert Donchian Channels from PineScript to Python",
+      "description": "Find Donchian Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/donchian_channels/. Include: donchian_channels.py (class with calculate() and get_signal()), test_donchian_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/donchian_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:15Z"
+    },
+    {
+      "id": "convert-039",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate RSI from TradingView to Python",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:48Z"
+    },
+    {
+      "id": "convert-049",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate VWAP with Standard Deviation Bands indicator in Python",
+      "description": "Find VWAP with Standard Deviation Bands PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/vwap_with_standard_deviation_bands/. Include: vwap_with_standard_deviation_bands.py (class with calculate() and get_signal()), test_vwap_with_standard_deviation_bands.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/vwap_with_standard_deviation_bands/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:38:18Z"
+    },
+    {
+      "id": "convert-050",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 1,
+      "title": "Recreate Volume Weighted RSI indicator in Python",
+      "description": "Find Volume Weighted RSI PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/volume_weighted_rsi/. Include: volume_weighted_rsi.py (class with calculate() and get_signal()), test_volume_weighted_rsi.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/volume_weighted_rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:38:47Z"
+    },
+    {
+      "id": "convert-002",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert NinjaTrader RSI implementation",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:39:12Z"
+    },
+    {
+      "id": "convert-003",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Port TradingView ATR Trailing Stop to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:39:39Z"
+    },
+    {
+      "id": "convert-007",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Port TradingView VWAP with Standard Deviation Bands to Python",
+      "description": "Find VWAP with Standard Deviation Bands PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/vwap_with_standard_deviation_bands/. Include: vwap_with_standard_deviation_bands.py (class with calculate() and get_signal()), test_vwap_with_standard_deviation_bands.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/vwap_with_standard_deviation_bands/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:08Z"
+    },
+    {
+      "id": "convert-010",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:35Z"
+    },
+    {
+      "id": "convert-011",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert Keltner Channels from PineScript to Python",
+      "description": "Find Keltner Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/keltner_channels/. Include: keltner_channels.py (class with calculate() and get_signal()), test_keltner_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/keltner_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:56Z"
+    },
+    {
+      "id": "convert-032",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert Opening Range Breakout from PineScript to Python",
+      "description": "Find Opening Range Breakout PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/opening_range_breakout/. Include: opening_range_breakout.py (class with calculate() and get_signal()), test_opening_range_breakout.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/opening_range_breakout/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:20Z"
+    },
+    {
+      "id": "convert-035",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert ATR Trailing Stop from PineScript to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:43Z"
+    },
+    {
+      "id": "convert-038",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Convert MetaTrader RSI implementation",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:09Z"
+    },
+    {
+      "id": "convert-042",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate RSI from NinjaTrader to Python",
+      "description": "Find RSI implementation from NinjaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:38Z"
+    },
+    {
+      "id": "convert-044",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Port TradingView Order Block Detector to Python",
+      "description": "Find Order Block Detector PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/order_block_detector/. Include: order_block_detector.py (class with calculate() and get_signal()), test_order_block_detector.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/order_block_detector/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:05Z"
+    },
+    {
+      "id": "convert-046",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate RSI from MetaTrader to Python",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:31Z"
+    },
+    {
+      "id": "convert-047",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Recreate ATR Trailing Stop indicator in Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:54Z"
+    },
+    {
+      "id": "convert-009",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Recreate RSI from MetaTrader to Python",
+      "description": "Find RSI implementation from MetaTrader. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:18Z"
+    },
+    {
+      "id": "convert-017",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Recreate RSI from TradingView to Python",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:44Z"
+    },
+    {
+      "id": "convert-019",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView Squeeze Momentum to Python",
+      "description": "Find Squeeze Momentum PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/squeeze_momentum/. Include: squeeze_momentum.py (class with calculate() and get_signal()), test_squeeze_momentum.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/squeeze_momentum/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:11Z"
+    },
+    {
+      "id": "convert-023",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Convert Keltner Channels from PineScript to Python",
+      "description": "Find Keltner Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/keltner_channels/. Include: keltner_channels.py (class with calculate() and get_signal()), test_keltner_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/keltner_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:39Z"
+    },
+    {
+      "id": "convert-024",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView ATR Trailing Stop to Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:06Z"
+    },
+    {
+      "id": "convert-041",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView Squeeze Momentum to Python",
+      "description": "Find Squeeze Momentum PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/squeeze_momentum/. Include: squeeze_momentum.py (class with calculate() and get_signal()), test_squeeze_momentum.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/squeeze_momentum/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:36Z"
+    },
+    {
+      "id": "convert-048",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Port TradingView Pivot Points Standard to Python",
+      "description": "Find Pivot Points Standard PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/pivot_points_standard/. Include: pivot_points_standard.py (class with calculate() and get_signal()), test_pivot_points_standard.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/pivot_points_standard/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:07Z"
+    },
+    {
+      "id": "convert-006",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Recreate RSI from QuantConnect to Python",
+      "description": "Find RSI implementation from QuantConnect. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:43Z"
+    },
+    {
+      "id": "convert-016",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Recreate RSI from QuantConnect to Python",
+      "description": "Find RSI implementation from QuantConnect. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:12Z"
+    },
+    {
+      "id": "convert-021",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Recreate ATR Trailing Stop indicator in Python",
+      "description": "Find ATR Trailing Stop PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/atr_trailing_stop/. Include: atr_trailing_stop.py (class with calculate() and get_signal()), test_atr_trailing_stop.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/atr_trailing_stop/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:43Z"
+    },
+    {
+      "id": "convert-026",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Recreate Opening Range Breakout indicator in Python",
+      "description": "Find Opening Range Breakout PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/opening_range_breakout/. Include: opening_range_breakout.py (class with calculate() and get_signal()), test_opening_range_breakout.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/opening_range_breakout/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:16Z"
+    },
+    {
+      "id": "convert-027",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Port TradingView Volume Weighted RSI to Python",
+      "description": "Find Volume Weighted RSI PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/volume_weighted_rsi/. Include: volume_weighted_rsi.py (class with calculate() and get_signal()), test_volume_weighted_rsi.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/volume_weighted_rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:55Z"
+    },
+    {
+      "id": "convert-029",
+      "type": "convert_indicator",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Convert TradingView RSI implementation",
+      "description": "Find RSI implementation from TradingView. Convert to Python using pandas/numpy. Save to output/indicators/converted/rsi/ with full class implementation, tests, and documentation.",
+      "expectedOutput": "output/indicators/converted/rsi/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:25Z"
+    },
+    {
+      "id": "convert-043",
+      "type": "convert_pinescript",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Convert Donchian Channels from PineScript to Python",
+      "description": "Find Donchian Channels PineScript source using mcp_exa_web_search_exa. Convert to Python class in output/indicators/converted/donchian_channels/. Include: donchian_channels.py (class with calculate() and get_signal()), test_donchian_channels.py (unit tests), README.md (usage docs).",
+      "expectedOutput": "output/indicators/converted/donchian_channels/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/converted/{indicator}.py"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:51:00Z"
+    }
+  ]
+}

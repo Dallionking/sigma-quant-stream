@@ -1,0 +1,461 @@
+{
+  "meta": {
+    "paneId": 2,
+    "workerType": "researcher",
+    "targetIterations": 50,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:08:37.277048",
+    "lastUpdatedAt": "2026-01-18T16:08:37.277050",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "research-001",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 0,
+      "title": "Implement feature importance with MDI/MDA/SFI for futures trading",
+      "description": "Research feature importance with MDI/MDA/SFI implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/feature importance with MDI/MDA/SFI.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-018",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 0,
+      "title": "Distill key insights from Active Portfolio Management",
+      "description": "Read/search for content from 'Active Portfolio Management' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-012",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 0,
+      "title": "Research and document meta-labeling",
+      "description": "Research meta-labeling implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/meta-labeling.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-015",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 0,
+      "title": "Distill key insights from Trading and Exchanges",
+      "description": "Read/search for content from 'Trading and Exchanges' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-017",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 0,
+      "title": "Create implementation plan for combinatorial purged cross-validation",
+      "description": "Research combinatorial purged cross-validation implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/combinatorial purged cross-validation.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-025",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 2,
+      "parallel_group": 0,
+      "title": "Distill key insights from Advances in Financial Machine Learning",
+      "description": "Read/search for content from 'Advances in Financial Machine Learning' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-008",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 0,
+      "title": "Distill key insights from Advances in Financial Machine Learning",
+      "description": "Read/search for content from 'Advances in Financial Machine Learning' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-013",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 0,
+      "title": "Summarize momentum from Trading and Exchanges",
+      "description": "Read/search for content from 'Trading and Exchanges' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-014",
+      "type": "research_new_indicator",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 0,
+      "title": "Find and analyze market microstructure strategies",
+      "description": "Use MCP tools to find academic papers and implementations of market microstructure. Create a research summary in output/research-logs/2026-01-18/ and a hypothesis JSON in output/hypotheses/. Focus on why the edge exists and who the counterparty is.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/created/{indicator}.py"
+        },
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "research-009",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 0,
+      "title": "Extract trading rules from Trading and Exchanges",
+      "description": "Read/search for content from 'Trading and Exchanges' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-019",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 0,
+      "title": "Distill key insights from Trading and Exchanges",
+      "description": "Read/search for content from 'Trading and Exchanges' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "research-005",
+      "type": "research_new_indicator",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Investigate Elliott wave as trading signal",
+      "description": "Use MCP tools to find academic papers and implementations of Elliott wave. Create a research summary in output/research-logs/2026-01-18/ and a hypothesis JSON in output/hypotheses/. Focus on why the edge exists and who the counterparty is.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/created/{indicator}.py"
+        },
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "research-007",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Implement probability of backtest overfitting (PBO) for futures trading",
+      "description": "Research probability of backtest overfitting (PBO) implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/probability of backtest overfitting (PBO).md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-011",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Create implementation plan for triple barrier method",
+      "description": "Research triple barrier method implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/triple barrier method.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-020",
+      "type": "research_new_indicator",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Research Kaufman's approach to Elliott wave",
+      "description": "Search for Elliott wave strategies using mcp_exa_web_search_exa and mcp_Ref_ref_search_documentation. Document findings with testable hypothesis including expected Sharpe ratio.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/created/{indicator}.py"
+        },
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "research-022",
+      "type": "research_framework",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Implement probability of backtest overfitting (PBO) for futures trading",
+      "description": "Research probability of backtest overfitting (PBO) implementation details. Create documentation in output/research-logs/ with code examples and parameter recommendations. Focus on practical implementation for futures trading.",
+      "expectedOutput": "output/research-logs/probability of backtest overfitting (PBO).md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{framework}.md"
+        },
+        {
+          "type": "hypothesis_documented"
+        }
+      ]
+    },
+    {
+      "id": "research-023",
+      "type": "research_new_indicator",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Research Aronson's approach to order flow",
+      "description": "Use MCP tools to find academic papers and implementations of order flow. Create a research summary in output/research-logs/2026-01-18/ and a hypothesis JSON in output/hypotheses/. Focus on why the edge exists and who the counterparty is.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/indicators/created/{indicator}.py"
+        },
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ]
+    },
+    {
+      "id": "research-024",
+      "type": "research_book_paper",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 0,
+      "title": "Summarize momentum from Advances in Financial Machine Learning",
+      "description": "Read/search for content from 'Advances in Financial Machine Learning' using MCP tools. Extract actionable trading rules and document in output/research-logs/2026-01-18/. Include parameter recommendations and anti-overfitting considerations.",
+      "expectedOutput": "output/research-logs/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-summary.md"
+        }
+      ]
+    },
+    {
+      "id": "generate-016",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 1,
+      "parallel_group": 1,
+      "title": "Generate hypothesis for NQ trading",
+      "description": "Create a testable trading hypothesis for NQ. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-nq-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-021",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 3,
+      "parallel_group": 1,
+      "title": "Generate hypothesis for YM trading",
+      "description": "Create a testable trading hypothesis for YM. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-ym-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-004",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 4,
+      "parallel_group": 1,
+      "title": "Generate hypothesis for ES trading",
+      "description": "Create a testable trading hypothesis for ES. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-es-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-002",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Create testable hypothesis for momentum",
+      "description": "Create a testable trading hypothesis for RTY. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-rty-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-003",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Create testable hypothesis for momentum",
+      "description": "Create a testable trading hypothesis for ES. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-es-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-006",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Document hypothesis for momentum strategy",
+      "description": "Create a testable trading hypothesis for ES. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-es-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    },
+    {
+      "id": "generate-010",
+      "type": "generate_hypothesis",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 1,
+      "title": "Create testable hypothesis for momentum",
+      "description": "Create a testable trading hypothesis for YM. Output a hypothesis JSON to output/hypotheses/ with: hypothesis statement, counterparty analysis, edge source, expected Sharpe, and required indicators.",
+      "expectedOutput": "output/hypotheses/hypothesis-ym-001.json",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        }
+      ],
+      "hypothesis": ""
+    }
+  ]
+}

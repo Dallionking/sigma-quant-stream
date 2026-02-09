@@ -1,0 +1,262 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International  
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © BigBeluga
+
+//@version=5
+indicator("Half Trend HeikinAshi [BigBeluga]", "HalfTrend - [BigBeluga]", overlay=true, max_labels_count = 500)
+
+
+// ＩＮＰＵＴＳ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+int    amp         = input.int(5, "Amplitude", minval=1)                                   // Length for indicator calculations
+bool   useHeikin   = input.bool(false, "Heikin Ashi")                                     // Toggle Heikin Ashi mode
+string signalSize  = input.string("Large", "Signals Size", ["Large", "Small"])           // Size of signals
+color  up_col      = input.color(#26e47b, "Up", group="Trend Colors", inline="1")     // Color for upward trend
+color  dn_col      = input.color(#2c75c9, "Down", group="Trend Colors", inline="1")  // Color for downward trend
+bool   trend_candl = input.bool(false, "Candles Color")                               // Toggle candles color based on trend
+// }
+
+
+// 𝚄𝙳𝚃𝚜 ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+type HeikinAshi
+    float open
+    float high
+    float low
+    float close
+
+var HeikinAshi ha = HeikinAshi.new(na, na, na, na)   // Initialize Heikin Ashi UDT
+// }
+
+// Variable Initialization
+var bool  up_signal = na       // Signal Up
+var bool  dn_signal = na      // Signal Down
+var color trend_col = na     // Trend color
+var float hl_t      = 0.    // Half trend value
+var float trend_st  = 0.   // Trend strength
+var float oc2       = na  // Midpoint for Heikin Ashi calculations
+
+
+
+// ＣＡＬＣＵＬＡＴＩＯＮＳ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+series float closeMA     = ta.sma(close, amp) // Moving average of close prices
+series float highestHigh = ta.highest(amp)   // Highest high over the period
+series float lowestLow   = ta.lowest(amp)   // Lowest low over the period
+
+// Initialize half trend on the first bar
+if barstate.isfirst
+    hl_t := close
+
+// Update half trend value based on conditions
+switch 
+    closeMA < hl_t and highestHigh < hl_t => hl_t := highestHigh
+    closeMA > hl_t and lowestLow   > hl_t => hl_t := lowestLow
+    => hl_t := hl_t
+
+// Calculate Heikin Ashi values based on Half Trend
+if useHeikin
+    ha.close := (nz(ha.open) + nz(ha.high) + nz(ha.low) + hl_t) / 4
+    ha.open  := na(ha.open[1]) ? (hl_t + hl_t[1]) / 2 : (nz(ha.open[1]) + nz(ha.close[1])) / 2
+    ha.high  := math.max(hl_t, math.max(ha.open, ha.close))
+    ha.low   := math.min(hl_t, math.min(ha.open, ha.close))
+    oc2      := (ha.close + ha.open) / 2
+
+// Calculate trend strength
+trend_st := (ha.high - ha.low) / ta.stdev((ha.high - ha.low), 200)
+trend_st := (trend_st * 20) > 100 ? 100 : (trend_st * 20)
+
+// Determine trend color
+if ta.crossover(hl_t, hl_t[1])
+    trend_col := up_col
+if ta.crossunder(hl_t, hl_t[1])
+    trend_col := dn_col
+
+// Signal conditions for trend direction
+float trend_change = (ha.close - ha.open) / ha.open
+up_signal := (useHeikin ? ta.crossover (trend_change, 0) : ta.crossover (hl_t, hl_t[1]) and ta.change(trend_col == up_col)) and barstate.isconfirmed
+dn_signal := (useHeikin ? ta.crossunder(trend_change, 0) : ta.crossunder(hl_t, hl_t[1]) and ta.change(trend_col == dn_col)) and barstate.isconfirmed
+// }
+
+
+
+// ＰＬＯＴ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+// Heikin Ashi colors
+color haColor = ha.close > ha.open
+                 ? color.from_gradient(trend_st, 0, 100, color.new(up_col, 70), up_col) 
+                 : color.from_gradient(trend_st, 0, 100, color.new(dn_col, 70), dn_col)
+
+color ha_border_col = ha.close > ha.open
+                 ? color.from_gradient(trend_st, 0, 70, color.new(up_col, 70), up_col) 
+                 : color.from_gradient(trend_st, 0, 70, color.new(dn_col, 70), dn_col)
+
+// Set candle color based on trend
+color candle_col = trend_candl ? (useHeikin ? (ha.close > ha.open ? up_col : dn_col) : trend_col) : na
+
+// Plot half trend line
+p1 = plot(useHeikin ? na : hl_t, color = trend_col, linewidth = 2, editable = false)
+p2 = plot(hl2, display = display.none, editable = false)
+
+// Fill between lines
+fill(p1, p2, hl2, useHeikin ? na : hl_t, na, color.new(trend_col, 80))
+
+// Plot upward signals
+plotshape(
+         up_signal ? (useHeikin ? oc2 : hl_t) : na, 
+         title      = "Up", 
+         location   = location.absolute, color=up_col, 
+         style      = shape.circle, 
+         size       = size.tiny, 
+         offset     =0
+         )
+
+// Plot downward signals
+plotshape(
+         dn_signal ? (useHeikin ? oc2 : hl_t) : na, 
+         title      = "Down",
+         location   = location.absolute,
+         color      = dn_col, 
+         style      = shape.circle, 
+         size       = size.tiny, 
+         offset     =0
+         )
+
+switch
+    up_signal =>
+     label.new(
+             bar_index, (useHeikin ? oc2 : hl_t), 
+             textcolor  = up_col, 
+             color      = color(na), 
+             text       = "⮙",
+             size       = signalSize == "Large" ? size.large : size.normal,
+             style      = label.style_label_up
+             )
+    dn_signal =>
+     label.new(
+              bar_index, (useHeikin ? oc2 : hl_t), 
+              textcolor = dn_col,
+              color     = color(na), 
+              text      = "⮛", 
+              size      = signalSize == "Large" ? size.large : size.normal,
+              style     = label.style_label_down
+              )
+
+
+
+// Plot Heikin Ashi candles
+plotcandle(
+           ha.open, ha.open, ha.close, ha.close, 
+           title        = "Half Trend Heikin Ashi",
+           color        = haColor, 
+           wickcolor    = haColor, 
+           bordercolor  = ha_border_col, 
+           editable     = false
+           )
+
+// Plot regular candles colored by trend
+plotcandle(
+           open, high, low, close, 
+           title        = 'Candles Trend', 
+           color        = candle_col, 
+           wickcolor    = candle_col, 
+           bordercolor  = candle_col,
+           editable     = false
+           )
+
+// Dashboard
+if barstate.islast
+    var dashboard = table.new(position.top_right, 10, 10, na, color.new(chart.fg_color, 50), 1)
+    dashboard.cell(0, 0, "Ticker: ", text_color=chart.fg_color, text_halign=text.align_left)
+    dashboard.cell(1, 0, syminfo.ticker, text_color=up_col, text_halign=text.align_center)
+
+    dashboard.cell(0, 1, "TimeFrame: ", text_color=chart.fg_color, text_halign=text.align_left)
+    dashboard.cell(1, 1, timeframe.period, 
+                   text_color  = useHeikin ? (ha.close > ha.open ? up_col : dn_col) : trend_col, 
+                   text_halign = text.align_center)
+
+    dashboard.cell(0, 2, useHeikin ? "Trend Strength: " : "Trend: ", 
+                   text_color  = chart.fg_color, 
+                   text_halign = text.align_left)
+    dashboard.cell(1, 2, useHeikin ? str.tostring(trend_st, format.percent) : (trend_col == up_col ? "Up" : "Dn"), 
+                   text_color  = useHeikin ? (ha.close > ha.open ? up_col : dn_col) : trend_col, 
+                   text_halign = text.align_center)
+// }
+
+//
+This indicator is a cool combo of the half-trend methodology and Heikin Ashi candles. The main idea is to help spot where the market is trending and where it might be reversing by using a mix of moving averages and the highest and lowest price data values. What’s nice is that it doesn’t just give you trend lines but also converts them into Heikin Ashi candles, so you can visually gauge the strength of a trend based on candle sizes.
+
+NIFTY50:
+snapshot
+
+NVIDIA:
+snapshot
+
+
+
+🔵 IDEA
+
+The thinking behind this Half Trend HeikinAshi indicator is pretty straightforward: it’s designed to give you a flexible way to detect trends and trend reversals, but with an added bonus—measuring trend strength via Heikin Ashi candles. The core idea is based on the classic half-trend strategy, where it adjusts to the highest and lowest price values within a certain period. The Heikin Ashi transformation smooths out half-trend line, making it easier to spot solid trends and potential reversals.
+
+
+🔵 KEY FEATURES & USAGE
+
+◉ Half Trend Calculation with Reversal Signals:
+The main feature here is spotting trends based on a moving average of the close price and the highest/lowest price data.
+Pine Script®
+
+//#region ———————————————————— Calculations
+// Calculate moving average of close prices
+series float closeMA     = ta.sma(close, amplitude)
+
+// Calculate highest high and lowest low
+series float highestHigh = ta.highest(amplitude)
+series float lowestLow   = ta.lowest(amplitude)
+
+// Initialize hl_t on the first bar
+if barstate.isfirst
+    hl_t := close
+
+// Update hl_t based on conditions
+switch 
+    closeMA < hl_t and highestHigh < hl_t => hl_t := highestHigh
+    closeMA > hl_t and lowestLow   > hl_t => hl_t := lowestLow
+    => hl_t := hl_t
+
+Expand 12 lines
+
+
+When the trend flips, you’ll see arrows on your chart—either pointing up or down—marking the exact price where that reversal occurred. This makes it easy to see where the market might turn, which is helpful for timing entries and exits.
+snapshot
+
+
+◉ Heikin Ashi Candlestick Transformation:
+There’s a Heikin Ashi mode that transforms the half-trend line into Heikin Ashi candles.
+These smooth out market noise and make the overall trend much clearer.
+snapshot
+
+
+◉ Trend Strength Calculation:
+The indicator doesn’t just stop at showing trends. It also calculates trend strength based on the size of the Heikin Ashi candles. Bigger candles mean stronger trends, and smaller ones indicate weaker momentum. You can see this displayed on the dashboard, so you know exactly how strong the current trend is at any moment.
+snapshot
+
+snapshot
+
+
+◉ Graphical Dashboard Display:
+You’ve got a small dashboard right on the chart that shows key info like the ticker, timeframe, and whether the trend is up or down. If you’re in Heikin Ashi mode, it shows trend strength instead. So, no need to dig through the data—you can just glance at the dashboard for a quick market read.
+snapshot
+
+
+
+🔵 CUSTOMIZATION
+
+Amplitude Input: You can tweak the amplitude to control how sensitive the half-trend line is. A lower setting makes it more reactive to small price moves, while a higher setting smooths it out for longer-term trends.
+Heikin Ashi Toggle: You can easily switch between standard half-trend lines and Heikin Ashi candle mode, depending on how you prefer to see the market.
+Trend Colors: You’ve got control over the colors for up and down trends, so you can adjust the appearance to fit your charting style.
+Signal Labels size: Change Labels signal sizes for your preference
+
+
+
+🔵 CONCLUSION
+
+The Half Trend HeikinAshi indicator is a solid tool for tracking trends and measuring their strength. By combining the usual half-trend signals with Heikin Ashi candles, you get a clearer picture of what’s happening in the market. Whether you're looking to spot potential reversals or just want to measure the strength of a current trend, this indicator gives you plenty of flexibility to do both.
+Nov 15, 2024
+Release Notes
+- Update: Confirmation of signals after candle close

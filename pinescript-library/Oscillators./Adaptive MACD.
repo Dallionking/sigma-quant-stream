@@ -1,0 +1,33 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © peacefulLizard50262
+
+//@version=5
+indicator("Adaptive MACD")
+import peacefulLizard50262/peacefulIndicators/1 as p
+
+src       = input.source(close, "Source")
+shortLen  = input.int(12, "Short Length", 2)
+longLen   = input.int(26, "Long Length", 2)
+signalLen = input.int(9, "Signal Length", 2)
+dynLow    = input.int(16, "Dynamic Low")
+dynHigh   = input.int(64, "Dynamic High")
+
+col_macd = input.color(#2962FF, "MACD Line  ", group="Color Settings", inline="MACD")
+col_signal = input.color(#FF6D00, "Signal Line  ", group="Color Settings", inline="Signal")
+col_grow_above = input.color(#26A69A, "Above   Grow", group="Histogram", inline="Above")
+col_fall_above = input.color(#B2DFDB, "Fall", group="Histogram", inline="Above")
+col_grow_below = input.color(#FFCDD2, "Below Grow", group="Histogram", inline="Below")
+col_fall_below = input.color(#FF5252, "Fall", group="Histogram", inline="Below")
+
+[short, fast] = p.macdDynamicLength(src, shortLen, longLen, signalLen, dynLow, dynHigh)
+
+macd = short - fast
+
+colour = 
+ macd >= 0 ? 
+  (macd[1] < macd ? col_grow_above : col_fall_above) : 
+  (macd[1] < macd ? col_grow_below : col_fall_below)
+
+plot(short, "Short Line")
+plot(fast, "Long Line", color.orange)
+plot(macd, "MACD", colour, style = plot.style_columns)

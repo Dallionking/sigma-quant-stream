@@ -1,0 +1,804 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © TradeWiseWithEase
+
+//@version=6
+indicator(title = "Adaptive Bull Ratio Strategy", shorttitle = "BE-ABRM", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+// -------------------------------------------------------------------------
+// INPUTS & CONFIGURATION
+// -------------------------------------------------------------------------
+grp_src     = "Source Settings"
+enableExt   = input.bool(false, "Enable External Source", group = grp_src, tooltip = "If true, uses external source logic. If false, uses Supertrend.")
+extSrc      = input.source(close, "External Source", group = grp_src)
+atrLen      = input.int(10, "ATR Length", group = grp_src)
+factor      = input.float(3.0, "Factor", group = grp_src)
+entry_tol   = input.float(0.25, "Entry Tolerance %", group = grp_src, step = 0.1, tooltip = "Max % above signal price allowed for late entry")
+entry_lookback = input.int(15, "Entry Lookback Bars", group = grp_src, tooltip = "Max bars to wait for late entry after signal")
+
+grp_opt     = "Option & Symbol Settings"
+strike_step = input.int(50, "Strike Step", group = grp_opt, tooltip = "e.g., 50 for Nifty")
+rnd_step    = input.int(500, "Deep OTM Step", group = grp_opt, tooltip = "Rounding step for deep OTM strikes")
+lot_multiplier = input.int(1, "Lot Multiplier", minval=1, group = grp_opt, tooltip = "Multiplies the base quantity of all legs")
+sl_pct_in   = input.float(0.9, "Initial SL %", group = grp_opt, step = 0.1)
+secret      = input.string("API Key", "Secret Key", group = grp_opt)
+exch        = input.string("NSE", "Exchange", group = grp_opt)
+symbol      = input.string("NIFTY", "Symbol", group = grp_opt)
+
+grp_adj     = "Adjustment Settings"
+adj_trigger_type = input.string("High (Tick)", "Adjustment Trigger", options = ["Confirmed Close", "High (Tick)"], group = grp_adj, tooltip = "Trigger adjustments on candle Close or High")
+max_trail_lvl    = input.int(3, "Max Trail Levels", minval=1, group = grp_adj, tooltip = "Stop trailing after price moves X strike steps above Leg 3. Keeps SL fixed at that last level.")
+
+trail_adj_lvl_trigger = input.int(2, "Trigger Adjustments at Trail Level", minval=1, group=grp_adj, tooltip="Level above Leg 3 to trigger specific call/put exits")
+enable_call_adj       = input.bool(false, "Enable Call Adjustment at Level", group=grp_adj, tooltip="If true: Exit all Call Legs, Buy 2x 1-OTM Call")
+enable_put_adj        = input.bool(true, "Enable Put Adjustment at Level", group=grp_adj, tooltip="If true: Exit all Put Legs")
+
+grp_exp     = "Expiry Management"
+expiry_input = input.text_area("2025-09-02\n2025-09-09\n2025-09-16\n2025-09-23\n2025-09-30\n2025-10-07\n2025-10-14\n2025-10-20\n2025-10-28\n2025-11-04\n2025-11-11\n2025-11-18\n2025-11-25\n2025-12-02\n2025-12-09\n2025-12-16\n2025-12-23\n2025-12-30\n2026-01-06\n2026-01-13", "Expiry Dates (YYYY-MM-DD)", group = grp_exp)
+
+grp_exit    = "Exit Settings"
+exit_hour   = input.int(15, "Expiry Square-off Hour", minval=0, maxval=23, group=grp_exit)
+exit_min    = input.int(20, "Expiry Square-off Minute", minval=0, maxval=59, group=grp_exit)
+
+grp_vis     = "Visualization"
+bg_col_show = input.bool(true, "Show Expiry Background", group = grp_vis)
+
+// -------------------------------------------------------------------------
+// STATE MANAGEMENT VARIABLES (Using varip for intrabar persistence)
+// -------------------------------------------------------------------------
+// Determine trade status and strikes
+varip bool    in_position     = false
+varip bool    is_entry_realtime = false
+varip int     entry_bar_idx   = 0
+varip int     entry_time      = 0
+varip float   entry_price     = 0.0
+varip float   current_sl      = 0.0
+varip string  active_expiry   = ""
+varip int     active_expiry_t = 0 // Timestamp of the active expiry
+varip int     adjustment_lvl  = 0 // 0=None, 1=Scen2, 2=Scen3
+
+// Trail Adjustment State
+varip bool    trail_adj_triggered = false
+varip float   s_trail_call        = 0.0 // Strike of the new 2x OTM Call if call adj triggered
+
+// Track trades per expiry to ensure only 1 entry per expiry
+varip string  last_traded_expiry = ""
+
+// Signal Tracking for Late Entries
+varip float   last_buy_price      = 0.0
+varip int     last_buy_idx        = 0
+varip float   signal_highest_high = 0.0
+varip bool    signal_invalidated  = false
+
+// Visualization Objects for Late Entry (Standard var + Array)
+var box[]     entry_box_arr       = array.new_box()
+var line[]    inv_line_arr        = array.new_line()
+var box       temp_box            = na
+var line      temp_line           = na
+
+// Strikes storage
+varip float   s_atm           = 0.0 // Entry ATM
+varip float   s_leg1          = 0.0 // 2 ITM Call
+varip float   s_leg2          = 0.0 // 3 OTM Call
+varip float   s_leg3          = 0.0 // 4 OTM Call
+varip float   s_leg4          = 0.0 // Far Deep OTM Call
+varip float   s_leg5          = 0.0 // Put (Strike of Leg 3)
+varip float   s_leg6          = 0.0 // Put (Strike of Leg 1)
+
+// Adjustment specific strikes
+varip float   s_scen2_put       = 0.0 // Deep OTM Put for Scenario 2
+varip float   s_scen2_sell_call = 0.0 // Sold Call for Scenario 2 (Leg 3 + step)
+varip float   s_scen3_put       = 0.0 // Bought Put for Scenario 3 (Leg 3 strike)
+
+// -------------------------------------------------------------------------
+// HELPER FUNCTIONS
+// -------------------------------------------------------------------------
+// Function to round price to nearest step
+f_round(val, step) =>
+    math.round(val / step) * step
+
+// Function to parse YYYY-MM-DD to unix time (Corrected type casting)
+f_get_date_time(str_date) =>
+    // Simplistic parser assuming YYYY-MM-DD fixed format
+    // str.tonumber returns float, must cast to int for timestamp
+    y = int(str.tonumber(str.substring(str_date, 0, 4)))
+    m = int(str.tonumber(str.substring(str_date, 5, 7)))
+    d = int(str.tonumber(str.substring(str_date, 8, 10)))
+    timestamp(y, m, d, 15, 30) // Set to end of trading day (15:30)
+
+// JSON Generator Helper
+f_json_leg(trans, qty, s_price, sort_id, o_type) =>
+    final_qty = qty * lot_multiplier
+    str = '{"transactionType":"' + trans + '","orderType":"MKT","quantity":"' + str.tostring(final_qty) + 
+          '","exchange":"' + exch + '","symbol":"' + symbol + '","instrument":"OPT","productType":"M","sort_order":"' + str.tostring(sort_id) + 
+          '","price":"0","option_type":"' + o_type + 
+          '","strike_price":"' + str.tostring(s_price) + '.0","expiry_date":"' + active_expiry + '"}'
+    str
+
+// Function to update debug table
+var table info = table.new(position.bottom_right, 2, 6, border_width = 1)
+f_update_table(bool is_day1, table info) =>
+    c_head_bg = color.new(color.blue, 30)
+    c_val_bg  = color.new(color.aqua, 30)
+    c_txt     = color.white
+    if barstate.isfirst        
+        // Header Column
+        table.cell(info, 0, 0, "Expiry",     bgcolor=c_head_bg, text_color=c_txt)
+        table.cell(info, 0, 1, "Status",     bgcolor=c_head_bg, text_color=c_txt)
+        table.cell(info, 0, 2, "Adj Level",  bgcolor=c_head_bg, text_color=c_txt)
+        table.cell(info, 0, 3, "Current SL", bgcolor=c_head_bg, text_color=c_txt)
+    if barstate.isconfirmed
+        // Value Column
+        table.cell(info, 1, 0, active_expiry, bgcolor=c_val_bg, text_color=c_txt)
+        table.cell(info, 1, 1, in_position ? "In Trade (Day " + (is_day1 ? "1" : "2+") + ")" : "Flat", bgcolor=in_position ? color.new(color.green, 30) : color.new(color.red, 30), text_color=c_txt)
+        table.cell(info, 1, 2, str.tostring(adjustment_lvl) + (trail_adj_triggered ? "+" : ""), bgcolor=c_val_bg, text_color=c_txt)
+        table.cell(info, 1, 3, str.tostring(current_sl), bgcolor=c_val_bg, text_color=c_txt)
+
+// -------------------------------------------------------------------------
+// LOGIC: EXPIRY MAPPING & VERTICAL LINES
+// -------------------------------------------------------------------------
+// Split input string into array
+var string[] exp_dates = str.split(expiry_input, "\n")
+var int[] exp_times = array.new_int()
+
+if barstate.isfirst
+    for i = 0 to array.size(exp_dates) - 1
+        d_str = array.get(exp_dates, i)
+        // clean string
+        clean_d = str.replace_all(d_str, " ", "")
+        if clean_d != ""
+            t = f_get_date_time(clean_d)
+            array.push(exp_times, t)
+            // Draw Vertical Dashed Line for Expiry
+            line.new(t, 0, t, 1, xloc = xloc.bar_time, extend = extend.both, color = color.new(color.gray, 50), style = line.style_dashed, width = 1)
+
+// Determine current target expiry
+var int target_expiry_time = 0
+var string target_expiry_str = ""
+
+// Logic: Loop to find the first expiry date >= current time
+if (barstate.isnew or barstate.isfirst) and array.size(exp_times) > 0
+    for i = 0 to array.size(exp_times) - 1
+        t = array.get(exp_times, i)
+        if time <= t
+            target_expiry_time := t
+            target_expiry_str := array.get(exp_dates, i)
+            break
+
+// Valid Trading Day Check: 
+// Rule: Stop trading 1 day prior to expiry.
+bool is_expiry_week = (target_expiry_time - time) < 172800000 
+bool is_trading_day = true
+
+int no_entry_threshold = 0
+if target_expiry_time > 0
+    y_exp = year(target_expiry_time)
+    m_exp = month(target_expiry_time)
+    d_exp = dayofmonth(target_expiry_time)
+    int expiry_midnight = timestamp(y_exp, m_exp, d_exp, 0, 0)
+    no_entry_threshold := expiry_midnight - 86400000
+
+// If Current Time >= 00:00 on Day Before Expiry, block trading
+if time >= no_entry_threshold
+    is_trading_day := false
+
+// VISUALIZATION: Chart Background for Active Expiry
+// Entry Window: Light Blue (95% Transp) | Non-Entry Window: Darker Blue (85% Transp)
+bool show_entry_bg = bg_col_show and target_expiry_str != "" and is_trading_day
+bool show_non_entry_bg = bg_col_show and target_expiry_str != "" and not is_trading_day
+
+bgcolor(show_entry_bg ? color.new(color.blue, 95) : na, title="Entry Window Background")
+bgcolor(show_non_entry_bg ? color.new(color.blue, 85) : na, title="Non-Entry Window Background")
+
+// -------------------------------------------------------------------------
+// LOGIC: SUPERTREND & ENTRY SIGNALS
+// -------------------------------------------------------------------------
+[st_val, st_dir] = ta.supertrend(factor, atrLen)
+// st_dir: -1 is Up (Long), 1 is Down (Short)
+
+// RAW Signal Calculation
+bool raw_buy_signal = false
+float trend_line_val = 0.0
+
+if enableExt
+    // External Source Logic
+    trend_line_val := extSrc
+    if extSrc[1] > close[1] and extSrc < close
+        raw_buy_signal := true
+else
+    // Supertrend Logic
+    trend_line_val := st_val
+    if st_dir == -1 and st_dir[1] == 1
+        raw_buy_signal := true
+
+// Store Last Buy Signal Data
+if raw_buy_signal
+    last_buy_price      := close
+    last_buy_idx        := bar_index
+    signal_highest_high := high
+    signal_invalidated  := false
+    
+    // VISUALIZATION: Box for Tolerance and Line for Invalidation (Optimized Drawing)
+    float tol_price = last_buy_price * (1 + entry_tol / 100)
+    float inv_price = tol_price + strike_step
+    
+    // OPTIMIZATION: Use Setters to avoid delete/new overhead on every tick
+    if na(temp_box)
+        temp_box  := box.new(bar_index, tol_price, bar_index + entry_lookback, enableExt ? extSrc : st_val, border_color = na, bgcolor = color.new(color.green, 85))
+        temp_line := line.new(bar_index, inv_price, bar_index + entry_lookback, inv_price, color = color.red, style = line.style_dashed, width = 1)
+    else
+        box.set_lefttop(temp_box, bar_index, tol_price)
+        box.set_rightbottom(temp_box, bar_index + entry_lookback, enableExt ? extSrc : st_val)
+        line.set_xy1(temp_line, bar_index, inv_price)
+        line.set_xy2(temp_line, bar_index + entry_lookback, inv_price)
+    
+    // If bar is confirmed, push to array history and clear temp handles
+    if barstate.isconfirmed
+        array.push(entry_box_arr, temp_box)
+        array.push(inv_line_arr, temp_line)
+        temp_box  := na
+        temp_line := na
+        
+        if array.size(entry_box_arr) > 50
+            box.delete(array.shift(entry_box_arr))
+            line.delete(array.shift(inv_line_arr))
+
+// Fetch LTF Data for Late Entry Confirmation & Adjustments & Sq Off
+[ltf_o, ltf_h, ltf_c, ltf_t] = request.security_lower_tf(syminfo.tickerid, "5", [open, high, close, time])
+
+// Final Entry Trigger Logic
+// 1. Raw Signal: Occurred now
+// 2. Late Entry: Signal within lookback, Trend still bullish, Price within tolerance, triggered by LTF confirmed candle
+bool entry_signal = false
+bool is_late_entry = false
+
+// Check Late Entry Condition (Using LTF Data)
+// Logic: If we have a pending signal that is not invalidated, check LTF candles for entry criteria
+if not raw_buy_signal and not in_position and (bar_index - last_buy_idx <= entry_lookback) and not signal_invalidated
+    
+    // Check Invalidation First (Did price go too high?)
+    float inv_level = last_buy_price + (2 * strike_step)
+    if high > inv_level
+        signal_highest_high := math.max(signal_highest_high, high)
+        signal_invalidated := true
+        
+    // If still valid, check LTF candles for entry trigger
+    if not signal_invalidated and array.size(ltf_c) > 0
+        for i = 0 to array.size(ltf_c) - 1
+            float c_ltf = array.get(ltf_c, i)
+            float h_ltf = array.get(ltf_h, i)
+            float o_ltf = array.get(ltf_o, i)
+            
+            // Precise Invalidation Check on LTF
+            if h_ltf > inv_level
+                signal_invalidated := true
+                break // Stop checking this bar
+            
+            // Entry Checks:
+            // 1. Trend is still UP (Approximated by CTF trend status)
+            // 2. Price <= Tolerance
+            // 3. Falling Knife Check (Invalidated if price ever went too high previously)
+            bool trend_ok = enableExt ? (close > trend_line_val) : (st_dir == -1)
+            bool price_ok = c_ltf <= last_buy_price * (1 + entry_tol / 100)
+            
+            if trend_ok and price_ok
+                is_late_entry := true
+                break 
+
+// Trigger Entry if Raw Signal OR Valid Late Entry
+entry_signal := raw_buy_signal or is_late_entry
+
+// -------------------------------------------------------------------------
+// LOGIC: ENTRY EXECUTION
+// -------------------------------------------------------------------------
+// Constraints: 
+// 1. Not currently in position.
+// 2. Is a valid trading day (not expiry/pre-expiry).
+// 3. Haven't traded this expiry yet.
+
+if entry_signal and not in_position and is_trading_day and target_expiry_str != last_traded_expiry and target_expiry_str != ""
+    in_position := true
+    is_entry_realtime := barstate.isrealtime
+    active_expiry := target_expiry_str
+    active_expiry_t := target_expiry_time
+    last_traded_expiry := active_expiry
+    entry_price := close
+    entry_time := time
+    entry_bar_idx := bar_index
+    adjustment_lvl := 0
+    trail_adj_triggered := false
+    
+    // Calculate SL
+    current_sl := entry_price * (1 - (sl_pct_in / 100))
+    
+    // Calculate Strikes
+    // ATM rounded to strike_step
+    float atm = f_round(close, strike_step)
+    s_atm := atm
+    
+    // Leg 1: Buy 2 Qty 2 ITM (ATM - 2 steps)
+    s_leg1 := atm - (2 * strike_step)
+    // Leg 2: Sell 2 Qty 3 OTM (ATM + 3 steps)
+    s_leg2 := atm + (3 * strike_step)
+    // Leg 3: Sell 2 Qty 4 OTM (ATM + 4 steps)
+    s_leg3 := atm + (4 * strike_step)
+    // Leg 4: Buy 4 Qty Far Deep OTM (Round ATM to RoundStep + RoundStep?)
+    // Logic from source 50: ATM 26100 -> 26500 (approx 400 pts). 
+    // Logic from source 49: Round of numbers with Roundstrike_step.
+    // We will assume nearest RoundStep upwards + 1 RoundStep to be safe "Far Deep"
+    s_leg4 := f_round(atm, rnd_step) + rnd_step
+    // Leg 5: Buy 1 Put (Strike of Leg 3 - source 47 says "same strike specified on 3rd leg")
+    s_leg5 := s_leg3 // Correction based on source 47
+    // Leg 6: Sell 1 Put (Strike of Leg 1 - source 48)
+    s_leg6 := s_leg1
+
+    // GENERATE JSON ALERT 1
+    // Buy Legs First, then Sell Legs
+    if is_entry_realtime
+        string json_entry = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + 
+             f_json_leg("B", 2, s_leg1, 1, "CE") + ',' + 
+             f_json_leg("B", 4, s_leg4, 2, "CE") + ',' + 
+             f_json_leg("B", 1, s_leg5, 3, "PE") + ',' + 
+             f_json_leg("S", 2, s_leg2, 4, "CE") + ',' + 
+             f_json_leg("S", 2, s_leg3, 5, "CE") + ',' + 
+             f_json_leg("S", 1, s_leg6, 6, "PE") +       
+             ']}'
+        alert(json_entry, alert.freq_once_per_bar_close)
+    
+    label.new(bar_index, low, "ENTRY\n" + active_expiry, color=color.new(color.green, 90), textcolor=color.green, style=label.style_label_up)
+    line.new(bar_index, current_sl, bar_index+10, current_sl, color=color.red, width=2)
+
+// -------------------------------------------------------------------------
+// LOGIC: RISK MANAGEMENT (SL & DYNAMIC SL)
+// -------------------------------------------------------------------------
+// Determine Day Index. 
+// If current bar day > entry bar day, it is Day 2 or later.
+bool is_day_one = true
+if in_position
+    if dayofmonth(time) != dayofmonth(entry_time)
+        is_day_one := false
+
+    // Update SL for Day 2+
+    // Day 2 SL is 50% reduction from slPct (i.e., tighter SL)
+    float target_sl = entry_price * (1 - ((sl_pct_in / 2) / 100))
+    if not is_day_one
+        current_sl := math.max(current_sl, target_sl) // Move SL up to target, never down
+
+// -------------------------------------------------------------------------
+// EXIT LOGIC: SL EXIT & EXPIRY SQUARE OFF
+// -------------------------------------------------------------------------
+
+// Check 1: SL Hit (Realtime Tick Check)
+// Note: This triggers immediately on an unconfirmed bar if price dips below SL.
+bool exit_sl = low < current_sl
+
+// Check 2: Expiry Square Off (Hard Timestamp Check with LTF Precision)
+// Calculate exact Unix timestamp for the SQ Off time on the SPECIFIC Expiry Date of this trade
+int sq_off_timestamp = 0
+if active_expiry_t > 0
+    // active_expiry_t is stored at 15:30 on Expiry Day.
+    // We get 00:00 on Expiry Day and add user hours/mins
+    y_e = year(active_expiry_t)
+    m_e = month(active_expiry_t)
+    d_e = dayofmonth(active_expiry_t)
+    // Add user specific hour/minute offset to midnight
+    sq_off_timestamp := timestamp(y_e, m_e, d_e, exit_hour, exit_min)
+
+// Force exit if current time passes the calculated square off timestamp
+// Use LTF 5-min time array (ltf_t) to catch the moment inside a 30-min bar
+bool exit_sq_off = false
+
+// Standard Bar Time Check
+if (sq_off_timestamp > 0) and (time >= sq_off_timestamp)
+    exit_sq_off := true
+
+// LTF Precision Check (using 5-min time array)
+if not exit_sq_off and sq_off_timestamp > 0 and array.size(ltf_t) > 0
+    for t_5min in ltf_t
+        if t_5min >= sq_off_timestamp
+            exit_sq_off := true
+            break
+
+if in_position and (exit_sl or exit_sq_off)
+    in_position := false
+    
+    // Construct Exit JSON based on Current Adjustment Level
+    string legs = ""
+    
+    // Standard Exit Logic (Level 0, 1, 2)
+    if not trail_adj_triggered
+        if adjustment_lvl == 0
+            legs := f_json_leg("S", 2, s_leg1, 1, "CE") + "," +
+                 f_json_leg("S", 4, s_leg4, 2, "CE") + "," +
+                 f_json_leg("S", 1, s_leg5, 3, "PE") + "," +
+                 f_json_leg("B", 2, s_leg2, 4, "CE") + "," +
+                 f_json_leg("B", 2, s_leg3, 5, "CE") + "," +
+                 f_json_leg("B", 1, s_leg6, 6, "PE")
+                    
+        else if adjustment_lvl == 1
+            legs := f_json_leg("S", 2, s_leg2, 1, "CE") + "," +
+                 f_json_leg("S", 4, s_leg4, 2, "CE") + "," +
+                 f_json_leg("S", 1, s_leg5, 3, "PE") + "," +
+                 f_json_leg("S", 1, s_scen2_put, 4, "PE") + "," +
+                 f_json_leg("B", 2, s_leg3, 5, "CE") + "," +
+                 f_json_leg("B", 2, s_leg6, 6, "PE") + "," +
+                 f_json_leg("B", 2, s_scen2_sell_call, 7, "CE")
+
+        else if adjustment_lvl == 2
+            legs := f_json_leg("S", 2, s_leg2, 1, "CE") + "," +
+                 f_json_leg("S", 4, s_leg4, 2, "CE") + "," +
+                 f_json_leg("S", 1, s_leg5, 3, "PE") + "," +
+                 f_json_leg("S", 1, s_scen2_put, 4, "PE") + "," +
+                 f_json_leg("S", 2, s_scen3_put, 5, "PE") + "," +
+                 f_json_leg("B", 2, s_leg6, 6, "PE")
+                 
+    else
+        string sells = ""
+        string buys  = ""
+        int order_cnt = 1
+        
+        // 1. CALLS
+        if enable_call_adj
+            // We hold 2x New Call (Long). Sell to Close.
+            sells += f_json_leg("S", 2, s_trail_call, order_cnt, "CE") + ","
+            order_cnt += 1
+        else
+            // We hold old calls: Long L2(2), L4(4). Sell to Close.
+            sells += f_json_leg("S", 2, s_leg2, order_cnt, "CE") + ","
+            order_cnt += 1
+            sells += f_json_leg("S", 4, s_leg4, order_cnt, "CE") + ","
+            order_cnt += 1
+            
+        // 2. PUTS
+        if not enable_put_adj
+            // Old Puts still active: Long L5(1), Scen2Put(1), Scen3Put(2). Short L6(2).
+            // Close Longs (Sell)
+            sells += f_json_leg("S", 1, s_leg5, order_cnt, "PE") + ","
+            order_cnt += 1
+            sells += f_json_leg("S", 1, s_scen2_put, order_cnt, "PE") + ","
+            order_cnt += 1
+            sells += f_json_leg("S", 2, s_scen3_put, order_cnt, "PE") + ","
+            order_cnt += 1
+            // Close Shorts (Buy)
+            buys += f_json_leg("B", 2, s_leg6, order_cnt, "PE") + ","
+            order_cnt += 1
+            
+        string comb = sells + buys
+        if str.endswith(comb, ",")
+            comb := str.substring(comb, 0, str.length(comb) - 1)
+            
+        legs := comb
+
+    if is_entry_realtime
+        string json_exit = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + legs + ']}'
+        alert(json_exit, alert.freq_once_per_bar_close)
+    
+    // Visual
+    string txt_lbl = exit_sq_off ? "SQ OFF" : "SL EXIT"
+    label.new(bar_index, low, txt_lbl, color=color.new(color.red, 90), style=label.style_label_up, textcolor=color.red)
+
+// -------------------------------------------------------------------------
+// LOGIC: ADJUSTMENTS (LOWER TIMEFRAME MONITORING)
+// -------------------------------------------------------------------------
+bool adj_triggered_this_bar = false
+
+bool can_adjust = (adjustment_lvl < 2) or (adjustment_lvl == 2 and (enable_call_adj or enable_put_adj) and not trail_adj_triggered)
+
+if in_position and can_adjust and array.size(ltf_c) > 0 and not adj_triggered_this_bar
+    for i = 0 to array.size(ltf_c) - 1
+
+        float check_val = adj_trigger_type == "High (Tick)" ? array.get(ltf_h, i) : array.get(ltf_c, i)
+        
+        // EDGE CASE: DIRECT JUMP
+        if adjustment_lvl == 0 and check_val > s_leg3
+            adjustment_lvl := 2
+            
+            float new_buy_put_scen2 = f_round(s_leg6, rnd_step) - rnd_step
+            s_scen2_put := new_buy_put_scen2
+            s_scen3_put := s_leg3
+            float base_trail = s_leg3 - (2 * strike_step)
+            current_sl := base_trail + (strike_step * 0.30)
+            
+            string direct_legs = f_json_leg("S", 2, s_leg1, 1, "CE") + "," +
+                                 f_json_leg("S", 1, s_leg6, 2, "PE") + "," +
+                                 f_json_leg("B", 4, s_leg2, 3, "CE") + "," +
+                                 f_json_leg("B", 2, s_leg3, 4, "CE") + "," +
+                                 f_json_leg("B", 1, new_buy_put_scen2, 5, "PE") + "," +
+                                 f_json_leg("B", 2, s_leg3, 6, "PE")
+            
+            if is_entry_realtime
+                string json_direct = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + direct_legs + ']}'
+                alert(json_direct, alert.freq_once_per_bar_close)
+            
+            // Visual: Jump Label (Semi-Transparent BG 90)
+            label.new(bar_index, high, "GAP JUMP\n(L0->L2)", color=color.new(color.purple, 90), textcolor=color.purple, style=label.style_label_down)
+            adj_triggered_this_bar := true
+
+        // SCENARIO 2 CHECK
+        else if adjustment_lvl == 0 and check_val > s_leg2 and not adj_triggered_this_bar
+            adjustment_lvl := 1
+            float new_buy_call = s_leg2
+            float new_sell_call = s_leg3 + strike_step
+            float new_sell_put = s_leg6 
+            float new_buy_put = f_round(s_leg6, rnd_step) - rnd_step
+            s_scen2_put := new_buy_put
+            s_scen2_sell_call := new_sell_call
+
+            string adj1_legs = f_json_leg("S", 2, s_leg1, 1, "CE") + "," +
+                               f_json_leg("S", 2, new_sell_call, 2, "CE") + "," +
+                               f_json_leg("S", 1, s_leg6, 3, "PE") + "," +
+                               f_json_leg("B", 2, s_leg2, 4, "CE") + "," +
+                               f_json_leg("B", 2, s_leg2, 5, "CE") + "," +
+                               f_json_leg("B", 1, new_buy_put, 6, "PE")
+
+            if is_entry_realtime
+                string json_adj1 = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + adj1_legs + ']}'
+                alert(json_adj1, alert.freq_once_per_bar_close)
+            
+            // Visual: Adj 1 Label (Semi-Transparent BG 90)
+            label.new(bar_index, high, "ADJ 1", color=color.new(color.orange, 90), textcolor=color.orange, style=label.style_label_down)
+            
+        // SCENARIO 3 CHECK
+        if adjustment_lvl == 1 and check_val > s_leg3 and not adj_triggered_this_bar
+            adjustment_lvl := 2
+            s_scen3_put := s_leg3
+            float base_trail = s_leg3 - (2 * strike_step)
+            current_sl := base_trail + (strike_step * 0.30)
+            
+            string adj2_legs = f_json_leg("B", 2, s_leg3, 1, "CE") + "," +
+                               f_json_leg("B", 2, s_scen2_sell_call, 2, "CE") + "," +
+                               f_json_leg("B", 2, s_leg3, 3, "PE")
+
+            if is_entry_realtime
+                string json_adj2 = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + adj2_legs + ']}'
+                alert(json_adj2, alert.freq_once_per_bar_close)
+            
+            // Visual: Adj 2 Label (Semi-Transparent BG 90)
+            label.new(bar_index, high, "ADJ 2 (Trail)", color=color.new(color.purple, 90), textcolor=color.purple, style=label.style_label_down)
+
+// -------------------------------------------------------------------------
+// LOGIC: TRAILING STOP LOSS & TRAIL LEVEL ADJUSTMENTS (SCENARIO 3)
+// -------------------------------------------------------------------------
+if in_position and adjustment_lvl == 2
+    // Realtime Trail: Uses 'high' of the current bar (updates on every tick)
+    float steps_above = math.floor((high - s_leg3) / strike_step)
+    
+    // Limit trailing to max levels specified by user
+    // If steps_above exceeds max_trail_lvl, calculation effectively freezes at max_trail_lvl height
+    float effective_steps = math.min(steps_above, max_trail_lvl)
+    
+    // ---- 1. TRAIL LEVEL ADJUSTMENT LOGIC ----
+    if (steps_above >= trail_adj_lvl_trigger) and not trail_adj_triggered and (enable_call_adj or enable_put_adj)
+        trail_adj_triggered := true
+        
+        string adj_call_legs = ""
+        string adj_put_legs  = ""
+        int ord_id = 1
+        
+        // Call Side Adjustment
+        // Exit All Calls (Sell L2(2), L4(4)) -> Buy 2x 1-OTM Call
+        if enable_call_adj
+            // Sells (Closing Longs)
+            adj_call_legs += f_json_leg("S", 2, s_leg2, ord_id, "CE") + ","
+            ord_id += 1
+            adj_call_legs += f_json_leg("S", 4, s_leg4, ord_id, "CE") + ","
+            ord_id += 1
+            // Buys (Opening New)
+            // 1-OTM Strike relative to current rounded high
+            float current_strike_base = s_leg3 + (steps_above * strike_step)
+            s_trail_call := current_strike_base + strike_step 
+            adj_call_legs += f_json_leg("B", 2, s_trail_call, ord_id, "CE") + ","
+            ord_id += 1
+            
+        // Put Side Adjustment
+        // Exit All Put Legs (Sell Longs, Buy Shorts)
+        if enable_put_adj
+            // Closing Longs (Sell)
+            adj_put_legs += f_json_leg("S", 1, s_leg5, ord_id, "PE") + ","
+            ord_id += 1
+            adj_put_legs += f_json_leg("S", 1, s_scen2_put, ord_id, "PE") + ","
+            ord_id += 1
+            adj_put_legs += f_json_leg("S", 2, s_scen3_put, ord_id, "PE") + ","
+            ord_id += 1
+            // Closing Shorts (Buy)
+            adj_put_legs += f_json_leg("B", 2, s_leg6, ord_id, "PE") + ","
+            ord_id += 1
+            
+        string full_legs = adj_call_legs + adj_put_legs
+        if str.endswith(full_legs, ",")
+            full_legs := str.substring(full_legs, 0, str.length(full_legs) - 1)
+            
+        if is_entry_realtime
+            string json_trail_adj = '{"secret":"' + secret + '","alertType":"multi_leg_order","order_legs":[' + full_legs + ']}'
+            alert(json_trail_adj, alert.freq_once_per_bar_close)
+        
+        label.new(bar_index, high, "TRAIL ADJ\n(Lvl " + str.tostring(trail_adj_lvl_trigger) + ")", color=color.new(color.teal, 90), textcolor=color.teal, style=label.style_label_down)
+
+    // ---- 2. SL CALCULATION ----
+    float new_sl = 0.0
+    
+    if effective_steps >= 1
+        if effective_steps == 1
+            // Level 1: Trail 2 strikes behind (Continuous from High)
+            new_sl := high - (2.0 * strike_step)
+        else if effective_steps == 2
+            // Level 2: Trail 1.5 strikes behind (Continuous from High)
+            new_sl := high - (1.5 * strike_step)
+        else
+            // Level 3+: Trail 1 strike behind (Continuous from High)
+            new_sl := high - (1.0 * strike_step)
+            
+        // Ratchet Logic: Only move SL up
+        if new_sl > current_sl
+            current_sl := new_sl
+
+// -------------------------------------------------------------------------
+// VISUALIZATION PLOTS
+// -------------------------------------------------------------------------
+plot(in_position ? current_sl : na, "Stop Loss", color=color.red, style=plot.style_linebr)
+plot(in_position ? entry_price : na, "Entry Price", color=color.blue, style=plot.style_linebr)
+
+// VISUALIZATION: Trail Adjustment Trigger Level
+bool show_adj_line = in_position and adjustment_lvl == 2 and (enable_call_adj or enable_put_adj) and not trail_adj_triggered
+float adj_trigger_price = show_adj_line ? (s_leg3 + (trail_adj_lvl_trigger * strike_step)) : na
+plot(adj_trigger_price, "Trail Adj Level", color=color.new(color.fuchsia, 0), style = plot.style_linebr, linewidth=1)
+
+// VISUALIZATION: Trend Line
+// If Supertrend (enableExt=false): Plot ST (Green/Red)
+// If External (enableExt=true): Plot ExtSrc (Gray)
+plot_val = enableExt ? extSrc : st_val
+plot_color = enableExt ? color.gray : (st_dir == -1 ? color.green : color.red)
+plot(plot_val, "Trend Line", color = plot_color, linewidth = 2)
+
+if barstate.islast
+    f_update_table(is_day_one, info)
+
+    //Overview: Why This Strategy
+
+Most option strategies fall into two traps:
+They are too rigid: A "Call Ratio Spread" works great in slow markets but gets destroyed if the market rallies hard.
+
+They are too simple: A simple "Buy Call" suffers from time decay (Theta) if the market chops sideways.
+
+The Adaptive Bull Ratio Strategy [ABRM] solves both. It is a living strategy that "shifts gears" based on price action.
+
+It is called "Adaptive" because it morphs its structure three times during a trade. It starts conservative to harvest Time Decay, but if the market explodes upwards, it "uncaps" itself to ride the trend aggressively.
+
+█ The Entry Philosophy: Why Supertrend?
+
+The default setting uses the Supertrend indicator as the trigger. This is intentional:
+
+Volatility Awareness: Supertrend adapts to market noise using ATR. In high volatility, bands widen to prevent false entries.
+
+Trend Confirmation: Since Phase 1 involves selling options, entering "too early" against a falling market is dangerous. Supertrend forces patience, waiting for a confirmed reversal (Close > Trend Line), ensuring the momentum is actually in your favor before you commit capital.
+
+The "Drift" Benefit: This strategy excels in markets that "drift" upwards. Supertrend identifies these trends while filtering out short-term chop.
+
+Flexibility with External Sources:
+While Supertrend is the default, the strategy is designed to be flexible. You can enable the 'Enable External Source' option in the settings to plug in any custom indicator (e.g., Moving Averages, Parabolic SAR, or a proprietary trendline).
+
+The Golden Rule for External Sources: The script interprets a Bullish Signal whenever your External Source line is below the Close price (Ext Source < Close).
+
+Compatibility: As long as your custom indicator behaves like a support line in an uptrend (plotting below the candles), it will work seamlessly with this strategy's logic.
+
+█ The "Long Only" Rationale: Avoiding the Volatility Trap
+
+Why not trade this on the short side (Puts) during crashes?
+The Volatility Trap (Vega Risk): In Bull markets, Implied Volatility (IV) usually drops, helping your sold options decay faster. In Bear markets, IV explodes (panic). Selling OTM Puts during a crash is dangerous as their value skyrockets, neutralizing gains.
+Velocity Risk: Bear markets crash fast ("Elevator Down"). Prices can blow through adjustment levels faster than the strategy can safely roll down, causing slippage.
+Structural Skew: OTM Puts are inherently more expensive. Buying expensive ITM Puts and selling expensive OTM Puts shifts the breakeven further away, making V-shape recoveries painful.
+
+
+█ How It Works & Stands Out
+This strategy actively transforms risk profiles based on market movement:
+
+Phase 1: The "Safe" Start (Entry)
+
+Setup: Initiates a Call Ratio Spread (Buy 2 ITM, Sell 4 OTM) + Protective Puts.
+Logic: Profits from sideways drift or slow rallies via Time Decay (Theta). The sold options finance the trade.
+
+Phase 2: The "Shift" (Adjustment Level 1)
+
+Trigger: Market moves above Leg 2 (3 OTM Call).
+Action: Rolls Up the position. Exits initial legs, enters new higher legs, and adds a Short Put to finance the roll.
+Impact: Aggressive. You bet the trend is strong enough to support the added downside risk of the short put.
+
+Phase 3: The "Uncap" (Adjustment Level 2)
+
+Trigger: Market moves above Leg 3 (4 OTM Call).
+Action: Exits all Sold Calls.
+Impact: Uncaps profit potential. The trade becomes a Net Long position (Long Calls + Short Puts), allowing you to ride a massive rally without a ceiling.
+
+Phase 4: The "Lock-In" (Optional Trail Adjustment)
+
+Trigger: The market goes parabolic (price rises X levels above Leg 3, configurable in settings).
+Action (If Enabled):
+Call Adj: Exits the Phase 3 calls and buys fresh 1-OTM calls (Rolling Up to lock profits).
+Put Adj: Exits all Put legs (Removing downside risk completely).
+Impact: Maximum Safety. This phase is about "banking" the windfall from a massive rally and leaving a smaller, risk-free runner to capture any final extension.
+
+█ How to Start: A Quick Setup Guide
+
+Step 1: Map Expiry Dates
+
+Manually input your trading expiry dates in Settings -> Expiry Management.
+Format: YYYY-MM-DD (e.g., 2025-12-25). Strict adherence required for DhanHQ.
+
+Step 2: Configure Symbol & Size
+
+Exchange/Symbol: Enter NSE and NIFTY (or your ticker).
+Lot Multiplier: Default is 1. Set to 2 to double all quantities (e.g., Buy 2 becomes Buy 4).
+
+Step 3: Understand Visuals
+
+Entry Window (Light Blue): Strategy is scanning for new trades.
+Non-Entry Window (Dark Blue): Trading blocked (Day before Expiry & Expiry Day). Only management allowed.
+Green Box: Valid Late Entry Zone.
+Red Dashed Line: Invalidation Level (if price touches this, no late entry).
+Fuchsia Line: Trigger level for Special Trail Adjustments (Phase 4).
+
+IMPORTANT: Broker & Technology Heads-Up:
+
+The alerts generated by this script ({"secret": "...", "alertType": "multi_leg_order"...}) are specifically formatted for the DhanHQ webhook structure.
+
+Dhan Users: Plug-and-play.
+Other Brokers: You need middleware (NextLevelBot, Quantiply) to parse the JSON.
+
+█ Risk Disclaimer & Advice
+
+Trading options involves substantial risk.
+
+The Whipsaw Risk: In Phase 2, you are Long Calls and Short Puts. A sharp reversal causes losses on both sides.
+Margin: Selling options requires significant margin. Keep a 15-20% cash buffer to handle adjustments instantly.
+
+Testing: This strategy is optimized for NIFTY Weekly Options. Effectiveness on BankNifty or Stocks is untested and may require parameter tuning.
+
+
+Advice:
+
+Backtest: Use TradingView Replay.
+Paper Trade: Run for at least one expiry cycle before live deployment.
+Consult: Seek professional financial advice before trading.
+
+Practical Tips for Smooth Execution
+
+For a new trader deploying this system, these operational tips are vital:
+
+Capital Buffer: Do not trade at your limit. Always keep 10-15% free cash in your broker account. Adjustments (specifically Phase 2, where you sell an extra Put) require additional margin instantly. If margin is short, the order fails, and your hedge breaks.
+
+Liquidity Awareness: The script trades "Far Deep OTM" options (Leg 4) to reduce margin. On indices like Nifty/BankNifty, this is fine. On individual stocks, these deep strikes might be illiquid. Check the option chain volume before deploying on stocks.
+
+Trust the Process (but Verify): While the algo drives, you are the pilot.
+Check your API connection every morning.
+Ensure the "Entry Window" background color on the chart matches your real-world date.
+Verify that your broker executed all legs of a multi-leg order (partial fills are rare but possible).
+
+
+The "Human" Stop: If major news breaks (e.g., unexpected election results, war announcements), volatility can expand faster than any algo can react. It is acceptable—and smart—to pause the strategy during known "Black Swan" events or earnings releases.
+
+█ Timeframe Selection: The 30-Minute Standard
+
+Critical Requirement: This indicator must be applied to a 30-minute chart.
+
+Why?
+
+Noise Filtering: The Supertrend logic is tuned to capture multi-day trends. Lower timeframes (5m, 15m) are full of "noise"—random fluctuations that look like trend changes but aren't.
+
+Execution Logic (The Hybrid Engine): The script has a built-in "Dual Timeframe" architecture.
+
+Decision Layer (30m): Uses the chart timeframe to decide when to be Bullish or Bearish.
+
+Execution Layer (5m): Internally fetches 5-minute data to manage the how (Adjustments, Late Entries, and precise invalidation).
+
+The Risk of Lower Timeframes: If you run the main chart on 5-minutes, you destroy this hierarchy. You will get too many signals, pay too much brokerage, and the internal logic may behave erratically.
+
+Recommendation: Always keep your TradingView chart interval at 30m. Do not switch to lower timeframes expecting "faster" signals; you will likely just get "false" signals.
+
+█ Testing Scope, Feedback
+
+⚠️ Important Note on Asset Classes:
+
+This strategy logic and the associated strike step calculations have been rigorously tested ONLY on NIFTY Index Options with Weekly Expiry.
+
+BankNifty / Sensex / FinNifty: The volatility characteristics (ATR) and strike intervals of these instruments differ significantly from NIFTY. The effectiveness of this strategy on these other scripts has not been verified and may require different parameter tuning (e.g., strike_step or ATR Length).
+
+Stocks: Individual stock options often lack the liquidity required for the "Deep OTM" legs, leading to potential execution failures.

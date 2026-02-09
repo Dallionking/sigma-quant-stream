@@ -1,0 +1,178 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © BigBeluga
+
+//@version=6
+indicator("Multi-Timeframe Trend Analysis [BigBeluga]", "MTF Trend [BigBeluga]", overlay = true, max_labels_count = 500)
+
+// ＩＮＰＵＴＳ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+tf1 = input.timeframe("60", "TF1", group = "Timeframes")
+tf2 = input.timeframe("120", "TF2", group = "Timeframes")
+tf3 = input.timeframe("180", "TF3", group = "Timeframes")
+tf4 = input.timeframe("240", "TF4", group = "Timeframes")
+tf5 = input.timeframe("300", "TF5", group = "Timeframes")
+
+len1 = input.int(20, "EMA1", group = "EMA")
+len2 = input.int(30, "EMA2", group = "EMA")
+len3 = input.int(40, "EMA3", group = "EMA")
+len4 = input.int(50, "EMA4", group = "EMA")
+len5 = input.int(60, "EMA5", group = "EMA")
+
+col_1 = input.color(color.lime, "", inline = "c")
+col_2 = input.color(color.purple, "", inline = "c")
+
+// }
+// ＣＡＬＣＵＬＡＴＩＯＮＳ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+convert_tf(tf)=>
+    time_in = timeframe.in_seconds(tf) / 60 / 60
+    time_in >= 24 ? tf : time_in >= 1 ? str.tostring(time_in) + "h" : tf + "m"
+
+request(src1, src2, src3, src4, src5, tf)=>
+    float chartTFInMinutes = timeframe.in_seconds("") 
+    float inputTFInMinutes = timeframe.in_seconds(tf) 
+
+    ss1 = src1
+    ss2 = src2
+    ss3 = src3
+    ss4 = src4
+    ss5 = src5
+
+    if chartTFInMinutes != inputTFInMinutes
+        
+        [s1, s2, s3, s4, s5] = request.security(syminfo.tickerid, tf, [src1, src2, src3, src4, src5])  
+
+        ss1 := s1
+        ss2 := s2
+        ss3 := s3
+        ss4 := s4
+        ss5 := s5
+
+    [ss1, ss2, ss3, ss4, ss5]
+
+
+label_(cond1, cond2, color, tooltip)=>
+    if cond1
+        label.new(bar_index, low, "🢁", color = color(na), textcolor = color, style = label.style_label_up, tooltip = tooltip)
+    if cond2
+        label.new(bar_index, high, "🢃", color = color(na), textcolor = color, style = label.style_label_down, tooltip = tooltip)
+
+timeframes_trend(table dash1, row, ema_1, ema_2, ema_3, ema_4, ema_5)=>
+
+    col1 = ema_1 ? col_1 : col_2
+    col2 = ema_2 ? col_1 : col_2
+    col3 = ema_3 ? col_1 : col_2
+    col4 = ema_4 ? col_1 : col_2
+    col5 = ema_5 ? col_1 : col_2
+
+    dash1.cell(row,1, ema_1 ? "🢁" : "🢃", text_color = color.new(col1, 30), bgcolor = color.new(col1, 85))
+    dash1.cell(row,2, ema_2 ? "🢁" : "🢃", text_color = color.new(col2, 25), bgcolor = color.new(col2, 80))
+    dash1.cell(row,3, ema_3 ? "🢁" : "🢃", text_color = color.new(col3, 20), bgcolor = color.new(col3, 75))
+    dash1.cell(row,4, ema_4 ? "🢁" : "🢃", text_color = color.new(col4, 15), bgcolor = color.new(col4, 70))
+    dash1.cell(row,5, ema_5 ? "🢁" : "🢃", text_color = color.new(col5, 10), bgcolor = color.new(col5, 65))
+
+
+ema1 = ta.ema(close, len1)
+ema2 = ta.ema(close, len2)
+ema3 = ta.ema(close, len3)
+ema4 = ta.ema(close, len4)
+ema5 = ta.ema(close, len5)
+
+ema_1_ = ema1 > ema1[2]
+ema_2_ = ema2 > ema2[2]
+ema_3_ = ema3 > ema3[2]
+ema_4_ = ema4 > ema4[2]
+ema_5_ = ema5 > ema5[2] 
+
+[ema_tf1, ema_tf2, ema_tf3, ema_tf4, ema_tf5] = request(ema_1_, ema_2_, ema_3_, ema_4_, ema_5_, tf1)
+[ema_tf11, ema_tf22, ema_tf33, ema_tf44, ema_tf55] = request(ema_1_, ema_2_, ema_3_, ema_4_, ema_5_, tf2)
+[ema_tf111, ema_tf222, ema_tf333, ema_tf444, ema_tf555] = request(ema_1_, ema_2_, ema_3_, ema_4_, ema_5_, tf3)
+[ema_tf1111, ema_tf2222, ema_tf3333, ema_tf4444, ema_tf5555] = request(ema_1_, ema_2_, ema_3_, ema_4_, ema_5_, tf4)
+[ema_tf11111, ema_tf22222, ema_tf33333, ema_tf44444, ema_tf55555] = request(ema_1_, ema_2_, ema_3_, ema_4_, ema_5_, tf5)
+
+
+// }
+// ＰＬＯＴ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+if barstate.islast
+    dash = table.new(position.top_right, 10, 10)
+
+    dash.cell(0,0, "", text_color = color.gray)
+    dash.cell(1,0, convert_tf(tf1), text_color = chart.fg_color)
+    dash.cell(2,0, convert_tf(tf2), text_color = chart.fg_color)
+    dash.cell(3,0, convert_tf(tf3), text_color = chart.fg_color)
+    dash.cell(4,0, convert_tf(tf4), text_color = chart.fg_color)
+    dash.cell(5,0, convert_tf(tf5), text_color = chart.fg_color)
+
+    dash.cell(0,1, "EMA1 - " + str.tostring(len1), text_color = chart.fg_color)
+    dash.cell(0,2, "EMA2 - " + str.tostring(len2), text_color = chart.fg_color)
+    dash.cell(0,3, "EMA3 - " + str.tostring(len3), text_color = chart.fg_color)
+    dash.cell(0,4, "EMA4 - " + str.tostring(len4), text_color = chart.fg_color)
+    dash.cell(0,5, "EMA5 - " + str.tostring(len5), text_color = chart.fg_color)
+
+    timeframes_trend(dash, 1, ema_tf1, ema_tf11, ema_tf111, ema_tf1111, ema_tf11111)
+    timeframes_trend(dash, 2, ema_tf2, ema_tf22, ema_tf222, ema_tf2222, ema_tf22222)
+    timeframes_trend(dash, 3, ema_tf3, ema_tf33, ema_tf333, ema_tf3333, ema_tf33333)
+    timeframes_trend(dash, 4, ema_tf4, ema_tf44, ema_tf444, ema_tf4444, ema_tf44444)
+    timeframes_trend(dash, 5, ema_tf5, ema_tf55, ema_tf555, ema_tf5555, ema_tf55555)
+
+col1 = ema_1_ ? col_1 : col_2
+col2 = ema_2_ ? col_1 : col_2
+col3 = ema_3_ ? col_1 : col_2
+col4 = ema_4_ ? col_1 : col_2
+col5 = ema_5_ ? col_1 : col_2
+
+p1 = plot(ema1, "EMA1", color = color.new(col1, 80))
+p2 = plot(ema2, "EMA2", color = color.new(col2, 60))
+p3 = plot(ema3, "EMA3", color = color.new(col3, 40))
+p4 = plot(ema4, "EMA4", color = color.new(col4, 20))
+p5 = plot(ema5, "EMA5", color = color.new(col5, 0))
+
+fill(p1, p2, color.new(col1, 80))
+fill(p2, p3, color.new(col2, 60))
+fill(p3, p4, color.new(col3, 40))
+fill(p4, p5, color.new(col4, 20))
+
+label_(ta.crossover(ema1, ema1[2]), ta.crossunder(ema1, ema1[2]), color.new(col1, 80), "EMA1")
+label_(ta.crossover(ema2, ema2[2]), ta.crossunder(ema2, ema2[2]), color.new(col2, 60), "EMA2")
+label_(ta.crossover(ema3, ema3[2]), ta.crossunder(ema3, ema3[2]), color.new(col3, 40), "EMA3")
+label_(ta.crossover(ema4, ema4[2]), ta.crossunder(ema4, ema4[2]), color.new(col4, 20), "EMA4")
+label_(ta.crossover(ema5, ema5[2]), ta.crossunder(ema5, ema5[2]), color.new(col5, 0), "EMA5")
+// }
+
+//
+Multi-Timeframe Trend Analysis [BigBeluga]
+A powerful trend-following dashboard designed to help traders monitor and compare trend direction across multiple higher timeframes. By analyzing EMA conditions from five customizable timeframes, this tool gives a clear visual breakdown of short- to long-term trend alignment.
+
+🔵Key Features:
+Multi-Timeframe EMA Dashboard:
+➣ Displays a table in the top-right corner showing trend direction across 5 user-defined timeframes.
+➣ Each row shows whether ema is rising or falling its corresponding EMA for that timeframe.
+➣ Green arrows (🢁) indicate uptrends, purple arrows (🢃) signal downtrends.
+snapshot
+snapshot
+Custom Timeframe Selection:
+➣ Traders can input any 5 timeframes (e.g., 1h, 2h, 3h, etc.) with individual EMA lengths for flexible trend mapping.
+➣ The tool auto-adjusts to match and align external timeframe EMAs to the current chart for seamless overlay.
+snapshot
+Dynamic Chart Arrows:
+➣ On-chart arrows mark when EMA rising or falling EMAs from the current chart timeframe.
+➣ Each EMA arrows has a unique transparency level—shorter EMA arrows are more transparent, longer EMA arrows are more vivid. (Hover Mouse over the arrow to see which EMAs it is)
+snapshot
+Gradient EMA Plotting:
+➣ All five EMAs are plotted with gradually increasing opacity.
+➣ Gradient fills between EMAs enhance visual structure, making it easier to track convergence/divergence.
+snapshot
+
+
+🔵Usage:
+Trend Confirmation: Use the dashboard to confirm multi-timeframe trend alignment before entering trades.
+Entry Filtering: Avoid countertrend trades by spotting when higher timeframes disagree with the current one.
+Momentum Insight: Track the transition of arrows from lighter to stronger opacity to visualize trend shifts over time.
+snapshot
+Scalping or Swinging: Customize timeframes depending on your strategy—from intraday scalps to longer-term swings.
+
+
+Multi-Timeframe Trend Analysis [BigBeluga] is the ultimate visual companion for traders who want clarity on how price behaves across multiple time horizons. With its smart EMA mapping and dashboard feedback, it keeps you aligned with dominant trend directions and transition zones at all times.
+Apr 16, 2025
+Release Notes
+--
+Apr 17, 2025
+Release Notes

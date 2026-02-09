@@ -1,0 +1,191 @@
+{
+  "name": "Sigma-Quant Stream",
+  "version": "2.1.0",
+  "description": "Autonomous Quant Research Team - Mission-based infinite discovery and validation",
+  "created": "2026-01-18T00:00:00Z",
+  "updated": "2026-02-08T00:00:00Z",
+  "architecture": "mission-based",
+
+  "activeProfile": "profiles/futures.json",
+
+  "marketProfiles": {
+    "futures": {
+      "path": "profiles/futures.json",
+      "displayName": "CME Futures (ES, NQ, YM, GC)",
+      "marketType": "futures"
+    },
+    "crypto-cex": {
+      "path": "profiles/crypto-cex.json",
+      "displayName": "Crypto CEX (Centralized Exchange)",
+      "marketType": "crypto-cex"
+    },
+    "crypto-dex-hyperliquid": {
+      "path": "profiles/crypto-dex-hyperliquid.json",
+      "displayName": "Crypto DEX (Hyperliquid)",
+      "marketType": "crypto-dex"
+    }
+  },
+
+  "defaults": {
+    "panes": 4,
+    "mode": "research",
+    "maxHours": 24,
+    "notify": "elevenlabs"
+  },
+
+  "modes": {
+    "research": {
+      "sessionTimeout": 1800,
+      "budgetCap": 50.00,
+      "dataSource": "sample"
+    },
+    "production": {
+      "sessionTimeout": 3600,
+      "budgetCap": 100.00,
+      "dataSource": "live"
+    }
+  },
+
+  "workers": {
+    "count": 4,
+    "types": ["researcher", "converter", "backtester", "optimizer"],
+    "layout": {
+      "pane_0": "researcher",
+      "pane_1": "converter",
+      "pane_2": "backtester",
+      "pane_3": "optimizer"
+    },
+    "prompts": {
+      "researcher": "prompts/researcher.md",
+      "converter": "prompts/converter.md",
+      "backtester": "prompts/backtester.md",
+      "optimizer": "prompts/optimizer.md"
+    }
+  },
+
+  "queues": {
+    "hypotheses": "queues/hypotheses/",
+    "toConvert": "queues/to-convert/",
+    "toBacktest": "queues/to-backtest/",
+    "toOptimize": "queues/to-optimize/"
+  },
+
+  "patterns": {
+    "whatWorks": "patterns/what-works.md",
+    "whatFails": "patterns/what-fails.md",
+    "indicatorCombos": "patterns/indicator-combos.md",
+    "propFirmGotchas": "patterns/prop-firm-gotchas.md"
+  },
+
+  "sessionSummaries": {
+    "pane_0": "session-summaries/pane-0.md",
+    "pane_1": "session-summaries/pane-1.md",
+    "pane_2": "session-summaries/pane-2.md",
+    "pane_3": "session-summaries/pane-3.md"
+  },
+
+  "validation": {
+    "strategy": {
+      "minSharpe": 1.0,
+      "goodSharpe": 1.5,
+      "maxSharpe": 3.0,
+      "maxDrawdown": 0.20,
+      "goodMaxDrawdown": 0.15,
+      "rejectMaxDrawdown": 0.30,
+      "minTrades": 100,
+      "goodMinTrades": 200,
+      "maxWinRate": 0.80,
+      "maxOosDecay": 0.30,
+      "rejectOosDecay": 0.50
+    },
+    "propFirmMinPassing": 3
+  },
+
+  "output": {
+    "directories": {
+      "strategies": {
+        "good": "output/strategies/good",
+        "underReview": "output/strategies/under_review",
+        "rejected": "output/strategies/rejected",
+        "propFirmReady": "output/strategies/prop_firm_ready"
+      },
+      "indicators": {
+        "converted": "output/indicators/converted",
+        "created": "output/indicators/created"
+      },
+      "combinations": "output/combinations",
+      "backtests": "output/backtests",
+      "researchLogs": "output/research-logs"
+    },
+    "retentionDays": {
+      "rejected": 7,
+      "underReview": 30,
+      "researchLogs": 90
+    }
+  },
+
+  "recovery": {
+    "checkpointAfterEachSession": true,
+    "checkpointDir": "checkpoints",
+    "maxConsecutiveFailures": 3,
+    "autoResume": true
+  },
+
+  "coordination": {
+    "costTrackerFile": "cost-tracker.json",
+    "fileLocking": true
+  },
+
+  "notifications": {
+    "elevenlabs": {
+      "enabled": true,
+      "voice": "rachel",
+      "events": [
+        "strategy_promoted_to_good",
+        "prop_firm_validation_complete",
+        "budget_cap_reached",
+        "all_panes_complete"
+      ]
+    },
+    "fallback": "say"
+  },
+
+  "mcpTools": {
+    "required": [
+      "mcp_exa_web_search_exa",
+      "mcp_exa_get_code_context_exa",
+      "mcp_exa_crawling_exa",
+      "mcp_Ref_ref_search_documentation",
+      "mcp_Ref_ref_read_url"
+    ],
+    "optional": [
+      "mcp_exa_deep_researcher_start",
+      "mcp_perplexity-ask_perplexity_ask",
+      "mcp_mcp-playwright_*",
+      "mcp_firecrawl_*"
+    ]
+  },
+
+  "subagents": {
+    "available": [
+      {"name": "sigma-quant", "invoke": "@sigma-quant", "purpose": "Quantitative analysis"},
+      {"name": "sigma-researcher", "invoke": "@sigma-researcher", "purpose": "Deep research"},
+      {"name": "base-hit-optimizer", "invoke": "@base-hit-optimizer", "purpose": "Loss MFE optimization"},
+      {"name": "sigma-risk", "invoke": "@sigma-risk", "purpose": "Prop firm compliance"},
+      {"name": "sigma-executor", "invoke": "@sigma-executor", "purpose": "Code implementation"},
+      {"name": "sigma-reviewer", "invoke": "@sigma-reviewer", "purpose": "Code review"},
+      {"name": "sigma-distiller", "invoke": "@sigma-distiller", "purpose": "Knowledge synthesis at session end"}
+    ]
+  },
+
+  "skills": {
+    "quant": [
+      "knowledge-synthesis",
+      "pattern-analysis",
+      "prop-firm-rules",
+      "strategy-research",
+      "tradebench-engine",
+      "technical-indicators"
+    ]
+  }
+}

@@ -1,0 +1,901 @@
+{
+  "meta": {
+    "paneId": 6,
+    "workerType": "knowledge_distiller",
+    "targetIterations": 100,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:54:59.210906",
+    "lastUpdatedAt": "2026-01-18T16:54:59.211023",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "distill-001",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:00:55Z"
+    },
+    {
+      "id": "distill-004",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:12:48Z"
+    },
+    {
+      "id": "distill-008",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Document patterns found in momentum",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:18:30Z"
+    },
+    {
+      "id": "distill-013",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:24:17Z"
+    },
+    {
+      "id": "distill-014",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 3 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:34:45Z"
+    },
+    {
+      "id": "distill-018",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Distill learnings from today's backtests",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:35:30Z"
+    },
+    {
+      "id": "distill-022",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:35:58Z"
+    },
+    {
+      "id": "distill-030",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:36:29Z"
+    },
+    {
+      "id": "distill-031",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:36:52Z"
+    },
+    {
+      "id": "distill-035",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Document patterns found in momentum",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:17Z"
+    },
+    {
+      "id": "distill-036",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 3 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:37:48Z"
+    },
+    {
+      "id": "distill-043",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 3 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:38:19Z"
+    },
+    {
+      "id": "distill-002",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in momentum",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:38:48Z"
+    },
+    {
+      "id": "distill-007",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:39:12Z"
+    },
+    {
+      "id": "distill-009",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:39:40Z"
+    },
+    {
+      "id": "distill-019",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in mean reversion",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:08Z"
+    },
+    {
+      "id": "distill-025",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:34Z"
+    },
+    {
+      "id": "distill-027",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:40:55Z"
+    },
+    {
+      "id": "distill-028",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Distill learnings from today's backtests",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:18Z"
+    },
+    {
+      "id": "distill-029",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:43Z"
+    },
+    {
+      "id": "distill-037",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 1 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:10Z"
+    },
+    {
+      "id": "distill-042",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:38Z"
+    },
+    {
+      "id": "distill-046",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Document patterns found in prop firm rules",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:10Z"
+    },
+    {
+      "id": "distill-010",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 1 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:49Z"
+    },
+    {
+      "id": "distill-011",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:14Z"
+    },
+    {
+      "id": "distill-017",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:40Z"
+    },
+    {
+      "id": "distill-026",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:15Z"
+    },
+    {
+      "id": "distill-032",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Document patterns found in prop firm rules",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:41Z"
+    },
+    {
+      "id": "distill-038",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:06Z"
+    },
+    {
+      "id": "distill-040",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:36Z"
+    },
+    {
+      "id": "distill-044",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Distill learnings from rejected strategies",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:07Z"
+    },
+    {
+      "id": "distill-045",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 1 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:44Z"
+    },
+    {
+      "id": "distill-047",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Document patterns found in mean reversion",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:13Z"
+    },
+    {
+      "id": "distill-048",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Document patterns found in prop firm rules",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:43Z"
+    },
+    {
+      "id": "distill-049",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 3 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:13Z"
+    },
+    {
+      "id": "distill-006",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Distill learnings from today's backtests",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:54Z"
+    },
+    {
+      "id": "distill-012",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 1 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:23Z"
+    },
+    {
+      "id": "distill-023",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Distill learnings from today's backtests",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:58Z"
+    },
+    {
+      "id": "distill-024",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:51:38Z"
+    },
+    {
+      "id": "distill-034",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Document patterns found in mean reversion",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:00Z"
+    },
+    {
+      "id": "distill-041",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:22Z"
+    },
+    {
+      "id": "distill-050",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:46Z"
+    },
+    {
+      "id": "distill-003",
+      "type": "distill_knowledge",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:53:06Z"
+    },
+    {
+      "id": "distill-005",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Document patterns found in mean reversion",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-015",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 1 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from rejected strategies. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-016",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Create knowledge summary from 7 days of research",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-020",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-021",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Document patterns found in volatility",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-033",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Document patterns found in momentum",
+      "description": "Analyze all outputs in stream-quant/output/ from today's backtests. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    },
+    {
+      "id": "distill-039",
+      "type": "distill_knowledge",
+      "status": "pending",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Distill learnings from research logs",
+      "description": "Analyze all outputs in stream-quant/output/ from research logs. Create daily summary in output/research-logs/daily/2026-01-18-summary.md. Document: strategies tested, pass rate, top performers, rejections & learnings. Update what-works.md and what-fails.md in patterns/.",
+      "expectedOutput": "output/research-logs/daily/2026-01-18-summary.md",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/research-logs/{date}-distilled.md"
+        }
+      ]
+    }
+  ]
+}

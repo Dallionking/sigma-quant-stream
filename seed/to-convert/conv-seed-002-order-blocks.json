@@ -1,0 +1,24 @@
+{
+  "id": "conv-seed-002",
+  "name": "SMC Order Blocks",
+  "description": "Smart Money Concepts Order Blocks - identifies institutional supply/demand zones",
+  "source_url": "https://www.tradingview.com/script/wf-example-orderblocks/",
+  "pinescript_version": "v5",
+  "complexity": "high",
+  "priority": 1,
+  "reason": "Popular SMC concept, identifies structural support/resistance based on institutional order flow",
+  "indicatorType": "overlay",
+  "parameters": {
+    "lookback": 50,
+    "swing_length": 5,
+    "mitigation_type": "close",
+    "show_internal": true
+  },
+  "signals": {
+    "bullish_ob": "Last down candle before impulsive up move",
+    "bearish_ob": "Last up candle before impulsive down move",
+    "mitigation": "Price returns to OB zone"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

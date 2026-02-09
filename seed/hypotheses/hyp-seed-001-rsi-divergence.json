@@ -1,0 +1,28 @@
+{
+  "id": "hyp-seed-001",
+  "title": "RSI Divergence on ES 5min",
+  "hypothesis": "Bullish divergence (price makes lower low while RSI makes higher low) predicts short-term reversal in ES futures",
+  "counterparty": "Retail traders trapped in downtrend who panic sell at lows",
+  "edgeSource": "Behavioral bias - late shorts covering when momentum wanes",
+  "markets": ["ES", "NQ"],
+  "timeframes": ["5m", "15m"],
+  "parameterCount": 3,
+  "priority": 1,
+  "source": "De Prado 'Advances in Financial ML' + TradingView community backtests",
+  "references": [
+    "De Prado Chapter 5: Meta-labeling",
+    "Wilder's original RSI paper"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.0, 2.0],
+    "winRateRange": [0.50, 0.65],
+    "tradesPerMonth": 15
+  },
+  "testConditions": {
+    "lookbackPeriods": [14, 21],
+    "divergenceWindow": [5, 10],
+    "confirmationBars": 1
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

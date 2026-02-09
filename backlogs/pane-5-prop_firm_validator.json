@@ -1,0 +1,118 @@
+{
+  "worker_type": "prop_firm_validator",
+  "pane_id": 5,
+  "last_updated": "2026-01-18T23:50:00Z",
+  "tasks": [
+    {
+      "id": "validate-001",
+      "type": "validate_prop_firm",
+      "title": "Validate RSI divergence strategy against all prop firms",
+      "priority": 1,
+      "passes": true,
+      "completed_at": "2026-01-18T23:35:00Z",
+      "result": {
+        "firms_tested": 14,
+        "firms_passing": 13,
+        "pass_rate": "13/14",
+        "deployment_ready": true,
+        "recommended_firms": ["takeprofittrader", "apex_trader_funding", "ticktick_trader"],
+        "output_file": "output/strategies/prop_firm_validations/validate-001_rsi_divergence.json",
+        "consistency_score": "24%",
+        "failing_firm": "uprofit"
+      },
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ]
+    },
+    {
+      "id": "validate-002",
+      "type": "validate_prop_firm",
+      "title": "Validate VWAP bounce strategy against all prop firms",
+      "priority": 2,
+      "passes": false,
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ]
+    },
+    {
+      "id": "validate-003",
+      "type": "validate_prop_firm",
+      "title": "Validate opening range breakout strategy against all prop firms",
+      "priority": 3,
+      "passes": false,
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ]
+    },
+    {
+      "id": "validate-004",
+      "type": "validate_prop_firm",
+      "title": "Validate momentum against all 14 prop firms",
+      "priority": 4,
+      "passes": true,
+      "completed_at": "2026-01-18T00:41:00Z",
+      "result": {
+        "firms_tested": 14,
+        "firms_passing": 14,
+        "pass_rate": "14/14",
+        "deployment_ready": true,
+        "recommended_firms": ["takeprofittrader", "topstep", "apex_trader_funding"],
+        "output_file": "output/strategies/prop_firm_ready/momentum_x_validation_result.json"
+      },
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ]
+    },
+    {
+      "id": "validate-005",
+      "type": "deployment",
+      "title": "Prepare validated strategies for deployment",
+      "priority": 5,
+      "passes": false,
+      "acceptanceCriteria": [
+        {
+          "type": "integration_complete",
+          "requiredSteps": ["api_registration", "config_validation", "live_test"]
+        }
+      ]
+    },
+    {
+      "id": "validate-042",
+      "type": "validate_prop_firm",
+      "title": "Validate momentum against all 14 prop firms (multi-variant)",
+      "priority": 5,
+      "parallel_group": 4,
+      "passes": true,
+      "completed_at": "2026-01-18T23:50:00Z",
+      "result": {
+        "firms_tested": 14,
+        "firms_passing": 14,
+        "pass_rate": "14/14",
+        "deployment_ready": true,
+        "symbols_validated": ["NQ", "ES"],
+        "recommended_firms": ["takeprofittrader", "apex_trader_funding", "ticktick_trader"],
+        "preferred_symbol": "NQ",
+        "consistency_score": "12.5%",
+        "output_file": "output/strategies/prop_firm_validations/validate-042_momentum.json"
+      },
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ]
+    }
+  ]
+}

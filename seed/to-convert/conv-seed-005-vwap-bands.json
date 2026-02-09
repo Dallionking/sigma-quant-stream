@@ -1,0 +1,23 @@
+{
+  "id": "conv-seed-005",
+  "name": "VWAP with Standard Deviation Bands",
+  "description": "Volume-weighted average price with configurable standard deviation bands",
+  "source_url": "https://www.tradingview.com/script/example-vwap-bands/",
+  "pinescript_version": "v5",
+  "complexity": "low",
+  "priority": 1,
+  "reason": "Essential institutional reference - mean reversion and trend confirmation",
+  "indicatorType": "overlay",
+  "parameters": {
+    "anchor": "session",
+    "bands": [1.0, 2.0, 3.0],
+    "source": "hlc3"
+  },
+  "signals": {
+    "above_vwap": "Bullish bias",
+    "below_vwap": "Bearish bias",
+    "band_touch": "Mean reversion opportunity"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

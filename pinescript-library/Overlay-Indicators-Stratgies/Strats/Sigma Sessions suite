@@ -1,0 +1,2249 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Sigma Algo
+
+//@version=5
+InitCapital = 100000
+InitPosition = 100
+InitCommission = 0
+InitPyramidMax = 10
+CalcOnorderFills = true
+strategy("Sigma Session's Suite Bot",
+ 
+ overlay=true,
+ max_bars_back=541,
+ pyramiding=InitPyramidMax,
+ initial_capital=InitCapital,
+ default_qty_type=strategy.fixed,
+ default_qty_value = 1,
+ commission_type=strategy.commission.percent, 
+ commission_value=InitCommission, 
+ calc_on_order_fills=CalcOnorderFills, 
+ precision=6, 
+ max_lines_count=500, 
+ max_labels_count=500, 
+ max_boxes_count=500,
+ close_entries_rule="ANY"
+ 
+ )
+//User has to agree to have the indi loading on the chart.
+
+var user_consensus = input.string(defval="", title="TYPE 'agree' TO ADD TO CHART. \nTrading involves a risk of loss, and may not be appropriate for every one. Please consider carefully if trading is appropriate for you. Past performance is not indicative of future results. Any and all indicator signals provided by SigmaAlgo.io Systems are for educational purposes only. Is your responsibility knowing that by typing 'agree' you are accepting that the AI would trade on your behalf at your own risk. \nRELEASE INFORMATION 2021 © SigmaAlgo.io", confirm = true, group="consensus")
+var icc = false
+if user_consensus == "agree"
+    icc := true
+else
+    icc := false
+
+var label lbl_agree_err = na
+if not icc 
+    label.delete(lbl_agree_err)
+    lbl_agree_err := label.new(bar_index + 5, close, color = color.red, style=label.style_label_left, textcolor = color.white, text="Type 'agree' first in order to show the algo!")
+
+
+// MM SETTINGS
+//{
+
+g_bot = "-----------------System's Bot Settings-----------------"
+
+i_disc = input.bool(true, "Discord Signals",inline = "bot00", group = g_bot)
+i_pc_id = input.string("", "|Pineconnector ID", tooltip = "bot00", group = g_bot)
+i_adj_sym = input.bool(false, "Adjust Broker Symbol",group = g_bot,inline="bot11")
+broker_sym = input.string("", "|Custom Symbol ",group = g_bot,inline="bot11")
+v_broker_sym = i_adj_sym?broker_sym:syminfo.ticker
+
+dec_d = input.int(0, title = "Asset decimal digits on Broker used", group = "BOT", tooltip="Specify asset decimal digits (Non Forex only)" )
+round_pips(pips_unrounded) =>
+    float rounded = 0
+    if (syminfo.type == "forex")
+        rounded   := pips_unrounded / syminfo.mintick / 10
+    else // other instrument
+        rounded   := pips_unrounded
+    rounded
+    
+
+tradeMon = input.bool(false, "Mon", group=g_bot, inline="trdays1")
+tradeTue = input.bool(false, "Tue", group=g_bot, inline="trdays1")
+tradeWed = input.bool(false, "Wed <- Disable Trade", group=g_bot, inline="trdays1")
+tradeThu = input.bool(false, "Thu", group=g_bot, inline="trdays2")
+tradeFri = input.bool(false, "Fri", group=g_bot, inline="trdays2")
+tradeSat = input.bool(false, "Sat", group=g_bot, inline="trdays2")
+tradeSun = input.bool(false, "Sun", group=g_bot, inline="trdays3")
+Fri_hfilt = input.bool(false, "Hour To Close Friday", group = g_bot, inline="frifilt")
+hourToCloseFriday = input.float(title=":", defval=17, group = g_bot, inline="frifilt")
+start = input.time(timestamp("2022-10-01T00:00:00"), title="Backtest: Start Date",group=g_bot, tooltip = "Backtesting start date.")
+finish = input.time(timestamp("3000-12-12T00:00:00"), title="Finish Date",group=g_bot, tooltip = "Backtesting end date.")
+backtest() => 
+    time >= start and time <= finish ? true : false 
+var inTradingZone = false
+inTradingZone:=(tradeMon? dayofweek!=dayofweek.monday : true) and (tradeTue? dayofweek!=dayofweek.tuesday : true) and (tradeWed? dayofweek!=dayofweek.wednesday : true) and (tradeThu? dayofweek!=dayofweek.thursday : true) and (tradeFri? dayofweek!=dayofweek.friday : true) and (tradeSat? dayofweek!=dayofweek.saturday : true) and (tradeSun? dayofweek!=dayofweek.sunday : true)  
+inTradingZone:=Fri_hfilt? (dayofweek==dayofweek.friday and (hour > hourToCloseFriday-1)?false:inTradingZone):inTradingZone
+
+
+// g_rtbl= "------------System's Visual Recap Tables------------"
+// i_ps_rtable = input.bool(true, "Active Position", group = g_rtbl, inline = "rtbl0")
+// r_show_tbl=input.bool(true, "Components <- Tables", group=g_rtbl,inline="rtbl0")
+// r_tbl_theme = input.string("White Background", "Theme", ["Black Background", "White Background", "Transparent White", "Transparent Black"], group=g_rtbl,inline="rtbl1")
+// r_tbl_size = input.string(size.auto, "Size", [size.auto, size.tiny, size.small, size.normal, size.large, size.huge], group=g_rtbl,inline="rtbl1")
+
+
+g_mm = "------------System's Signals------------"
+
+i_show_sign = input.bool(true, "Show Signals", group = g_mm, inline = "salgomm0")
+i_tdir = input.string("Both", "|Trade Direction Bias", ["Both", "Just Long", "Just Short"], group = g_mm, inline = "salgomm0")
+
+i_tz = input.string('America/Los_Angeles', title='Timezone', options=["America/Los_Angeles", "America/New_York","America/El_Salvador","America/Chicago","America/Argentina/Buenos_Aires","Europe/London","Europe/Berlin","Europe/Moscow","Asia/Dubai","Asia/Ashkhabad","Asia/Bangkok","Asia/Hong_Kong","Asia/Tokyo","Australia/Brisbane","Australia/Sydney", "Asia/Kolkata"], group=g_mm, tooltip = "Make sure your chart timezone matches with the option selected to have reliable sessions identification.", inline = "sess1")
+string tz = (i_tz == "NO" or i_tz == '') ? na : i_tz
+
+
+s_bull_col= input.color(#00fdf5, "Colors: Long", group=g_mm,inline="rcols2")
+s_bear_col = input.color(#c56fff, "Short", group=g_mm,inline="rcols2")
+
+
+i_ps_tracker = input.bool(true, "Active Position Visual Tracker", group = g_mm, inline = "salgomm11")
+i_ps_tracker_lbls = input.string("Short", "|Additional Labels", ["None", "Short", "Full"] , group = g_mm, inline = "salgomm11")
+
+i_core_acct = input.float(100000.0, "Initial Balance", group = g_mm, inline = "salgocore0")
+i_core_rpt = input.float(2.0, "Risk Per Trade", group = g_mm, inline = "salgocore0")
+
+//Trailing Stop Inputs
+g_mm_ts = "---------------Traling Stop Inputs---------------"
+
+i_ts_be = input.string("BreakEven After TP1", "BreakEven Stop", ["None","BreakEven After TP1","BreakEven After TP2","BreakEven After TP3"], group = g_mm_ts, inline = "salgomm6")
+i_ts_beoff = input.float(5.0, "BreakEven Stop Offset", group = g_mm_ts, inline = "salgomm6")
+i_ts_on = input.string("Trailing Stop After TPs", "Trailing Stop", ["None","Trailing Stop Since Beginning","Trailing Stop After TP1","Trailing Stop After TP2","Trailing Stop After TP3","Trailing Stop After TPs"], group = g_mm_ts, inline = "salgomm6")
+
+
+i_ts_t = input.string("Pips/Points", "Trailing Stop Type", ["ATR", "Pips/Points"], group = g_mm_ts, inline = "salgomm7")
+
+i_ts_atrl = input.int(14, "If ATR: Len", group = g_mm_ts, inline = "salgomm8", minval = 2)
+i_ts_atrm = input.float(2.0, "Mult" , group = g_mm_ts, inline = "salgomm8", minval=0.1, step = 0.1)
+
+i_ts_atrv=ta.atr(i_ts_atrl)*i_ts_atrm
+
+i_ts_ppr = input.float(50.0, "If Pips/Points: Amount" , group = g_mm_ts, inline = "salgomm9", minval=0.1, step = 0.1)
+i_ts_pp = syminfo.type=='forex'? syminfo.currency == 'JPY'?i_ts_ppr/100:i_ts_ppr/10000 : i_ts_ppr
+
+g_mm_al = "---------------General Alerts---------------"
+
+i_buy_al = input.bool(true, "Buy", group = g_mm_al, inline="genalerts0")
+i_sell_al = input.bool(true, "Sell", group = g_mm_al, inline="genalerts0")
+
+i_sl_al = input.bool(true, "SL", group = g_mm_al, inline="genalerts")
+i_tp1_al = input.bool(true, "TP1", group = g_mm_al, inline="genalerts")
+i_tp2_al = input.bool(true, "TP2", group = g_mm_al, inline="genalerts")
+i_tp3_al = input.bool(true, "TP3", group = g_mm_al, inline="genalerts")
+i_slbe_al = input.bool(true, "BreakEven Update", group = g_mm_al, inline="genalerts1")
+i_ts_al = input.bool(true, "Trailing Stop Update", group = g_mm_al, inline="genalerts1")
+
+
+
+//}
+
+
+// //Session Breakouts 
+// //{
+
+
+// //Settings
+// //{
+// g_sessions = "------------Session Breakouts Settings------------"
+
+// bool SHOW = timeframe.isintraday and timeframe.multiplier <= 60 and timeframe.multiplier >= 1
+// int LOOKBACKMINS = (9 * 60)
+// // Timezone
+// i_sess_s = input.bool(false, "Show", group = g_sessions, inline = "sess0")
+// i_sess1mn = input.bool(false, "1 Minute Focus", group = g_sessions, inline = "sess0")
+// i_sess_r = input.session("0530-1200", "|Session Definition", group = g_sessions, inline = "sess0")
+// i_tz = input.string('America/Los_Angeles', title='Timezone', options=["America/Los_Angeles", "America/New_York","America/El_Salvador","America/Chicago","America/Argentina/Buenos_Aires","Europe/London","Europe/Berlin","Europe/Moscow","Asia/Dubai","Asia/Ashkhabad","Asia/Bangkok","Asia/Hong_Kong","Asia/Tokyo","Australia/Brisbane","Australia/Sydney", "Asia/Kolkata"], group=g_sessions, tooltip = "Make sure your chart timezone matches with the option selected to have reliable sessions identification.", inline = "sess1")
+// string tz = (i_tz == "NO" or i_tz == '') ? na : i_tz
+
+// i_show_history = input.string("YES", 'History', options=["YES", "NO"], group=g_sessions, inline = "sess1") == "YES"
+
+// i_bullcol = input.color(color.aqua, "Colors: High", group=g_sessions, inline = "sesscol")
+// i_bearcol = input.color(color.purple, "Low", group=g_sessions, inline = "sesscol")
+// i_midcol = input.color(color.gray, "Mid", group=g_sessions, inline = "sesscol")
+// //}
+
+// //Calculations
+// //{
+
+
+
+// var insess = 0
+// insess := time != time[1] ? time(timeframe.period, i_sess_r, tz):insess
+
+// var sess_status = 0
+// sess_status:= na(insess) ? 0 : 1
+// sess_init = false
+
+// var sess_h = 0.0
+// var sess_l = 0.0
+// var sess_mid = 0.0
+
+// sess_h1mn = request.security_lower_tf(syminfo.tickerid , '1', high)
+// sess_l1mn = request.security_lower_tf(syminfo.tickerid , '1', low)
+
+// if sess_status!=0 and time!=time[1]
+//     if sess_status[1]==0 and (array.size(sess_h1mn)>0 and array.size(sess_l1mn)>0)
+//         sess_init:=true
+
+//         sess_h:=not i_sess1mn?high:array.get(sess_h1mn,0)
+//         sess_l:=not i_sess1mn?low:array.get(sess_l1mn,0)
+//         sess_mid:=(sess_h+sess_l)/2
+
+
+// plot(sess_status==1 and i_sess_s? sess_h : na, "Session's H", i_bullcol, 1, plot.style_linebr)
+// plot(sess_status==1 and i_sess_s? sess_l : na, "Session's L", i_bearcol, 1, plot.style_linebr)
+// plot(sess_status==1 and i_sess_s? sess_mid : na, "Session's Median", i_midcol, 1, plot.style_linebr)
+
+
+
+
+
+
+// //}
+
+
+// //}
+
+//NY Session
+//{
+
+g_nys = "------------NY SESSION RANGE------------"
+
+i_sess_ny_s = input.bool(true, "NY Session", group = g_nys, inline = "ny00")
+i_sess_ny_l = input.bool(false, "Just Last", group = g_nys, inline = "ny00")
+
+i_sess_ny_allret = input.bool(true,"Allow Retest Entries",group = g_nys, inline = "ny00--") 
+i_sess_ny_allretv = input.float(50.0, "|Pinbar Wick Definition",group = g_nys, inline = "ny00--")
+
+i_sess_ny_r = input.session("0530-1200", "Session Definition", group = g_nys, inline = "ny01")
+i_sess_ny_s_al = input.bool(true, "Session Starts", group = g_nys, inline = "ny00..")
+i_sess_ny_e_al = input.bool(true, "Session Ends <- Alerts", group = g_nys, inline = "ny00..")
+
+i_sess_ny_or_r = input.session("0630-1100", "Opening Range Definition", group = g_nys, inline = "ny01")
+i_sess_ny_or_s_al = input.bool(true, "Range Starts", group = g_nys, inline = "ny01..")
+i_sess_ny_or_e_al = input.bool(true, "Range Ends <- Alerts", group = g_nys, inline = "ny01..")
+
+i_sess_ny_ml = input.bool(true, "Session Midline", group = g_nys, inline = "ny000")
+i_sess_ny_mlstyr = input.string("Dashed", "|Style", ["Solid","Dashed","Dotted"] ,group = g_nys, inline = "ny000")
+i_sess_ny_mlsty = i_sess_ny_mlstyr=="Solid"?line.style_solid:i_sess_ny_mlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_ny_orml = input.bool(true, "Opening Range Midline", group = g_nys, inline = "ny0010")
+i_sess_ny_ormlstyr = input.string("Dotted", "|Style", ["Solid","Dashed","Dotted"] ,group = g_nys, inline = "ny0010")
+i_sess_ny_ormlsty = i_sess_ny_ormlstyr=="Solid"?line.style_solid:i_sess_ny_ormlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_ny_col = input.color(color.red, "Colors: Session", group = g_nys, inline = "ny02")
+i_sess_ny_mltr = input.int(100,"Transp",0,100,group = g_nys, inline = "ny02")
+
+i_sess_ny_orcol = input.color(color.rgb(245, 243, 231), "Opening Range", group = g_nys, inline = "ny02/")
+i_sess_ny_ormltr = input.int(100,"Transp",0,100,group = g_nys, inline = "ny02/")
+
+
+
+i_sess_ny_evs = input.bool(true,"Absolute Confirmation",group = g_nys, inline = "ny00022")
+
+i_sess_ny_fov = input.bool(false,"Filter Out Volatility (FOV)",group = g_nys, inline = "ny022")
+i_sess_ny_fovm = input.float(2.0,"|Mult",group = g_nys, inline = "ny022")
+
+i_sess_ny_fov_v = ta.atr(14)*i_sess_ny_fovm
+
+i_sess_ny_bs = input.bool(true,"Body Supremacy (BS)",group = g_nys, inline = "ny033")
+i_sess_ny_bsa = input.float(50.0,"|Amount",group = g_nys, inline = "ny033")
+
+i_sess_ny_mts = input.bool(false,"Sigma Oscillator",group = g_nys, inline = "ny0333")
+i_sess_ny_mtsp = input.bool(false,"Sigma Trend <- Filters",group = g_nys, inline = "ny0333")
+
+
+i_sess_ny_tp2 = input.bool(true, "TP2",group = g_nys, inline = "ny044")
+i_sess_ny_tp3 = input.bool(true, "TP3",group = g_nys, inline = "ny044")
+i_sess_ny_slt = input.string("Pips/Points", "|SL Type", ["ATR", "Pips/Points", "Range","Range Aggressive"],group = g_nys, inline = "ny044")
+
+i_sess_ny_sl_ppr = input.float(50.0, "SL Pips/Points",group = g_nys, inline = "ny055")
+i_sess_ny_sl_pp = syminfo.type=='forex'? syminfo.currency == 'JPY'?i_sess_ny_sl_ppr/100:i_sess_ny_sl_ppr/10000 : i_sess_ny_sl_ppr
+
+i_sess_ny_sl_atrl = input.int(14, "SL ATR: Len",group = g_nys, inline = "ny066")
+i_sess_ny_sl_atrm = input.float(2.0, "Mult",group = g_nys, inline = "ny066")
+
+i_sess_ny_slatrv = ta.atr(i_sess_ny_sl_atrl)*i_sess_ny_sl_atrm
+
+i_sess_ny_rr =  input.float(0.5, "RR:TP1" , group = g_nys, inline = "ny07777", minval=0.1, step = 0.1)
+i_sess_ny_rr2 =  input.float(1.0, "TP2" , group = g_nys, inline = "ny07777", minval=0.1, step = 0.1)
+i_sess_ny_rr3 =  input.float(2.0, "RR:TP3" , group = g_nys, inline = "ny07777", minval=0.1, step = 0.1)
+
+i_sess_ny_tp1ps = input.float(25.0, "PS:TP1" , group = g_nys, inline = "ny0777788", minval=0.1, step = 0.1)
+i_sess_ny_tp2ps = input.float(25.0, "TP2" , group = g_nys, inline = "ny0777788", minval=0.1, step = 0.1)
+i_sess_ny_tp3ps = input.float(25.0, "PS:TP3" , group = g_nys, inline = "ny0777799", minval=0.1, step = 0.1)
+i_sess_ny_tsps = input.float(25.0, "TS" , group = g_nys, inline = "ny0777799", minval=0.1, step = 0.1)
+
+
+
+
+//CALCS
+//{
+
+var in_ny_sess = 0
+var ny_sess_status = 0
+var in_ny_or_sess = 0
+var ny_or_sess_status = 0
+var ny_sess_box = array.new_box(),var ny_sess_or_box = array.new_box()
+var ny_sess_line = array.new_line(),var ny_sess_or_line = array.new_line()
+var ny_or_t=0.0,var ny_or_b=0.0
+
+in_ny_sess := time != time[1] ? time(timeframe.period, i_sess_ny_r, tz):in_ny_sess
+ny_sess_status:= na(in_ny_sess) ? 0 : 1
+in_ny_or_sess := time != time[1] ? time(timeframe.period, i_sess_ny_or_r, tz):in_ny_or_sess
+ny_or_sess_status:= na(in_ny_or_sess) ? 0 : 1
+
+if ny_sess_status==1 and ny_sess_status[1]!=1 and i_sess_ny_s and icc  
+
+    if i_sess_ny_s_al
+        alert("⏰ New York Session Just Started ⏰ \n👁‍🗨 Breakout Suite Waiting For The Opening Range To Form. ⌛⌛⌛", alert.freq_once_per_bar_close)
+
+    if i_sess_ny_l and array.size(ny_sess_box)==1 and array.size(ny_sess_or_box)==1
+        box.delete(array.remove(ny_sess_box,0))
+        box.delete(array.remove(ny_sess_or_box,0))
+        if i_sess_ny_ml
+            line.delete(array.remove(ny_sess_line,0))
+        if i_sess_ny_orml
+            line.delete(array.remove(ny_sess_or_line,0))
+
+    array.push(ny_sess_box,box.new(time, high, time, low, i_sess_ny_col, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_ny_col,i_sess_ny_mltr)))
+    if i_sess_ny_ml
+        array.push(ny_sess_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_ny_mlsty, color=i_sess_ny_col ))  
+    if ny_or_sess_status==1 and ny_or_sess_status[1]!=1
+        array.push(ny_sess_or_box,box.new(time, high, time, low, i_sess_ny_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_ny_orcol,i_sess_ny_ormltr), extend=extend.right))   
+        ny_or_t:=high
+        ny_or_b:=low
+        if i_sess_ny_orml
+            array.push(ny_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_ny_ormlsty, color=i_sess_ny_orcol ))  
+
+        if i_sess_ny_or_s_al
+            alert("⏰ New York Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+  
+
+else if ny_sess_status==1 and ny_sess_status[1]==1 and i_sess_ny_s  and icc and array.size(ny_sess_box)>0 
+
+    sess_top = box.get_top(array.get(ny_sess_box, array.size(ny_sess_box)-1))
+    sess_bot = box.get_bottom(array.get(ny_sess_box, array.size(ny_sess_box)-1))
+    chg_mid = false
+    if high>sess_top
+        box.set_top(array.get(ny_sess_box, array.size(ny_sess_box)-1),high)
+        chg_mid:=true
+    
+    if low<sess_bot
+        box.set_bottom(array.get(ny_sess_box, array.size(ny_sess_box)-1),low)
+        chg_mid:=true
+
+    box.set_right(array.get(ny_sess_box, array.size(ny_sess_box)-1),time)
+
+    if i_sess_ny_ml
+        line.set_x2(array.get(ny_sess_line, array.size(ny_sess_line)-1),time)
+        if chg_mid
+            line.set_y1(array.get(ny_sess_line, array.size(ny_sess_line)-1),(box.get_top(array.get(ny_sess_box, array.size(ny_sess_box)-1))+box.get_bottom(array.get(ny_sess_box, array.size(ny_sess_box)-1)))/2)
+            line.set_y2(array.get(ny_sess_line, array.size(ny_sess_line)-1),(box.get_top(array.get(ny_sess_box, array.size(ny_sess_box)-1))+box.get_bottom(array.get(ny_sess_box, array.size(ny_sess_box)-1)))/2)
+    
+    if ny_or_sess_status==1 and ny_or_sess_status[1]!=1
+        array.push(ny_sess_or_box,box.new(time, high, time, low, i_sess_ny_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_ny_orcol,i_sess_ny_ormltr), extend=extend.right))   
+        ny_or_t:=high
+        ny_or_b:=low
+        if i_sess_ny_orml
+            array.push(ny_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_ny_ormlsty, color=i_sess_ny_orcol ))    
+        if i_sess_ny_or_s_al
+            alert("⏰ New York Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+  
+    else if ny_or_sess_status==1 and ny_or_sess_status[1]==1
+        box.set_right(array.get(ny_sess_or_box, array.size(ny_sess_or_box)-1),time)
+        if i_sess_ny_orml
+            line.set_x2(array.get(ny_sess_or_line, array.size(ny_sess_or_line)-1),time)
+        
+
+if ny_or_sess_status!=1 and ny_or_sess_status[1]==1 and array.size(ny_sess_or_box)>0
+    box.set_extend(array.get(ny_sess_or_box, array.size(ny_sess_or_box)-1),extend.none)
+    if i_sess_ny_or_e_al
+        alert("⏰ New York Session's Opening Range Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+
+if ny_sess_status!=1 and ny_sess_status[1]==1 and array.size(ny_sess_box)>0
+    if i_sess_ny_e_al
+        alert("⏰ New York Session Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+//}
+
+
+//}
+
+//LON Session
+//{
+
+g_lons = "------------LON SESSION RANGE------------"
+
+i_sess_lon_s = input.bool(false, "Lon Session", group = g_lons, inline = "lon00")
+i_sess_lon_l = input.bool(false, "Just Last", group = g_lons, inline = "lon00")
+
+i_sess_lon_allret = input.bool(true,"Allow Retest Entries",group = g_lons, inline = "lon00--") 
+i_sess_lon_allretv = input.float(50.0, "|Pinbar Wick Definition",group = g_lons, inline = "lon00--")
+
+
+i_sess_lon_r = input.session("0030-0400", "Session Definition", group = g_lons, inline = "lon01")
+
+i_sess_lon_s_al = input.bool(true, "Session Starts", group = g_lons, inline = "lon00..")
+i_sess_lon_e_al = input.bool(true, "Session Ends <- Alerts", group = g_lons, inline = "lon00..")
+
+
+i_sess_lon_or_r = input.session("0130-0300", "Opening Definition", group = g_lons, inline = "lon01")
+i_sess_lon_or_s_al = input.bool(true, "Range Starts", group = g_lons, inline = "lon01..")
+i_sess_lon_or_e_al = input.bool(true, "Range Ends <- Alerts", group = g_lons, inline = "lon01..")
+
+
+i_sess_lon_ml = input.bool(false, "Session Midline", group = g_lons, inline = "lon000")
+i_sess_lon_mlstyr = input.string("Dashed", "|Style", ["Solid","Dashed","Dotted"] ,group = g_lons, inline = "lon000")
+i_sess_lon_mlsty = i_sess_lon_mlstyr=="Solid"?line.style_solid:i_sess_lon_mlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_lon_orml = input.bool(false, "Opening Range Midline", group = g_lons, inline = "lon0010")
+i_sess_lon_ormlstyr = input.string("Dotted", "|Style", ["Solid","Dashed","Dotted"] ,group = g_lons, inline = "lon0010")
+i_sess_lon_ormlsty = i_sess_lon_ormlstyr=="Solid"?line.style_solid:i_sess_lon_ormlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_lon_col = input.color(color.rgb(29, 110, 63), "Colors: Session", group = g_lons, inline = "lon02")
+i_sess_lon_mltr = input.int(100,"Transp",0,100,group = g_lons, inline = "lon02")
+
+i_sess_lon_orcol = input.color(color.rgb(7, 248, 128), "Opening Range", group = g_lons, inline = "lon02/")
+i_sess_lon_ormltr = input.int(100,"Transp",0,100,group = g_lons, inline = "lon02/")
+
+i_sess_lon_evs = input.bool(true,"Absolute Confirmation",group = g_lons, inline = "lon00022")
+
+i_sess_lon_fov = input.bool(true,"Filter Out Volatility (FOV)",group = g_lons, inline = "lon022")
+i_sess_lon_fovm = input.float(2.0,"|Mult",group = g_lons, inline = "lon022")
+
+i_sess_lon_fov_v = ta.atr(14)*i_sess_lon_fovm
+
+i_sess_lon_bs = input.bool(true,"Body Supremacy (BS)",group = g_lons, inline = "lon033")
+i_sess_lon_bsa = input.float(80.0,"|Amount",group = g_lons, inline = "lon033")
+
+i_sess_lon_mts = input.bool(false,"Sigma Oscillator",group = g_lons, inline = "lon0333")
+i_sess_lon_mtsp = input.bool(true,"Sigma Trend<- Filters",group = g_lons, inline = "lon0333")
+
+i_sess_lon_tp2 = input.bool(true, "TP2",group = g_lons, inline = "lon044")
+i_sess_lon_tp3 = input.bool(true, "TP3",group = g_lons, inline = "lon044")
+i_sess_lon_slt = input.string("ATR", "|SL Type", ["ATR", "Pips/Points", "Range","Range Aggressive"],group = g_lons, inline = "lon044")
+
+i_sess_lon_sl_ppr = input.float(50.0, "SL Pips/Points",group = g_lons, inline = "lon055")
+i_sess_lon_sl_pp = syminfo.type=='forex'? syminfo.currency == 'JPY'?i_sess_lon_sl_ppr/100:i_sess_lon_sl_ppr/10000 : i_sess_lon_sl_ppr
+
+i_sess_lon_sl_atrl = input.int(14, "SL ATR: Len",group = g_lons, inline = "lon066")
+i_sess_lon_sl_atrm = input.float(2.0, "Mult",group = g_lons, inline = "lon066")
+
+i_sess_lon_slatrv = ta.atr(i_sess_lon_sl_atrl)*i_sess_lon_sl_atrm
+
+i_sess_lon_rr =  input.float(0.5, "RR:TP1" , group = g_lons, inline = "lon07777", minval=0.1, step = 0.1)
+i_sess_lon_rr2 =  input.float(1.0, "TP2" , group = g_lons, inline = "lon07777", minval=0.1, step = 0.1)
+i_sess_lon_rr3 =  input.float(2.0, "RR:TP3" , group = g_lons, inline = "lon07777", minval=0.1, step = 0.1)
+
+i_sess_lon_tp1ps = input.float(25.0, "PS:TP1" , group = g_lons, inline = "lon0777788", minval=0.1, step = 0.1)
+i_sess_lon_tp2ps = input.float(25.0, "TP2" , group = g_lons, inline = "lon0777788", minval=0.1, step = 0.1)
+i_sess_lon_tp3ps = input.float(25.0, "PS:TP3" , group = g_lons, inline = "lon0777799", minval=0.1, step = 0.1)
+i_sess_lon_tsps = input.float(25.0, "TS" , group = g_lons, inline = "lon0777799", minval=0.1, step = 0.1)
+
+
+//CALCS
+//{
+
+
+var in_lon_sess = 0
+var lon_sess_status = 0
+var in_lon_or_sess = 0
+var lon_or_sess_status = 0
+var lon_sess_box = array.new_box(),var lon_sess_or_box = array.new_box()
+var lon_sess_line = array.new_line(),var lon_sess_or_line = array.new_line()
+var lon_or_t=0.0,var lon_or_b=0.0
+
+in_lon_sess := time != time[1] ? time(timeframe.period, i_sess_lon_r, tz):in_lon_sess
+lon_sess_status:= na(in_lon_sess) ? 0 : 1
+in_lon_or_sess := time != time[1] ? time(timeframe.period, i_sess_lon_or_r, tz):in_lon_or_sess
+lon_or_sess_status:= na(in_lon_or_sess) ? 0 : 1
+
+
+if lon_sess_status==1 and lon_sess_status[1]!=1 and i_sess_lon_s  and icc 
+    
+    if i_sess_lon_s_al
+        alert("⏰ London Session Just Started ⏰ \n👁‍🗨 Breakout Suite Waiting For The Opening Range To Form. ⌛⌛⌛", alert.freq_once_per_bar_close)
+    
+    if i_sess_lon_l and array.size(lon_sess_box)==1 and array.size(lon_sess_or_box)==1
+        box.delete(array.remove(lon_sess_box,0))
+        box.delete(array.remove(lon_sess_or_box,0))
+        if i_sess_lon_ml
+            line.delete(array.remove(lon_sess_line,0))
+        if i_sess_lon_orml
+            line.delete(array.remove(lon_sess_or_line,0))
+
+    array.push(lon_sess_box,box.new(time, high, time, low, i_sess_lon_col, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_lon_col,i_sess_lon_mltr)))
+    if i_sess_lon_ml
+        array.push(lon_sess_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_lon_mlsty, color=i_sess_lon_col ))        
+    if lon_or_sess_status==1 and lon_or_sess_status[1]!=1
+        array.push(lon_sess_or_box,box.new(time, high, time, low, i_sess_lon_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_lon_orcol,i_sess_lon_ormltr), extend=extend.right))   
+        lon_or_t:=high
+        lon_or_b:=low
+        if i_sess_lon_orml
+            array.push(lon_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_lon_ormlsty, color=i_sess_lon_orcol ))    
+
+        if i_sess_lon_or_s_al
+            alert("⏰ London Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+  
+else if lon_sess_status==1 and lon_sess_status[1]==1 and i_sess_lon_s  and icc  and array.size(lon_sess_box)>0 
+
+    sess_top = box.get_top(array.get(lon_sess_box, array.size(lon_sess_box)-1))
+    sess_bot = box.get_bottom(array.get(lon_sess_box, array.size(lon_sess_box)-1))
+    chg_mid = false
+    if high>sess_top
+        box.set_top(array.get(lon_sess_box, array.size(lon_sess_box)-1),high)
+        chg_mid := true
+    if low<sess_bot
+        box.set_bottom(array.get(lon_sess_box, array.size(lon_sess_box)-1),low)
+        chg_mid := true
+
+    box.set_right(array.get(lon_sess_box, array.size(lon_sess_box)-1),time)
+    if i_sess_lon_ml
+        line.set_x2(array.get(lon_sess_line, array.size(lon_sess_line)-1),time)
+        if chg_mid
+            line.set_y1(array.get(lon_sess_line, array.size(lon_sess_line)-1),(box.get_top(array.get(lon_sess_box, array.size(lon_sess_box)-1))+box.get_bottom(array.get(lon_sess_box, array.size(lon_sess_box)-1)))/2)
+            line.set_y2(array.get(lon_sess_line, array.size(lon_sess_line)-1),(box.get_top(array.get(lon_sess_box, array.size(lon_sess_box)-1))+box.get_bottom(array.get(lon_sess_box, array.size(lon_sess_box)-1)))/2)
+    
+    if lon_or_sess_status==1 and lon_or_sess_status[1]!=1
+        array.push(lon_sess_or_box,box.new(time, high, time, low, i_sess_lon_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_lon_orcol,i_sess_lon_ormltr), extend=extend.right))   
+        lon_or_t:=high
+        lon_or_b:=low
+        if i_sess_lon_orml
+            array.push(lon_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_lon_ormlsty, color=i_sess_lon_orcol ))  
+        if i_sess_lon_or_s_al
+            alert("⏰ London Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+    
+    else if lon_or_sess_status==1 and lon_or_sess_status[1]==1
+        box.set_right(array.get(lon_sess_or_box, array.size(lon_sess_or_box)-1),time)
+        if i_sess_lon_orml
+            line.set_x2(array.get(lon_sess_or_line, array.size(lon_sess_or_line)-1),time)
+        
+if lon_or_sess_status!=1 and lon_or_sess_status[1]==1 and array.size(lon_sess_or_box)>0
+    box.set_extend(array.get(lon_sess_or_box, array.size(lon_sess_or_box)-1),extend.none)
+
+    if i_sess_lon_or_e_al
+        alert("⏰ London Session's Opening Range Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+
+if lon_sess_status!=1 and lon_sess_status[1]==1 and array.size(lon_sess_box)>0
+    if i_sess_lon_e_al
+        alert("⏰ London Session Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+
+//}
+
+
+
+//}
+
+//tok Session
+//{
+
+g_toks = "------------TOK SESSION RANGE------------"
+
+i_sess_tok_s = input.bool(false, "Tok Session", group = g_toks, inline = "tok00")
+i_sess_tok_l = input.bool(false, "Just Last", group = g_toks, inline = "tok00")
+
+i_sess_tok_allret = input.bool(true,"Allow Retest Entries",group = g_toks, inline = "tok00--") 
+i_sess_tok_allretv = input.float(50.0, "|Pinbar Wick Definition",group = g_toks, inline = "tok00--")
+
+
+i_sess_tok_r = input.session("1300-1700", "Session Definition", group = g_toks, inline = "tok01")
+i_sess_tok_s_al = input.bool(true, "Session Starts", group = g_toks, inline = "tok00..")
+i_sess_tok_e_al = input.bool(true, "Session Ends <- Alerts", group = g_toks, inline = "tok00..")
+
+
+i_sess_tok_or_r = input.session("0130-0300", "Opening Definition", group = g_toks, inline = "tok01")
+i_sess_tok_or_s_al = input.bool(true, "Range Starts", group = g_toks, inline = "tok01..")
+i_sess_tok_or_e_al = input.bool(true, "Range Ends <- Alerts", group = g_toks, inline = "tok01..")
+
+
+
+i_sess_tok_ml = input.bool(false, "Session Midline", group = g_toks, inline = "tok000")
+i_sess_tok_mlstyr = input.string("Dashed", "|Style", ["Solid","Dashed","Dotted"] ,group = g_toks, inline = "tok000")
+i_sess_tok_mlsty = i_sess_tok_mlstyr=="Solid"?line.style_solid:i_sess_tok_mlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_tok_orml = input.bool(false, "Opening Range Midline", group = g_toks, inline = "tok0010")
+i_sess_tok_ormlstyr = input.string("Dotted", "|Style", ["Solid","Dashed","Dotted"] ,group = g_toks, inline = "tok0010")
+i_sess_tok_ormlsty = i_sess_tok_ormlstyr=="Solid"?line.style_solid:i_sess_tok_ormlstyr=="Dashed"?line.style_dashed:line.style_dotted
+
+i_sess_tok_col = input.color(color.rgb(117, 2, 88), "Colors: Session", group = g_toks, inline = "tok02")
+i_sess_tok_mltr = input.int(100,"Transp",0,100,group = g_toks, inline = "tok02")
+
+i_sess_tok_orcol = input.color(color.rgb(240, 31, 194), "Opening Range", group = g_toks, inline = "tok02/")
+i_sess_tok_ormltr = input.int(100,"Transp",0,100,group = g_toks, inline = "tok02/")
+
+i_sess_tok_evs = input.bool(true,"Absolute Confirmation",group = g_toks, inline = "tok00022")
+
+i_sess_tok_fov = input.bool(true,"Filter Out Volatility (FOV)",group = g_toks, inline = "tok022")
+i_sess_tok_fovm = input.float(2.0,"|Mult",group = g_toks, inline = "tok022")
+
+i_sess_tok_fov_v = ta.atr(14)*i_sess_tok_fovm
+
+i_sess_tok_bs = input.bool(true,"Body Supremacy (BS)",group = g_toks, inline = "tok033")
+i_sess_tok_bsa = input.float(80.0,"|Amount",group = g_toks, inline = "tok033")
+
+i_sess_tok_mts = input.bool(false,"Sigma Oscillator",group = g_toks, inline = "tok0333")
+i_sess_tok_mtsp = input.bool(true,"Sigma Trend<- Filters",group = g_toks, inline = "tok0333")
+
+
+i_sess_tok_tp2 = input.bool(true, "TP2",group = g_toks, inline = "tok044")
+i_sess_tok_tp3 = input.bool(true, "TP3",group = g_toks, inline = "tok044")
+i_sess_tok_slt = input.string("ATR", "|SL Type", ["ATR", "Pips/Points", "Range","Range Aggressive"],group = g_toks, inline = "tok044")
+
+i_sess_tok_sl_ppr = input.float(50.0, "SL Pips/Points",group = g_toks, inline = "tok055")
+i_sess_tok_sl_pp = syminfo.type=='forex'? syminfo.currency == 'JPY'?i_sess_tok_sl_ppr/100:i_sess_tok_sl_ppr/10000 : i_sess_tok_sl_ppr
+
+i_sess_tok_sl_atrl = input.int(14, "SL ATR: Len",group = g_toks, inline = "tok066")
+i_sess_tok_sl_atrm = input.float(2.0, "Mult",group = g_toks, inline = "tok066")
+
+i_sess_tok_slatrv = ta.atr(i_sess_tok_sl_atrl)*i_sess_tok_sl_atrm
+
+i_sess_tok_rr =  input.float(0.5, "RR:TP1" , group = g_toks, inline = "tok07777", minval=0.1, step = 0.1)
+i_sess_tok_rr2 =  input.float(1.0, "TP2" , group = g_toks, inline = "tok07777", minval=0.1, step = 0.1)
+i_sess_tok_rr3 =  input.float(2.0, "RR:TP3" , group = g_toks, inline = "tok07777", minval=0.1, step = 0.1)
+
+i_sess_tok_tp1ps = input.float(25.0, "PS:TP1" , group = g_toks, inline = "tok0777788", minval=0.1, step = 0.1)
+i_sess_tok_tp2ps = input.float(25.0, "TP2" , group = g_toks, inline = "tok0777788", minval=0.1, step = 0.1)
+i_sess_tok_tp3ps = input.float(25.0, "PS:TP3" , group = g_toks, inline = "tok0777799", minval=0.1, step = 0.1)
+i_sess_tok_tsps = input.float(25.0, "TS" , group = g_toks, inline = "tok0777799", minval=0.1, step = 0.1)
+
+
+//CALCS
+//{
+
+
+var in_tok_sess = 0
+var tok_sess_status = 0
+var in_tok_or_sess = 0
+var tok_or_sess_status = 0
+
+var tok_sess_box = array.new_box(),var tok_sess_or_box = array.new_box()
+var tok_sess_line = array.new_line(),var tok_sess_or_line = array.new_line()
+var tok_or_t=0.0,var tok_or_b=0.0
+
+in_tok_sess := time != time[1] ? time(timeframe.period, i_sess_tok_r, tz):in_tok_sess
+tok_sess_status:= na(in_tok_sess) ? 0 : 1
+in_tok_or_sess := time != time[1] ? time(timeframe.period, i_sess_tok_or_r, tz):in_tok_or_sess
+tok_or_sess_status:= na(in_tok_or_sess) ? 0 : 1
+
+
+if tok_sess_status==1 and tok_sess_status[1]!=1 and i_sess_tok_s and icc 
+
+    if i_sess_tok_s_al
+        alert("⏰ Tokyo Session Just Started ⏰ \n👁‍🗨 Breakout Suite Waiting For The Opening Range To Form. ⌛⌛⌛", alert.freq_once_per_bar_close)
+    
+
+    if i_sess_tok_l and array.size(tok_sess_box)==1 and array.size(tok_sess_or_box)==1
+        box.delete(array.remove(tok_sess_box,0))
+        box.delete(array.remove(tok_sess_or_box,0))
+        if i_sess_tok_ml
+            line.delete(array.remove(tok_sess_line,0))
+        if i_sess_tok_orml
+            line.delete(array.remove(tok_sess_or_line,0))
+
+    array.push(tok_sess_box,box.new(time, high, time, low, i_sess_tok_col, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_tok_col,i_sess_tok_mltr)))
+    if i_sess_tok_ml
+        array.push(tok_sess_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_tok_mlsty, color=i_sess_tok_col ))        
+    
+    if tok_or_sess_status==1 and tok_or_sess_status[1]!=1
+        array.push(tok_sess_or_box,box.new(time, high, time, low, i_sess_tok_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_tok_orcol,i_sess_tok_ormltr), extend=extend.right))   
+        tok_or_t:=high
+        tok_or_b:=low
+        if i_sess_tok_orml
+            array.push(tok_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_tok_ormlsty, color=i_sess_tok_orcol ))    
+        if i_sess_tok_or_s_al
+            alert("⏰ Tokyo Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+  
+
+else if tok_sess_status==1 and tok_sess_status[1]==1 and i_sess_tok_s and icc and array.size(tok_sess_box)>0 and array.size(tok_sess_or_box)>0
+
+    sess_top = box.get_top(array.get(tok_sess_box, array.size(tok_sess_box)-1))
+    sess_bot = box.get_bottom(array.get(tok_sess_box, array.size(tok_sess_box)-1))
+    chg_mid = false
+    if high>sess_top
+        box.set_top(array.get(tok_sess_box, array.size(tok_sess_box)-1),high)
+        chg_mid := true
+    if low<sess_bot
+        box.set_bottom(array.get(tok_sess_box, array.size(tok_sess_box)-1),low)
+        chg_mid := true
+    box.set_right(array.get(tok_sess_box, array.size(tok_sess_box)-1),time)
+
+    if i_sess_tok_ml
+        line.set_x2(array.get(tok_sess_line, array.size(tok_sess_line)-1),time)
+        if chg_mid
+            line.set_y1(array.get(tok_sess_line, array.size(tok_sess_line)-1),(box.get_top(array.get(tok_sess_box, array.size(tok_sess_box)-1))+box.get_bottom(array.get(tok_sess_box, array.size(tok_sess_box)-1)))/2)
+            line.set_y2(array.get(tok_sess_line, array.size(tok_sess_line)-1),(box.get_top(array.get(tok_sess_box, array.size(tok_sess_box)-1))+box.get_bottom(array.get(tok_sess_box, array.size(tok_sess_box)-1)))/2)
+    
+    if tok_or_sess_status==1 and tok_or_sess_status[1]!=1
+        array.push(tok_sess_or_box,box.new(time, high, time, low, i_sess_tok_orcol, xloc =  xloc.bar_time, bgcolor = color.new(i_sess_tok_orcol,i_sess_tok_ormltr), extend=extend.right))   
+        tok_or_t:=high
+        tok_or_b:=low
+        if i_sess_tok_orml
+            array.push(tok_sess_or_line,line.new(time, (high+low)/2, time, (high+low)/2, xloc.bar_time, style=i_sess_tok_ormlsty, color=i_sess_tok_orcol ))
+        if i_sess_tok_or_s_al
+            alert("⏰ Tokyo Session's Opening Range Just Started ⏰ \n👁‍🗨 Breakout Suite Ready To Ride Some Trades. 🧨🧨🧨", alert.freq_once_per_bar_close)
+            
+    else if tok_or_sess_status==1 and tok_or_sess_status[1]==1
+        box.set_right(array.get(tok_sess_or_box, array.size(tok_sess_or_box)-1),time)
+        if i_sess_tok_orml
+            line.set_x2(array.get(tok_sess_or_line, array.size(tok_sess_or_line)-1),time)
+        
+if tok_or_sess_status!=1 and tok_or_sess_status[1]==1 and array.size(tok_sess_or_box)>0
+    box.set_extend(array.get(tok_sess_or_box, array.size(tok_sess_or_box)-1),extend.none)
+    if i_sess_tok_or_e_al
+        alert("⏰ Tokyo Session's Opening Range Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+
+
+if tok_sess_status!=1 and tok_sess_status[1]==1 and array.size(tok_sess_box)>0
+    if i_sess_tok_e_al
+        alert("⏰ Tokyo Session Just Ended ⏰ \n", alert.freq_once_per_bar_close)
+
+//}
+
+//}
+
+
+
+
+//DOF
+//{
+
+
+//Settings
+//{
+g_dof = "------------TIME SETTINGS------------"
+
+i_dof_show = input.bool(true, "Show Days Division", group = g_dof, inline = "dof00")
+i_dof_nd_al = input.bool(true, "New Day Alert", group = g_dof, inline = "dof00")
+i_dof_lblf = input.string("Short", "|Labels: Format", ["Short", "Long"], group = g_dof, inline = "dof00")
+i_dof_lblcol = input.color(color.gray, "Colors: Labels", group = g_dof, inline = "dof01")
+i_dof_linecol = input.color(color.gray, "Line Dividers: Color", group = g_dof, inline = "dof02")
+i_dof_linesty = input.string(line.style_dashed, "Style", [line.style_solid, line.style_dashed, line.style_dotted], group = g_dof, inline = "dof02")
+
+i_pdhl_line = input.bool(true, "Line", group = g_dof, inline = "dof03")
+i_pdhl_lbl = input.bool(true, "Label<-Show P.Day H/L", group = g_dof, inline = "dof03")
+i_pdhl_linecol = input.color(color.red, "Colors:Line", group = g_dof, inline = "dof04")
+i_pdhl_lblcol = input.color(color.gray, "Label", group = g_dof, inline = "dof04")
+
+i_do_line = input.bool(true, "Line", group = g_dof, inline = "_dof03")
+i_do_lbl = input.bool(true, "Label<-Show C.Day Open", group = g_dof, inline = "_dof03")
+i_do_linecol = input.color(color.orange, "Colors:Line", group = g_dof, inline = "_dof04")
+i_do_lblcol = input.color(color.yellow, "Label", group = g_dof, inline = "_dof04")
+
+
+
+i_pdhl_mos = input.int(3, "Max On Screen", group = g_dof, inline = "dof05")
+
+
+i_pwhl_line = input.bool(false, "Line", group = g_dof, inline = "wdof03")
+i_pwhl_lbl = input.bool(false, "Label<-Show P.Week H/L", group = g_dof, inline = "wdof03")
+i_pwhl_linecol = input.color(color.green, "Colors:Line", group = g_dof, inline = "wdof04")
+i_pwhl_lblcol = input.color(color.gray, "Label", group = g_dof, inline = "wdof04")
+
+
+i_wo_line = input.bool(false, "Line", group = g_dof, inline = "__dof03")
+i_wo_lbl = input.bool(false, "Label<-Show C.Week Open", group = g_dof, inline = "__dof03")
+i_wo_linecol = input.color(color.rgb(0, 138, 57), "Colors:Line", group = g_dof, inline = "__dof04")
+i_wo_lblcol = input.color(color.rgb(0, 255, 128), "Label", group = g_dof, inline = "__dof04")
+
+
+
+i_pwhl_mos = input.int(3, "Max On Screen", group = g_dof, inline = "wdof05")
+
+//}
+
+//Calculations
+//{
+
+var dailybars = 0
+
+var cd_o_line = array.new_line(),var cd_o_label = array.new_label()
+var cd_o_v = 0.0
+
+var cw_o_line = array.new_line(),var cw_o_label = array.new_label()
+var cw_o_v = 0.0
+
+
+var dof_v = 0
+dof_v := dayofweek(time, tz)
+
+var pd_h_line = array.new_line(), var pd_l_line = array.new_line(),var pd_h_label = array.new_label(), var pd_l_label = array.new_label()
+var pd_h = 0.0, var pd_l = 1000000000000.0
+
+var off = 0
+off:=time!=time[1]?off+1:off
+
+if dof_v!=dof_v[1]  and icc
+
+    if i_dof_nd_al
+        alert("📆📆📆 Day Of The Week Just Changed, Current : " +(dof_v==dayofweek.monday?"Monday":dof_v==dayofweek.tuesday?"Tuesday":dof_v==dayofweek.wednesday?"Wednesday":dof_v==dayofweek.thursday?"Thursday":dof_v==dayofweek.friday?"Friday":dof_v==dayofweek.saturday?"Saturday":"Sunday")+ ". 📆📆📆")
+
+    dailybars:=off/2
+    off:=0
+
+    cd_o_v:=open
+    cw_o_v:=dof_v==dayofweek.monday?open:cw_o_v
+
+    if i_pdhl_lbl
+
+        if array.size(pd_h_line)>0 and array.size(pd_l_line)>0 and array.size(pd_h_label)>0 and array.size(pd_l_label)>0
+            label.set_x(array.get(pd_h_label,array.size(pd_h_label)-1), (line.get_x1(array.get(pd_h_line, array.size(pd_h_line)-1))+time)/2)
+            label.set_x(array.get(pd_l_label,array.size(pd_l_label)-1), (line.get_x1(array.get(pd_l_line, array.size(pd_l_line)-1))+time)/2)
+
+        array.push(pd_h_label, label.new(time[1], pd_h, "PD H", xloc.bar_time, color=#00000000, textcolor = i_pdhl_lblcol, style = label.style_label_down))
+        array.push(pd_l_label, label.new(time[1], pd_l, "PD L", xloc.bar_time, color=#00000000, textcolor = i_pdhl_lblcol, style = label.style_label_up))
+
+    if i_pdhl_line
+        array.push(pd_h_line, line.new(time[1], pd_h, time, pd_h, xloc.bar_time, color=i_pdhl_linecol))
+        array.push(pd_l_line, line.new(time[1], pd_l, time, pd_l, xloc.bar_time, color=i_pdhl_linecol))
+    
+    line.new(bar_index[1], low, bar_index[1], high, extend=extend.both, color=i_dof_linecol, style=i_dof_linesty)
+    pd_h:=0.0
+    pd_l:=1000000000000.0
+
+else 
+
+
+    if array.size(pd_h_line)>0 and array.size(pd_l_line)>0
+        line.set_x2(array.get(pd_h_line,array.size(pd_h_line)-1), time)
+        line.set_x2(array.get(pd_l_line,array.size(pd_l_line)-1), time)
+    if array.size(pd_h_label)>0 and array.size(pd_l_label)>0
+        label.set_x(array.get(pd_h_label,array.size(pd_h_label)-1), time)
+        label.set_x(array.get(pd_l_label,array.size(pd_l_label)-1), time)
+    
+    if high>pd_h
+        pd_h:=high
+    if low<pd_l
+        pd_l:=low
+
+if array.size(pd_h_line)>i_pdhl_mos and array.size(pd_l_line)>i_pdhl_mos and i_pdhl_line
+    line.delete(array.remove(pd_h_line,0))
+    line.delete(array.remove(pd_l_line,0))
+
+if array.size(pd_h_label)>i_pdhl_mos and array.size(pd_l_label)>i_pdhl_mos and i_pdhl_lbl
+    label.delete(array.remove(pd_h_label,0))
+    label.delete(array.remove(pd_l_label,0))
+
+
+plotshape(i_dof_show and icc and dof_v==dayofweek.monday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Monday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.tuesday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Tuesday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.wednesday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Wednesday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.thursday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Thursday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.friday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Friday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.saturday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Saturday")
+plotshape(i_dof_show and icc and dof_v==dayofweek.sunday and dof_v!=dof_v[1],offset=dailybars, style=shape.circle, location=location.bottom, textcolor=i_dof_lblcol, color = color.new(color.white,100), editable=false, text="Sunday")
+
+
+//DAILY OP
+
+
+if i_do_line and time != time[1]
+    if cd_o_v != cd_o_v[1]
+        array.push(cd_o_line, line.new(time, cd_o_v, time, cd_o_v, xloc.bar_time, color=i_do_linecol))
+        if i_do_lbl
+            array.push(cd_o_label, label.new(bar_index+2, cd_o_v, "Daily Open", color=#00000000, textcolor = i_do_lblcol, style = label.style_label_left))
+
+    else if cd_o_v == cd_o_v[1] and array.size(cd_o_line)>0
+        line.set_x2( array.get(cd_o_line, array.size(cd_o_line)-1), time )
+        if i_do_lbl
+            label.set_x( array.get(cd_o_label, array.size(cd_o_label)-1), bar_index+2 )
+
+if array.size(cd_o_line)>i_pdhl_mos and i_do_line
+    line.delete(array.remove(cd_o_line,0))
+    if i_do_lbl
+        label.delete(array.remove(cd_o_label,0))
+
+
+//WEEKLY OP
+
+//i_dof_show and icc and dof_v==dayofweek.monday and dof_v!=dof_v[1]
+if i_wo_line and time != time[1]
+    if cw_o_v != cw_o_v[1]
+        array.push(cw_o_line, line.new(time, cw_o_v, time, cw_o_v, xloc.bar_time, color=i_wo_linecol))
+        if i_wo_lbl
+            array.push(cw_o_label, label.new(bar_index+2, cw_o_v, "Weekly Open", color=#00000000, textcolor = i_wo_lblcol, style = label.style_label_left))
+
+    else if cw_o_v == cw_o_v[1] and array.size(cw_o_line)>0
+        line.set_x2( array.get(cw_o_line, array.size(cw_o_line)-1), time )
+        if i_wo_lbl
+            label.set_x( array.get(cw_o_label, array.size(cw_o_label)-1), bar_index+2 )
+
+if array.size(cw_o_line)>i_pwhl_mos and i_wo_line
+    line.delete(array.remove(cw_o_line,0))
+    if i_wo_lbl
+        label.delete(array.remove(cw_o_label,0))
+
+
+
+
+
+//WEEKLY LINES
+
+var pw_h_line = array.new_line(), var pw_l_line = array.new_line(),var pw_h_label = array.new_label(), var pw_l_label = array.new_label()
+var pw_h = 0.0, var pw_l = 1000000000000.0, var pw_t=0
+
+[pw_ht, pw_lt, pw_tt]=request.security(syminfo.tickerid, 'W', [high, low, time('W', '0000-0000',tz)])
+pw_t:=pw_tt!=pw_t?pw_tt:pw_t
+
+if i_pwhl_line
+    if pw_t!=pw_t[1] 
+
+        pw_h:=pw_ht
+        pw_l:=pw_lt
+
+        
+        if i_pwhl_lbl
+            if array.size(pw_h_line)>0 and array.size(pw_l_line)>0 and array.size(pw_h_label)>0 and array.size(pw_l_label)>0
+                label.set_x(array.get(pw_h_label,array.size(pw_h_label)-1), (line.get_x1(array.get(pw_h_line, array.size(pw_h_line)-1))+time)/2)
+                label.set_x(array.get(pw_l_label,array.size(pw_l_label)-1), (line.get_x1(array.get(pw_l_line, array.size(pw_l_line)-1))+time)/2)
+
+            array.push(pw_h_label, label.new(time[1], pw_h, "PW H", xloc.bar_time, color=#00000000, textcolor = i_pwhl_lblcol, style = label.style_label_down))
+            array.push(pw_l_label, label.new(time[1], pw_l, "PW L", xloc.bar_time, color=#00000000, textcolor = i_pwhl_lblcol, style = label.style_label_up))
+
+        array.push(pw_h_line, line.new(time, pw_h, time, pw_h, xloc.bar_time, color=i_pwhl_linecol))
+        array.push(pw_l_line, line.new(time, pw_l, time, pw_l, xloc.bar_time, color=i_pwhl_linecol))
+        
+        pw_h:=0.0
+        pw_l:=1000000000000.0
+    else if pw_t==pw_t[1] 
+
+        if array.size(pw_h_line)>0 and array.size(pw_l_line)>0
+            line.set_x2(array.get(pw_h_line,array.size(pw_h_line)-1), time)
+            line.set_x2(array.get(pw_l_line,array.size(pw_l_line)-1), time)
+        if array.size(pw_h_label)>0 and array.size(pw_l_label)>0
+            label.set_x(array.get(pw_h_label,array.size(pw_h_label)-1), time)
+            label.set_x(array.get(pw_l_label,array.size(pw_l_label)-1), time)
+
+
+    if array.size(pw_h_line)>i_pwhl_mos and array.size(pw_l_line)>i_pwhl_mos and i_pwhl_line
+        line.delete(array.remove(pw_h_line,0))
+        line.delete(array.remove(pw_l_line,0))
+
+    if array.size(pw_h_label)>i_pwhl_mos and array.size(pw_l_label)>i_pwhl_mos and i_pwhl_lbl
+        label.delete(array.remove(pw_h_label,0))
+        label.delete(array.remove(pw_l_label,0))
+
+//MONTHLY LINES 
+
+
+
+//YEARLY LINES
+
+
+
+
+
+//}
+
+
+
+
+//}
+
+// //HTF
+// //{
+
+
+
+
+// i_htf_show = input.bool(true, "HFT Liquidity Show", inline ="htf_liq", group= "------------HTF Liquidity Levels------------")
+// i_htf_off = input.int(25, "|Offset", inline ="htf_liq", group= "------------HTF Liquidity Levels------------")
+// i_htf_bullcol = input.color(color.aqua, "Colors: Bull", inline ="htf_liq2", group= "------------HTF Liquidity Levels------------")
+// i_htf_bearcol = input.color(color.purple, "Bear", inline ="htf_liq2", group= "------------HTF Liquidity Levels------------")
+
+// //----------------------------------
+// //--------------------------------------------------------------------
+// //                        Variables declarations
+// //--------------------------------------------------------------------
+
+// var highsArray                  = array.new_float()
+// var lowsArray                   = array.new_float()
+// var highLinesArray              = array.new_line()
+// var lowLinesArray               = array.new_line()
+// var purgedLinesArray            = array.new_line()
+// var float dayHigh               = na
+// var float dayLow                = na
+
+// int MS_IN_MIN   = 60 * 1000
+// int MS_IN_HOUR  = MS_IN_MIN  * 60
+// int MS_IN_DAY   = MS_IN_HOUR * 24
+
+// timeStep_translate() =>
+//     int tfInMs = timeframe.in_seconds() * 1000
+//     string step =
+//       switch
+//         tfInMs <= MS_IN_MIN        => "60"
+//         tfInMs <= MS_IN_MIN  * 5   => "240"
+//         tfInMs <= MS_IN_HOUR       => "1D"
+//         tfInMs <= MS_IN_HOUR * 4   => "3D"
+//         tfInMs <= MS_IN_HOUR * 12  => "7D"
+//         tfInMs <= MS_IN_DAY        => "1M"
+//         tfInMs <= MS_IN_DAY  * 7   => "3M"
+//         => "12M"
+
+// [prevDayHigh, prevDayLow]       = request.security(syminfo.tickerid, timeStep_translate(), [high[1], low[1]], lookahead=barmerge.lookahead_on)
+
+// //--------------------------------------------------------------------
+// //                              Functions 
+// //--------------------------------------------------------------------
+
+// f_drawLine(float _y, color _c, int _w=1) => line.new(bar_index, _y, bar_index, _y, color=_c, width=_w)
+
+// f_create(float _high, float _low, color _upperColor, color _lowerColor, int _linewidth) =>
+//     array.push(highsArray, _high)
+//     array.push(lowsArray, _low)
+//     array.push(highLinesArray, f_drawLine(_high, _upperColor, _linewidth))
+//     array.push(lowLinesArray, f_drawLine(_low, _lowerColor, _linewidth))
+
+// f_updateStickyLevels(array<line> _levels) =>
+//     for _line in _levels
+//         line.set_x1(_line, bar_index + 0 + i_htf_off)
+//         line.set_x2(_line, bar_index + 25 + i_htf_off)
+
+// f_moveLevel(array<line> _from, array<line> _to, line _level, int _index) =>
+//     array.push(_to, _level)
+//     array.remove(_from, _index)
+
+// f_highlightPurgedLevel(line _level) =>
+//     line.set_color(_level, color.gray)
+//     line.set_style(_level, line.style_solid)
+
+// f_updateUpperLevels(float _high, array<float> _highs, array<line> _levels, array<line> _purgedLevels) =>
+//     while array.min(_highs) < _high
+//         for [_index, _value] in _highs
+//             if _high > _value
+//                 _line = array.get(_levels, _index)
+//                 f_highlightPurgedLevel(_line)
+//                 f_moveLevel(_levels, _purgedLevels, _line, _index)
+//                 array.remove(_highs, _index)
+
+// f_updateLowerLevels(float _low, array<float> _lows, array<line> _levels, array<line> _purgedLevels) =>
+//     while array.max(_lows) > _low
+//         for [_index, _value] in _lows
+//             if _low < _value
+//                 _line = array.get(_levels, _index)
+//                 f_highlightPurgedLevel(_line)
+//                 f_moveLevel(_levels, _purgedLevels, _line, _index) 
+//                 array.remove(_lows, _index)
+
+// f_clearLevels(array<line> _levels) =>
+//     while array.size(_levels) > 0
+//         for [_index, _line] in _levels
+//             line.delete(array.remove(_levels, _index))
+
+// f_isHigherTimeframe(string _timeframe) => timeframe.in_seconds() <= timeframe.in_seconds(_timeframe)
+
+
+// //--------------------------------------------------------------------
+// //                                Logic
+// //--------------------------------------------------------------------
+// if i_htf_show and f_isHigherTimeframe(timeStep_translate()) and ta.change(time(timeStep_translate()))  and icc
+//     f_create(prevDayHigh, prevDayLow, i_htf_bearcol, i_htf_bullcol, 2)
+// if barstate.islast  and icc
+//     f_updateStickyLevels(highLinesArray)
+//     f_updateStickyLevels(lowLinesArray)
+//     f_updateStickyLevels(purgedLinesArray)
+// f_updateUpperLevels(high, highsArray, highLinesArray, purgedLinesArray)
+// f_updateLowerLevels(low, lowsArray, lowLinesArray, purgedLinesArray)
+// if ta.change(time(timeStep_translate()))  and icc
+//     f_clearLevels(purgedLinesArray)
+
+// //}
+
+//MTRENDSQUEEZE
+//{
+
+g_mts = "------------SIGMA OSCILLATOR------------"
+
+i_mts_show = input.bool(true, "Show", group = g_mts, inline = "mts00")
+i_mts_show_wt = input.bool(true, "Weakening", group = g_mts, inline = "mts00")
+i_mts_len = input.int(34, "|Lenght", group = g_mts, inline = "mts00")
+
+i_mts_bullcol = input.color(color.new(color.aqua,50), "Colors: Bull", inline = "mtscol2", group = g_mts)
+i_mts_dbullcol= input.color(color.new(color.aqua,0), "Strong Bull", inline = "mtscol2", group = g_mts)
+i_mts_bearcol = input.color(color.new(color.purple, 50), "Colors: Bear", inline = "mtscol3", group = g_mts)
+i_mts_dbearcol= input.color(color.new(color.purple, 0), "Strong Bear", inline = "mtscol3", group = g_mts)
+i_mts_wcol= input.color(color.new(color.yellow, 0), "Weakening Color", inline = "mtscol3", group = g_mts)
+
+i_mts_al = input.bool(true, "Sigma Oscillator Change Alert", inline = "trsp_al", group = g_mts)
+
+
+i_mts_src = close
+i_mts_ref = 13
+i_mts_sqzLen = 5
+
+i_mts_ma = ta.ema(i_mts_src, i_mts_len)
+i_mts_closema = close - i_mts_ma
+i_mts_refma = ta.ema(i_mts_src, i_mts_ref)-i_mts_ma
+i_mts_sqzma = ta.ema(i_mts_src, i_mts_sqzLen)-i_mts_ma
+
+i_mts_fcol = i_mts_sqzma>=0 ? i_mts_closema>=i_mts_sqzma? i_mts_dbullcol : i_mts_bullcol : i_mts_closema<=i_mts_sqzma ? i_mts_dbearcol : i_mts_bearcol  
+i_mts_fcol := i_mts_show_wt and ((i_mts_refma>=0 and i_mts_closema<i_mts_refma) or (i_mts_refma<0 and i_mts_closema>i_mts_refma )) ? i_mts_wcol : i_mts_fcol
+plotchar(i_mts_show and icc, "MTS", "X", location.bottom, i_mts_fcol)
+
+i_mts_s1 = i_mts_sqzma>=0 ? i_mts_closema>=i_mts_sqzma? 2.0 : 1.0 : i_mts_closema<=i_mts_sqzma ? -2.0 : -1.0  
+i_mts_s1 := i_mts_show_wt and ((i_mts_refma>=0 and i_mts_closema<i_mts_refma) or (i_mts_refma<0 and i_mts_closema>i_mts_refma )) ? 0.5 : i_mts_s1
+
+if i_mts_al and i_mts_s1!=i_mts_s1[1]
+    alert(i_mts_s1==2.0?"🔵🔵 Sigma Oscillator Change. Signal Now Says: Strong Bull.":i_mts_s1==1.0?"🔵 Sigma Oscillator Change. Signal Now Says: Average Bull.":i_mts_s1==-2.0?"🟣🟣 Sigma Oscillator Change. Signal Now Says: Strong Bear.":i_mts_s1==1.0?"🟣 Sigma Oscillator Change. Signal Now Says: Average Bear.":"⛔⛔ Sigma Oscillator Change. Signal Now Says: Trend Weakening.", alert.freq_once_per_bar_close)
+
+//}
+
+//MTRENDSPOTTER
+//{
+
+g_mtsp = "------------SIGMA TREND------------"
+
+i_mtsp_show = input.bool(true, "Show",group = g_mtsp, inline = "trsp0")
+i_mtsp_ema = input.bool(true, title="Exponential Calculation", group = g_mtsp, inline = "trsp0")
+
+i_mtsp_src = input.source(close, "Source", group = g_mtsp, inline = "trsp0")
+i_mtsp_fastLen = input.int(13, "Lenghts: fast",minval=1, group = g_mtsp, inline = "trsp0")
+i_mtsp_slowLen = input.int(21, "slow",minval=1, group = g_mtsp, inline = "trsp0")
+i_mtsp_bullcol = input.color(color.new(color.aqua,0), "Colors: Bull", inline = "mtspcol3", group = g_mtsp)
+i_mtsp_bearcol = input.color(color.new(color.purple, 0), "Bear", inline = "mtspcol3", group = g_mtsp)
+i_mtsp_chopcol = input.color(color.new(color.gray, 0), "Chop", inline = "mtspcol3", group = g_mtsp)
+
+i_mtsp_al = input.bool(true, "Sigma Trend Change Alert", inline = "trsp_al", group = g_mtsp)
+
+
+maColor(fma, sma) =>
+    //change(ma,3)>=0?lime:red
+    fma>sma and ta.change(fma-sma,3)>0 ? i_mtsp_bullcol : fma<sma and ta.change(fma-sma,3)<0 ? i_mtsp_bearcol : i_mtsp_chopcol
+    
+fastMA = i_mtsp_ema?ta.ema(i_mtsp_src, i_mtsp_fastLen):ta.sma(i_mtsp_src, i_mtsp_fastLen)
+slowMA = i_mtsp_ema?ta.ema(i_mtsp_src, i_mtsp_slowLen):ta.sma(i_mtsp_src, i_mtsp_slowLen)
+
+mtsp_stat = fastMA>slowMA and ta.change(fastMA-slowMA,3)>0?1:fastMA<slowMA and ta.change(fastMA-slowMA,3)<0?-1:0
+
+fastMAP = plot(i_mtsp_show  and icc ? fastMA : na, color=maColor(fastMA, slowMA), linewidth=2, title="fastTrend")
+slowMAP = plot(i_mtsp_show  and icc ? slowMA : na, color=maColor(fastMA, slowMA), linewidth=2, title="slowTrend")
+fill (fastMAP, slowMAP, color=color.new(maColor(fastMA, slowMA),70), title="Area")
+
+
+if i_mtsp_al and mtsp_stat!=mtsp_stat[1]
+    alert(mtsp_stat==1?"🔵🔵 Sigma Trend Change. Signal Now Says: Bullish Trend In Place.":mtsp_stat==-1?"🟣🟣 Sigma Trend Change. Signal Now Says: Bearish Trend In Place.":"⛔⛔ Sigma Trend Change. Signal Now Says: Market Choppiness In Place.", alert.freq_once_per_bar_close)
+
+//}
+
+
+
+
+//SIGNAL GENERATION
+//{
+
+
+
+//Functions
+
+//GetEntrySignal
+GetEntrySignal(dir)=>
+
+
+
+    entry = false
+    triggered = ""
+    _alert = ""
+
+    if i_sess_ny_s and ny_sess_status==1 and ny_or_sess_status==1 and array.size(ny_sess_or_box)>0
+        //ny_or_t = box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))
+        //ny_or_b = box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))
+        if (dir == "LONG" and (i_tdir=="Both" or i_tdir=="Just Long"))
+            if close>ny_or_t and not (close[1]>ny_or_t)
+                if i_sess_ny_mts or i_sess_ny_mtsp or i_sess_ny_fov or i_sess_ny_bs
+                    entry:=not i_sess_ny_evs?  (i_sess_ny_mts? i_mts_s1==2.0 : false) or  (i_sess_ny_mtsp? close > fastMA and  mtsp_stat==1 : false) or (i_sess_ny_fov?math.abs(high-low)<i_sess_ny_fov_v:false) or (i_sess_ny_bs? math.abs(open-close)>math.abs(high-low)*i_sess_ny_bsa/100:false)  :    (i_sess_ny_mts? i_mts_s1==2.0 : true) and ( i_sess_ny_mtsp? close > fastMA and  mtsp_stat==1 : true) and( i_sess_ny_fov?math.abs(high-low)<i_sess_ny_fov_v:true) and( i_sess_ny_bs? math.abs(open-close)>math.abs(high-low)*i_sess_ny_bsa/100:true)
+                else 
+                    entry:=true   
+
+                if entry  
+                    _alert:="❗ !!!NY SESSION LONG BREAK TRADE!!! ❗\\n"
+
+            if not entry and i_sess_ny_allret
+                if close>open and low<ny_or_t and open>ny_or_t and math.abs(open-low)>(math.abs(high-low)*i_sess_ny_allretv/100)
+                    entry:=true    
+                
+                if entry  
+                    _alert:="❗ !!!NY SESSION LONG RETEST TRADE!!! ❗\\n"
+
+        else if (dir == "SHORT" and (i_tdir=="Both" or i_tdir=="Just Short"))
+            if close<ny_or_b and not (close[1]<ny_or_b)
+                if i_sess_ny_mts or i_sess_ny_mtsp or i_sess_ny_fov or i_sess_ny_bs
+                    entry:=not i_sess_ny_evs?  (i_sess_ny_mts? i_mts_s1==-2.0 : false) or  (i_sess_ny_mtsp? close < fastMA and  mtsp_stat==-1 : false) or (i_sess_ny_fov?math.abs(high-low)<i_sess_ny_fov_v:false) or (i_sess_ny_bs? math.abs(open-close)>math.abs(high-low)*i_sess_ny_bsa/100:false)  :    (i_sess_ny_mts? i_mts_s1==-2.0 : true) and ( i_sess_ny_mtsp? close < fastMA and  mtsp_stat==-1 : true) and( i_sess_ny_fov?math.abs(high-low)<i_sess_ny_fov_v:true) and( i_sess_ny_bs? math.abs(open-close)>math.abs(high-low)*i_sess_ny_bsa/100:true)
+                else 
+                    entry:=true  
+
+                if entry  
+                    _alert:="❗ !!!NY SESSION SHORT BREAK TRADE!!! ❗\\n"
+            if not entry and i_sess_ny_allret 
+                if close<open and high>ny_or_b and open<ny_or_b and math.abs(open-high)>(math.abs(high-low)*i_sess_ny_allretv/100) 
+                    entry:=true 
+
+                if entry  
+                    _alert:="❗ !!!NY SESSION SHORT RETEST TRADE!!! ❗\\n"
+        if entry
+            triggered:="NY"
+    if i_sess_lon_s and lon_sess_status==1 and lon_or_sess_status==1 and array.size(lon_sess_or_box)>0
+        // lon_or_t = box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))
+        // lon_or_b = box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))
+        if (dir == "LONG" and (i_tdir=="Both" or i_tdir=="Just Long"))
+            if close>lon_or_t and not (close[1]>lon_or_t)
+                if i_sess_lon_mts or i_sess_lon_mtsp or i_sess_lon_fov or i_sess_lon_bs
+                    entry:=i_sess_lon_evs?  (i_sess_lon_mts? i_mts_s1==2.0 : false) or  (i_sess_lon_mtsp? close > fastMA and  mtsp_stat==1 : false) or (i_sess_lon_fov?math.abs(high-low)<i_sess_lon_fov_v:false) or (i_sess_lon_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_lon_bsa/100):false)  :    (i_sess_lon_mts? i_mts_s1==2.0 : true) and ( i_sess_lon_mtsp? close > fastMA and  mtsp_stat==1 : true) and( i_sess_lon_fov?math.abs(high-low)<i_sess_lon_fov_v:true) and( i_sess_lon_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_lon_bsa/100):true)
+                else
+                    entry:=true
+
+                if entry  
+                    _alert:="❗ !!!LON SESSION LONG BREAK TRADE!!! ❗\\n"
+
+            if not entry and i_sess_lon_allret
+                if close>open and low<lon_or_t and open>lon_or_t and math.abs(open-low)>(math.abs(high-low)*i_sess_lon_allretv/100)
+                    entry:=true 
+                
+                if entry  
+                    _alert:="❗ !!!LON SESSION LONG RETEST TRADE!!! ❗\\n"
+        else if (dir == "SHORT" and (i_tdir=="Both" or i_tdir=="Just Short"))
+            if close<lon_or_b and not (close[1]<lon_or_b)
+                if i_sess_lon_mts or i_sess_lon_mtsp or i_sess_lon_fov or i_sess_lon_bs
+                    entry:=i_sess_lon_evs?  (i_sess_lon_mts? i_mts_s1==-2.0 : false) or  (i_sess_lon_mtsp? close < fastMA and  mtsp_stat==-1 : false) or (i_sess_lon_fov?math.abs(high-low)<i_sess_lon_fov_v:false) or (i_sess_lon_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_lon_bsa/100):false)  :    (i_sess_lon_mts? i_mts_s1==-2.0 : true) and ( i_sess_lon_mtsp? close < fastMA and  mtsp_stat==-1 : true) and( i_sess_lon_fov?math.abs(high-low)<i_sess_lon_fov_v:true) and( i_sess_lon_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_lon_bsa/100):true)
+                else
+                    entry:=true
+
+                if entry  
+                    _alert:="❗ !!!LON SESSION SHORT BREAK TRADE!!! ❗\\n"
+            if not entry and i_sess_lon_allret
+                if close<open and high>lon_or_b and open<lon_or_b and math.abs(open-high)>(math.abs(high-low)*i_sess_lon_allretv/100)
+                    entry:=true 
+                if entry  
+                    _alert:="❗ !!!LON SESSION SHORT RETEST TRADE!!! ❗\\n"
+
+        if entry
+            triggered:="LON"
+    if i_sess_tok_s and tok_sess_status==1 and tok_or_sess_status==1 and array.size(tok_sess_or_box)>0
+        // tok_or_t = box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))
+        // tok_or_b = box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))
+        if (dir == "LONG" and (i_tdir=="Both" or i_tdir=="Just Long"))
+            if close>tok_or_t and not (close[1]>tok_or_t)
+                if i_sess_tok_mts or i_sess_tok_mtsp or i_sess_tok_fov or i_sess_tok_bs
+                    entry:=i_sess_tok_evs?  (i_sess_tok_mts? i_mts_s1==2.0 : false) or  (i_sess_tok_mtsp? close > fastMA and  mtsp_stat==1 : false) or (i_sess_tok_fov?math.abs(high-low)<i_sess_tok_fov_v:false) or (i_sess_tok_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_tok_bsa/100):false)  :    (i_sess_tok_mts? i_mts_s1==2.0 : true) and ( i_sess_tok_mtsp? close > fastMA and  mtsp_stat==1 : true) and( i_sess_tok_fov?math.abs(high-low)<i_sess_tok_fov_v:true) and( i_sess_tok_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_tok_bsa/100):true)
+                else
+                    entry:=true
+
+                if entry  
+                    _alert:="❗ !!!TOK SESSION LONG BREAK TRADE!!! ❗\\n"
+
+
+            if not entry and i_sess_tok_allret
+                if close>open and low<tok_or_t and open>tok_or_t and math.abs(open-low)>(math.abs(high-low)*i_sess_tok_allretv/100)
+                    entry:=true 
+                
+                if entry  
+                    _alert:="❗ !!!TOK SESSION LONG RETEST TRADE!!! ❗\\n"
+
+        else if (dir == "SHORT" and (i_tdir=="Both" or i_tdir=="Just Short"))
+            if close<tok_or_b and not (close[1]<tok_or_b)
+                if i_sess_tok_mts or i_sess_tok_mtsp or i_sess_tok_fov or i_sess_tok_bs
+                    entry:=i_sess_tok_evs?  (i_sess_tok_mts? i_mts_s1==-2.0 : false) or  (i_sess_tok_mtsp? close < fastMA and  mtsp_stat==-1 : false) or (i_sess_tok_fov?math.abs(high-low)<i_sess_tok_fov_v:false) or (i_sess_tok_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_tok_bsa/100):false)  :    (i_sess_tok_mts? i_mts_s1==-2.0 : true) and ( i_sess_tok_mtsp? close < fastMA and  mtsp_stat==-1 : true) and( i_sess_tok_fov?math.abs(high-low)<i_sess_tok_fov_v:true) and( i_sess_tok_bs? math.abs(open-close)>(math.abs(high-low)*i_sess_tok_bsa/100):true)
+                else
+                    entry:=true
+
+                if entry  
+                    _alert:="❗ !!!TOK SESSION SHORT BREAK TRADE!!! ❗\\n"
+
+            if not entry and i_sess_tok_allret
+                if close<open and high>tok_or_b and open<tok_or_b and math.abs(open-high)>(math.abs(high-low)*i_sess_tok_allretv/100)
+                    entry:=true 
+                
+                if entry  
+                    _alert:="❗ !!!LON SESSION SHORT RETEST TRADE!!! ❗\\n"
+
+        if entry
+            triggered:="TOK"
+    [entry,triggered,_alert] 
+
+
+var long=false, var short=false
+
+long:=false
+short:=false
+
+[long_tmp,sess_tmp1,alert_init_raw1]=GetEntrySignal("LONG")
+[short_tmp,sess_tmp2,alert_init_raw2]=GetEntrySignal("SHORT")
+
+long:=  time!=time[1]? long_tmp : false
+short:= time!=time[1]? short_tmp : false
+
+
+
+
+//}
+
+
+
+//TRADE MANAGEMENT LOGIC 
+//{
+
+var pmult = 0
+if (syminfo.type == "forex")
+    pmult:=1
+else
+    pmult:=dec_d==1?10:dec_d==2?10:dec_d==3?1000:dec_d==4?10000:dec_d==5?100000:1
+
+
+var trade_status=0
+var trade_session = ""
+var ep=0.0, var sl=0.0, var sl_abs=0.0, var tp1=0.0, var tp2=0.0, var tp3=0.0, var et = 0
+var ps_v = 0.0, var ps_tp1_v = 0.0,var ps_tp2_v = 0.0,var ps_tp3_v = 0.0,var ps_ts_v = 0.0
+var ts_trigger=false, var ts_upd=0, var ts_adv=false, var be_adv=false
+trade_vars_reinit = false
+t_won=false,t_lost=false
+var i_tp2 = false, var i_tp3 = false
+var t_tp1_hitf = false,var t_tp2_hitf = false,var t_tp3_hitf = false
+t_tp1_hit = false,t_tp2_hit = false,t_tp3_hit = false
+
+var line v_ep=na,var line v_sl=na,var line v_tp1=na, var line v_tp2=na,var line v_tp3=na,var line v_tp4=na
+var label v_ep_lbl=na, var label v_sl_lbl=na, var label v_ts_lbl= na, var label v_tp1_lbl= na, var label v_tp2_lbl= na, var label v_tp3_lbl= na  
+var box v_loss = na, var box v_profit = na
+
+sl_hit = false
+long_exit = false, short_exit = false
+
+trade_status := time!=time[1]?long and trade_status==0?1:short and trade_status==0?-1:trade_status:trade_status
+trade_init = trade_status[1] == 0 and trade_status != 0
+
+bot_execution(is_tp2, is_tp3, tp1_size, tp2_size, tp3_size, ts_size, alert_init)=>
+    //Bot Execution
+    //{
+    dir_conf=trade_status>0?(i_tdir == "Just Long" or i_tdir == "Both"):(i_tdir == "Just Short" or i_tdir == "Both")
+    if inTradingZone and backtest() and dir_conf
+        
+        dir_v = trade_status>0?"buy":"sell"
+        dir_strat = trade_status>0?strategy.long:strategy.short
+        sl_al = round_pips(math.abs(ep - sl))*pmult 
+        tp1_al = round_pips(math.abs(tp1 - ep))*pmult 
+        tp2_al = i_tp2?round_pips(math.abs(tp2 - ep))*pmult :0.0
+        tp3_al = i_tp3?round_pips(math.abs(tp3 - ep))*pmult :0.0
+
+        ps= (strategy.equity*i_core_rpt/100)/math.abs(ep - sl)
+        ps_tp1=ps*tp1_size/100
+        ps_perc = i_core_rpt
+
+        if i_disc
+            discord_txt = alert_init + "\\n🔊" + (trade_status>0?"📈 BUY-LONG TRADE SIGNAL!":"📉 SELL-SHORT TRADE SIGNAL!") +"\\n📊 Symbol = "+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💡🔎Entry Price="+str.tostring(ep)+".\\n❌Stop Loss, Price = " +str.tostring(sl)+ " Pips = "+str.tostring(math.abs(ep-sl))+".\\n💲Take Profit 1, Price = " +str.tostring(tp1)+ " Pips = "+str.tostring(math.abs(ep-tp1))+".\\n"
+            if i_tp2
+                discord_txt:=discord_txt+"💲Take Profit 2, Price = " +str.tostring(tp2)+ " Pips = "+str.tostring(math.abs(ep-tp2))+".\\n"
+            if i_tp2
+                discord_txt:=discord_txt+"💲Take Profit 3, Price = " +str.tostring(tp3)+ " Pips = "+str.tostring(math.abs(ep-tp3))+".\\n"
+            if i_ts_be=="None"
+                discord_txt:=discord_txt+"\\n👁‍🗨BreakEven Stop Rule = " + i_ts_be
+            if i_ts_on!="None"
+                discord_txt:=discord_txt+"\\n👁‍🗨Trailing Stop Trigger = " + i_ts_on
+            alert( '{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+
+
+        strategy.entry(dir_v,dir_strat,ps)
+        strategy.exit(dir_v+" TP1",dir_v, qty_percent=tp1_size, limit=tp1 , stop=sl, comment_loss = "SL")
+        if i_ts_be=="None"
+            code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1)
+            alert(code_tp1,alert.freq_once_per_bar_close)
+        else if i_ts_be=="BreakEven After TP1"
+            code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1, tp1_al)
+            alert(code_tp1,alert.freq_once_per_bar_close)
+        else if i_ts_be=="BreakEven After TP2"
+            code_tp1= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp1_al, ps_tp1, tp2_al)
+            alert(code_tp1,alert.freq_once_per_bar_close)
+        
+    
+        if is_tp2
+            ps_tp2 = ps*tp2_size/100
+
+            strategy.exit(dir_v+" TP2",dir_v, qty_percent=tp2_size, limit=tp2 , stop=sl, comment_loss = "SL")
+
+            if i_ts_be!="None"
+                code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2)
+                alert(code_tp2,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP1"
+                code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2, tp1_al)
+                alert(code_tp2,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP2"
+                code_tp2= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp2_al, ps_tp2, tp2_al)
+                alert(code_tp2,alert.freq_once_per_bar_close)
+        
+        
+            
+        if is_tp3
+            
+            ps_tp3 = ps*tp3_size/100
+
+            strategy.exit(dir_v+" TP3",dir_v, qty_percent=tp3_size, limit=tp3 , stop=sl, comment_loss = "SL")
+            
+            if i_ts_be!="None"
+                code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3)
+                alert(code_tp3,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP1"
+                code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3, tp1_al)
+                alert(code_tp3,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP2"
+                code_tp3= str.format("{0},{1},{2},sl={3},tp={4},risk={5},betrigger={6}", i_pc_id, dir_v, v_broker_sym, sl_al, tp3_al, ps_tp3, tp2_al)
+                alert(code_tp3,alert.freq_once_per_bar_close)
+        
+            
+        if i_ts_on!="None"
+
+            ps_ts = ps*ts_size/100
+
+            strategy.exit(dir_v+" TS",dir_v, qty_percent=ts_size, stop=sl, comment_loss = "SL")
+            
+            if i_ts_be!="None"
+                code_ts= str.format("{0},{1},{2},sl={3},risk={4}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts)
+                alert(code_ts,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP1"
+                code_ts= str.format("{0},{1},{2},sl={3},risk={4},betrigger={5}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts, tp1_al)
+                alert(code_ts,alert.freq_once_per_bar_close)
+            else if i_ts_be!="BreakEven After TP2"
+                code_ts= str.format("{0},{1},{2},sl={3},risk={4},betrigger={5}", i_pc_id, dir_v, v_broker_sym, sl_al, ps_ts, tp2_al)
+                alert(code_ts,alert.freq_once_per_bar_close)
+        
+        ps
+    
+    
+
+    //}
+
+
+if icc and i_show_sign  //and time!=time[1] 
+
+    if trade_status > 0 and trade_status[1] > 0 and not trade_init
+
+        //long_exit := GetExitSignal("LONG")
+        sl_hit := low<=sl//:false
+                    
+        if not sl_hit and not long_exit
+            if trade_status == 1
+                if high>=tp1 
+                    t_tp1_hit:=true
+                    
+                    if i_tp2 or i_ts_be!="None"
+                        if i_ts_be == "BreakEven After TP1"
+                            sl_new=ep+i_ts_beoff 
+                            if close<=sl_new
+                                sl_hit := true
+                                a=0	//close the trade
+                            else 
+                                sl:=sl_new
+                                be_adv:=true
+                        if i_ts_on == "Trailing Stop After TP1"
+                            ts_adv:=true
+                            trade_status:=2
+                        else 
+                            trade_status:=2
+                    else
+                        if i_ts_on == "Trailing Stop After TPs"
+                            ts_trigger:=true
+                            trade_status:=5
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+
+            if trade_status == 2
+                if high>=tp2 
+                    t_tp2_hit:=true
+                    
+                    if i_tp3 or i_ts_be!="None"
+                        if i_ts_be == "BreakEven After TP2"
+                            sl_new=ep+i_ts_beoff 
+                            if close<=sl_new
+                                sl_hit := true
+                                a=0	//close the trade
+                            else 
+                                sl:=sl_new
+                                be_adv:=true
+                        if i_ts_on == "Trailing Stop After TP2"
+                            ts_adv:=true
+                            trade_status:=3
+                        else 
+                            trade_status:=3
+                    else
+                        if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                            ts_trigger:=true
+                            trade_status:=5
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+            
+            if trade_status == 3
+                if high>=tp3 
+                    t_tp3_hit:=true
+                    
+                    if i_ts_be=="Trailing Stop After TPs" 
+                        trade_status:=5
+                        ts_trigger:=true
+                    else
+                        if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                            trade_status:=5
+                            ts_trigger:=true
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+            if trade_status == 5 or i_ts_on == "Trailing Stop Since Beginning" or ts_adv
+                ts_trigger:=true
+        if t_won
+            trade_vars_reinit:=true
+        if long_exit and not sl_hit
+            
+            trade_vars_reinit:=true
+   
+        if sl_hit
+            
+            trade_vars_reinit:=true
+
+            
+            if close>ep
+                t_won:=true
+            else 
+                t_lost:=true
+
+            trade_status:=0
+        
+        else if ts_trigger
+           
+            sl_new=i_ts_t=="ATR"? close-i_ts_atrv:close-i_ts_pp
+            if time!=time[1] and sl_new>sl and close>sl_new
+                sl:=sl_new
+                sl_abs:=math.abs(close-sl)
+                ts_upd:=ts_upd+1
+                strategy.exit("LONG STOP", "buy", qty_percent = 100, stop = sl)
+            
+
+    else if trade_status < 0 and trade_status[1] < 0 and not trade_init
+        
+        //short_exit := GetExitSignal("SHORT")
+        sl_hit := high>=sl//:false
+
+        if not sl_hit and not short_exit
+
+            if trade_status == -1
+                if low<=tp1
+                    t_tp1_hit:=true 
+                    if i_tp2 or i_ts_be!="None"
+                        if i_ts_be == "BreakEven After TP1"
+                            sl_new=ep-i_ts_beoff 
+                            if close>=sl_new
+                                sl_hit := true
+                                a=0	//close the trade
+                            else 
+                                sl:=sl_new
+                                be_adv:=true
+                        if i_ts_on == "Trailing Stop After TP1"
+                            ts_adv:=true
+                            trade_status:=-2
+                        else 
+                            trade_status:=-2
+                    else
+                        if i_ts_on == "Trailing Stop After TPs"
+                            ts_trigger:=true
+                            trade_status:=-5
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+            if trade_status == -2
+                if low<=tp2 
+                    t_tp2_hit:=true
+                    if i_tp3 or i_ts_be!="None"
+                        if i_ts_be == "BreakEven After TP2"
+                            sl_new=ep-i_ts_beoff 
+                            if close>=sl_new
+                                sl_hit := true
+                                a=0	//close the trade
+                            else 
+                                sl:=sl_new
+                                be_adv:=true
+                        if i_ts_on == "Trailing Stop After TP2"
+                            ts_adv:=true
+                            trade_status:=-3
+                        else 
+                            trade_status:=-3
+                    else
+                        if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                            ts_trigger:=true
+                            trade_status:=-5
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+            
+            if trade_status == -3
+                if low<=tp3 
+                    t_tp3_hit:=true
+                    if i_ts_be=="Trailing Stop After TP4"
+                        trade_status:=-5
+                        ts_trigger:=true
+                    else
+                        if i_ts_on == "Trailing Stop After TPs" or ts_adv
+                            ts_trigger:=true
+                            trade_status:=-5
+                        else
+                            t_won:=true
+                            trade_status:=0
+
+            if trade_status == -5 or i_ts_on == "Trailing Stop Since Beginning" or ts_adv
+                ts_trigger:=true		
+        
+        if t_won
+            trade_vars_reinit:=true
+        if short_exit and not sl_hit
+            trade_vars_reinit:=true
+
+
+        if sl_hit
+            
+            trade_vars_reinit:=true
+
+            if close<ep
+                t_won:=true
+            else 
+                t_lost:=true
+
+            trade_status:=0
+        else if ts_trigger
+            sl_new=i_ts_t=="ATR"? close+i_ts_atrv:close+i_ts_pp
+            if time!=time[1] and sl_new<sl and close<sl_new
+                sl:=sl_new
+                sl_abs:=math.abs(close-sl)
+                ts_upd:=ts_upd+1
+                strategy.exit("SHORT STOP", "sell", qty_percent = 100, stop = sl)
+
+
+        // //Bearish TPs Plotting
+        // //{
+        // if i_tp4
+        //     if t_tp4_hit
+        //         t_tp4_hitf:=true
+        //         if t_tp3_hit 
+        //             t_tp3_hitf:=true
+        //             if t_tp2_hit
+        //                 t_tp2_hitf:=true
+        //                 if t_tp1_hit
+        //                     t_tp1_hitf:=true
+        //                     label.new(time[1], na, "TP(1/2/3/4)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //                     if i_show_lvls    
+        //                         label.new(time-((time-time[1])*5), tp4, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                         label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                         label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                         label.new(time-((time-time[1])*5), tp1, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                 else
+        //                     label.new(time[1], na, "TP(2/3/4)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //                     if i_show_lvls    
+        //                         label.new(time-((time-time[1])*5), tp4, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                         label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                         label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //             else
+        //                 label.new(time[1], na, "TP(3/4)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //                 if i_show_lvls    
+        //                     label.new(time-((time-time[1])*5), tp4, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                     label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //         else
+        //             label.new(time[1], na, "TP4", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //             if i_show_lvls  
+        //                 label.new(time-((time-time[1])*5), tp4, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+
+        // if i_tp3 and not t_tp3_hitf
+        //     if t_tp3_hit 
+        //         t_tp3_hitf:=true
+        //         if t_tp2_hit
+        //             t_tp2_hitf:=true
+        //             if t_tp1_hit
+        //                 t_tp1_hitf:=true
+        //                 label.new(time[1], na, "TP(1/2/3)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //                 if i_show_lvls  
+        //                     label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                     label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                     label.new(time-((time-time[1])*5), tp1, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //             else
+        //                 label.new(time[1], na, "TP(2/3)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //                 if i_show_lvls  
+        //                     label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                     label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //         else
+        //             label.new(time[1], na, "TP3", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //             if i_show_lvls  
+        //                 label.new(time-((time-time[1])*5), tp3, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+
+
+        // if i_tp2 and not t_tp2_hitf
+        //     if t_tp2_hit
+        //         t_tp2_hitf:=true
+        //         if t_tp1_hit
+        //             t_tp1_hitf:=true
+        //             label.new(time[1], na, "TP(1/2)", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //             if i_show_lvls  
+        //                 label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //                 label.new(time-((time-time[1])*5), tp1, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        //         else
+        //             label.new(time[1], na, "TP2", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //             if i_show_lvls  
+        //                 label.new(time-((time-time[1])*5), tp2, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        
+        // if t_tp1_hit and not t_tp1_hitf
+        //     t_tp1_hitf:=true
+        //     label.new(time[1], na, "TP1", xloc = xloc.bar_time, yloc = yloc.belowbar, color = #00000000, textcolor = r_bear_col, style = label.style_xcross)
+        //     if i_show_lvls  
+        //         label.new(time-((time-time[1])*5), tp1, "→", xloc = xloc.bar_time, yloc = yloc.price, style = label.style_label_left, color = #00000000, textcolor = r_bear_col, size=size.huge)
+        // //}
+
+    sl_lbl_col = trade_status[1]>0? s_bear_col:s_bull_col
+    tp_lbl_col = trade_status[1]>0? s_bull_col:s_bear_col
+
+    //if (short_exit or long_exit) and not sl_hit
+    //    label.new(time, trade_status[1]>0?low:high, "Exit", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+    if sl_hit 
+        if ts_trigger
+            label.new(time, trade_status[1]>0?low:high, "TS", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+            alert(syminfo.tickerid +", TS Reached! Price: " +str.tostring(sl,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-sl),format.mintick),alert.freq_once_per_bar )
+            if i_disc
+                discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n❌Trailing Stop Hit, Price = " +str.tostring(sl,format.mintick)+ ".\\n"
+                alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+
+        else
+            label.new(time, trade_status[1]>0?low:high, "SL", xloc.bar_time, trade_status[1]>0?yloc.belowbar:yloc.abovebar, sl_lbl_col, label.style_xcross, sl_lbl_col, size=size.tiny)
+            alert(syminfo.tickerid +", SL Reached! Price: " +str.tostring(sl,format.mintick)+"/Pips Points: "+(t_won?"+":"-"+"") + str.tostring(math.abs(ep-sl),format.mintick),alert.freq_once_per_bar )
+            if i_disc
+                discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n❌Stop Loss Hit, Price = " +str.tostring(sl,format.mintick)+ ".\\n"
+                alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+        strategy.close_all()
+        //LicenseID,closelong,EURUSD
+        if trade_status[1]>0
+            alert(str.format("{0},closelong,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar)
+        else  
+            alert(str.format("{0},closeshort,{1}",i_pc_id, v_broker_sym),alert.freq_once_per_bar)  
+    if be_adv and not be_adv[1]
+        alert(syminfo.tickerid +", Moving Stop to BE! Old SL: " +str.tostring(sl[1],format.mintick)+"/New SL: "+str.tostring(sl,format.mintick)+"/Offset: "+str.tostring(i_ts_beoff,format.mintick),alert.freq_once_per_bar_close )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💬✔ Moving Stop to BE! Old SL: " +str.tostring(sl[1],format.mintick)+"/New SL: "+str.tostring(sl,format.mintick)+"/Offset: "+str.tostring(i_ts_beoff,format.mintick)
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+    if ts_trigger and ts_upd!=ts_upd[1]
+        alert(syminfo.tickerid +", Updating Trailing Stop! Old TS: " +str.tostring(sl[1],format.mintick)+"/New TS: "+str.tostring(sl,format.mintick)+"/, Update Number: "+str.tostring(ts_upd)+",Profit Gained: "+str.tostring(math.abs(sl-sl[1]),format.mintick),alert.freq_once_per_bar_close )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💬✔ Updating Trailing Stop! Old TS: " +str.tostring(sl[1],format.mintick)+"/New TS: "+str.tostring(sl,format.mintick)+"/, Update Number: "+str.tostring(ts_upd)+",Profit Gained: "+str.tostring(math.abs(sl-sl[1]),format.mintick)
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+    if (t_tp1_hit and t_tp2_hit) or (t_tp2_hit and t_tp3_hit)
+        if (t_tp1_hit and t_tp2_hit)
+            t_tp1_hitf := true
+            t_tp2_hitf := true
+            label.new(time, trade_status[1]>0?high:low, "TP(1/2)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+            alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+            alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+            if i_disc
+                discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp1),format.mintick)+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp2),format.mintick)+"."
+                alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+        else    
+            t_tp2_hitf := true
+            t_tp3_hitf := true
+            label.new(time, trade_status[1]>0?high:low, "TP(2/3)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+            alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+            alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar  )
+            if i_disc
+                discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp2),format.mintick)+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp3),format.mintick)+"."
+                alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+    else if t_tp1_hit and t_tp2_hit and t_tp3_hit
+        t_tp1_hitf := true
+        t_tp2_hitf := true
+        t_tp3_hitf := true
+        label.new(time, trade_status[1]>0?high:low, "TP(1/2/3)", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+        alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+        alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+        alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar  )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp1),format.mintick)+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp2),format.mintick)+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp3),format.mintick)+"."
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+    else if t_tp1_hit
+        t_tp1_hitf := true
+        label.new(time, trade_status[1]>0?high:low, "TP1", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+        
+        alert(syminfo.tickerid +", TP1 Reached! Price: " +str.tostring(tp1,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp1),format.mintick),alert.freq_once_per_bar )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 1 Hit, Price = " +str.tostring(tp1,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp1),format.mintick)+".\\n"
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+    else if t_tp2_hit
+        t_tp2_hitf := true
+        label.new(time, trade_status[1]>0?high:low, "TP2", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+    
+        alert(syminfo.tickerid +", TP2 Reached! Price: " +str.tostring(tp2,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp2),format.mintick),alert.freq_once_per_bar  )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 2 Hit, Price = " +str.tostring(tp2,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp2),format.mintick)+".\\n"
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar)
+
+    else if t_tp3_hit
+        t_tp3_hitf := true
+        label.new(time, trade_status[1]>0?high:low, "TP3", xloc.bar_time, trade_status[1]>0?yloc.abovebar:yloc.belowbar, tp_lbl_col, label.style_circle, tp_lbl_col, size=size.tiny)
+    
+        alert(syminfo.tickerid +", TP3 Reached! Price: " +str.tostring(tp3,format.mintick)+"/Pips Points: " + str.tostring(math.abs(ep-tp3),format.mintick),alert.freq_once_per_bar_close  )
+        if i_disc
+            discord_txt = "<\\n📊 Symbol = >"+v_broker_sym+",🕒 TF="+timeframe.period+".\\n💲TP 3 Hit, Price = " +str.tostring(tp3,format.mintick)+ " Pips = "+str.tostring(math.abs(ep-tp3),format.mintick)+".\\n"
+            alert('{"content": "'+discord_txt+'"}',alert.freq_once_per_bar_close)
+    if trade_vars_reinit
+        if i_ps_tracker
+            line.delete(v_ep[1])
+            line.delete(v_sl[1])
+            line.delete(v_tp1[1])
+            if i_tp2
+                line.delete(v_tp2[1])
+            if i_tp3
+                line.delete(v_tp3[1])
+
+            box.delete(v_loss[1])
+            box.delete(v_profit[1])
+
+            if i_ps_tracker_lbls!="None"
+                label.delete(v_ep_lbl[1])
+                label.delete(v_sl_lbl[1])
+                label.delete(v_ts_lbl[1])
+                label.delete(v_tp1_lbl[1])
+                if i_tp2
+                    label.delete(v_tp2_lbl[1])
+                if i_tp3
+                    label.delete(v_tp3_lbl[1])
+
+    if trade_status > 0 and trade_status[1] <= 0 and long
+        ep:=close
+        et:=time
+        trade_session:=sess_tmp1
+        if trade_session=="NY" and array.size(ny_sess_or_box)>0
+            sl:=math.round((i_sess_ny_slt=="ATR"? close-i_sess_ny_slatrv:i_sess_ny_slt=="Pips/Points"?close-i_sess_ny_sl_pp:i_sess_ny_slt=="Range Aggressive"?(box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))+box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1)))/2:box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_ny_slt=="ATR"?i_sess_ny_slatrv:i_sess_ny_slt=="Pips/Points"?i_sess_ny_sl_pp:i_sess_ny_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))+box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1)))/2)):math.abs(close-box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_ny_tp2
+            i_tp3:=i_sess_ny_tp3
+
+            tp1:=math.round(ep+(sl_abs*i_sess_ny_rr),2)
+            tp2:=i_tp2?math.round(ep+(sl_abs*i_sess_ny_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep+(sl_abs*i_sess_ny_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_ny_tp1ps, i_sess_ny_tp2ps, i_sess_ny_tp3ps, i_sess_ny_tsps, alert_init_raw1)
+
+
+            
+        else if trade_session=="LON" and array.size(lon_sess_or_box)>0
+            sl:=math.round((i_sess_lon_slt=="ATR"? close-i_sess_lon_slatrv:i_sess_lon_slt=="Pips/Points"?close-i_sess_lon_sl_pp:i_sess_lon_slt=="Range Aggressive"?(box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))+box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1)))/2:box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_lon_slt=="ATR"?i_sess_lon_slatrv:i_sess_lon_slt=="Pips/Points"?i_sess_lon_sl_pp:i_sess_lon_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))+box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1)))/2)):math.abs(close-box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_lon_tp2
+            i_tp3:=i_sess_lon_tp3
+
+            tp1:=math.round(ep+(sl_abs*i_sess_lon_rr),2)
+            tp2:=i_tp2?math.round(ep+(sl_abs*i_sess_lon_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep+(sl_abs*i_sess_lon_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_lon_tp1ps, i_sess_lon_tp2ps, i_sess_lon_tp3ps, i_sess_lon_tsps, alert_init_raw1)
+
+
+        else if trade_session=="TOK" and array.size(tok_sess_or_box)>0
+            sl:=math.round((i_sess_tok_slt=="ATR"? close-i_sess_tok_slatrv:i_sess_tok_slt=="Pips/Points"?close-i_sess_tok_sl_pp:i_sess_tok_slt=="Range Aggressive"?(box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))+box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1)))/2:box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_tok_slt=="ATR"?i_sess_tok_slatrv:i_sess_tok_slt=="Pips/Points"?i_sess_tok_sl_pp:i_sess_tok_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))+box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1)))/2)):math.abs(close-box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_tok_tp2
+            i_tp3:=i_sess_tok_tp3
+
+            tp1:=math.round(ep+(sl_abs*i_sess_tok_rr),2)
+            tp2:=i_tp2?math.round(ep+(sl_abs*i_sess_tok_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep+(sl_abs*i_sess_tok_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_tok_tp1ps, i_sess_tok_tp2ps, i_sess_tok_tp3ps, i_sess_tok_tsps, alert_init_raw1)
+        
+       
+        //Bot Execution
+        //{
+        
+        //ps:=math.round((i_core_acct*i_core_rpt/100)/sl_abs,2)
+
+        //}
+
+        //Trade Position Tracker Init
+        //{
+        if i_ps_tracker
+            v_ep:=line.new(et, ep, et+(math.abs(time-time[2])*5),ep, xloc=xloc.bar_time, color=color.gray)
+            v_sl:=line.new(et, sl, et+(math.abs(time-time[2])*5),sl, xloc=xloc.bar_time, color=s_bear_col)
+            v_tp1:=line.new(et, tp1, et+(math.abs(time-time[2])*5),tp1, xloc=xloc.bar_time, color=s_bull_col)
+            v_tp2:=i_tp2?line.new(et, tp2, et+(math.abs(time-time[2])*5),tp2, xloc=xloc.bar_time, color=s_bull_col):na
+            v_tp3:=i_tp3?line.new(et, tp3, et+(math.abs(time-time[2])*5),tp3, xloc=xloc.bar_time, color=s_bull_col):na
+            v_loss:=box.new(et,ep,et+(math.abs(time-time[2])*5),sl,s_bear_col,xloc=xloc.bar_time, bgcolor=color.new(s_bear_col,85))
+            v_profit:=box.new(et,close,et+(math.abs(time-time[2])*5),ep,s_bull_col,xloc=xloc.bar_time, bgcolor=color.new(s_bull_col,85))
+
+            //var label v_ep_lbl=na, var label v_sl_lbl=na, var label v_ts_lbl= na, var label v_tp1_lbl= na, var label v_tp2_lbl= na, var label v_tp3_lbl= na, var label v_tp4_lbl= na,  
+
+            if i_ps_tracker_lbls!="None"
+                v_ep_lbl:=label.new(et, ep, (i_ps_tracker_lbls!="None"?"EP: ":"Entry Price: ") + str.tostring(ep), xloc.bar_time, yloc.price, color.gray, label.style_label_right, color.white  )
+                v_sl_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, (i_ps_tracker_lbls!="None"?"SL: ":"Stop Loss: ") + str.tostring(sl), xloc.bar_time, yloc.price, s_bear_col, label.style_label_left, color.white)
+                v_ts_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, "", xloc.bar_time, yloc.price, color.new(color.black,100), label.style_label_left, color.white)
+                v_tp1_lbl:=label.new(et+(math.abs(time-time[2])*7), tp1, (i_ps_tracker_lbls!="None"?"TP1: ":"Take-Profit 1: ") + str.tostring(tp1), xloc.bar_time, yloc.price, s_bull_col, label.style_label_left, color.white)
+                v_tp2_lbl:=i_tp2?label.new(et+(math.abs(time-time[2])*7), tp2, (i_ps_tracker_lbls!="None"?"TP2: ":"Take-Profit 2: ") + str.tostring(tp2), xloc.bar_time, yloc.price, s_bull_col, label.style_label_left, color.white):na
+                v_tp3_lbl:=i_tp3?label.new(et+(math.abs(time-time[2])*7), tp3, (i_ps_tracker_lbls!="None"?"TP3: ":"Take-Profit 3: ") + str.tostring(tp3), xloc.bar_time, yloc.price, s_bull_col, label.style_label_left, color.white):na
+            
+        //}
+
+        
+    else if trade_status > 0 and trade_status[1] >= 0
+
+        if i_ps_tracker
+            line.set_x2(v_ep,time+(math.abs(time-time[2])*5))
+            line.set_x2(v_sl,time+(math.abs(time-time[2])*5))
+            line.set_x2(v_tp1,time+(math.abs(time-time[2])*5))
+            if i_tp2
+                line.set_x2(v_tp2,time+(math.abs(time-time[2])*5))
+            if i_tp3
+                line.set_x2(v_tp3,time+(math.abs(time-time[2])*5))
+
+            box.set_right(v_loss,time+(math.abs(time-time[2])*5))
+            box.set_right(v_profit,time+(math.abs(time-time[2])*5))
+            if close>box.get_top(v_profit)
+                box.set_top(v_profit,close)
+
+            if sl!=sl[1]
+                line.set_y1(v_sl,sl)
+                line.set_y2(v_sl,sl)
+
+            if t_tp1_hit
+                line.set_width(v_tp1,2)
+            if t_tp2_hit
+                line.set_width(v_tp2,2)
+            if t_tp3_hit
+                line.set_width(v_tp3,2)
+            if i_ps_tracker_lbls!="None"
+                //label.set_x(v_ep_lbl,time+(math.abs(time-time[2])*7))
+                label.set_x(v_sl_lbl,time+(math.abs(time-time[2])*7))
+                label.set_x(v_ts_lbl,time+(math.abs(time-time[2])*7))
+                if sl!=sl[1]
+                    label.set_y(v_ts_lbl,sl)
+                    label.set_color(v_ts_lbl,s_bear_col)
+                    label.set_text(v_ts_lbl, (i_ps_tracker_lbls!="None"?"TS: ":"Trailing Stop: ") + str.tostring(sl) )
+                label.set_x(v_tp1_lbl,time+(math.abs(time-time[2])*7))
+                if i_tp2
+                    label.set_x(v_tp2_lbl,time+(math.abs(time-time[2])*7))
+                if i_tp3
+                    label.set_x(v_tp3_lbl,time+(math.abs(time-time[2])*7))
+
+                
+                
+                
+                
+                
+                
+                
+    
+    if trade_status < 0 and trade_status[1] >= 0 and short
+        ep:=close
+        et:=time
+        trade_session:=sess_tmp2
+        if trade_session=="NY" and array.size(ny_sess_or_box)>0
+            sl:=math.round((i_sess_ny_slt=="ATR"? close+i_sess_ny_slatrv:i_sess_ny_slt=="Pips/Points"?close+i_sess_ny_sl_pp:i_sess_ny_slt=="Range Aggressive"?(box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))+box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1)))/2:box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_ny_slt=="ATR"?i_sess_ny_slatrv:i_sess_ny_slt=="Pips/Points"?i_sess_ny_sl_pp:i_sess_ny_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))+box.get_bottom(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1)))/2)):math.abs(close-box.get_top(array.get(ny_sess_or_box,array.size(ny_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_ny_tp2
+            i_tp3:=i_sess_ny_tp3
+
+            tp1:=math.round(ep-(sl_abs*i_sess_ny_rr),2)
+            tp2:=i_tp2?math.round(ep-(sl_abs*i_sess_ny_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep-(sl_abs*i_sess_ny_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_ny_tp1ps, i_sess_ny_tp2ps, i_sess_ny_tp3ps, i_sess_ny_tsps, alert_init_raw2)
+
+        else if trade_session=="LON" and array.size(lon_sess_or_box)>0
+            sl:=math.round((i_sess_lon_slt=="ATR"? close+i_sess_lon_slatrv:i_sess_lon_slt=="Pips/Points"?close+i_sess_lon_sl_pp:i_sess_lon_slt=="Range Aggressive"?(box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))+box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1)))/2:box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_lon_slt=="ATR"?i_sess_lon_slatrv:i_sess_lon_slt=="Pips/Points"?i_sess_lon_sl_pp:i_sess_lon_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))+box.get_bottom(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1)))/2)):math.abs(close-box.get_top(array.get(lon_sess_or_box,array.size(lon_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_lon_tp2
+            i_tp3:=i_sess_lon_tp3
+
+            tp1:=math.round(ep-(sl_abs*i_sess_lon_rr),2)
+            tp2:=i_tp2?math.round(ep-(sl_abs*i_sess_lon_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep-(sl_abs*i_sess_lon_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_lon_tp1ps, i_sess_lon_tp2ps, i_sess_lon_tp3ps, i_sess_lon_tsps, alert_init_raw2)
+
+        else if trade_session=="TOK" and array.size(tok_sess_or_box)>0
+            sl:=math.round((i_sess_tok_slt=="ATR"? close+i_sess_tok_slatrv:i_sess_tok_slt=="Pips/Points"?close+i_sess_tok_sl_pp:i_sess_tok_slt=="Range Aggressive"?(box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))+box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1)))/2:box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))),2)
+            sl_abs := math.round(i_sess_tok_slt=="ATR"?i_sess_tok_slatrv:i_sess_tok_slt=="Pips/Points"?i_sess_tok_sl_pp:i_sess_tok_slt=="Range Aggressive"?math.abs(close-((box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))+box.get_bottom(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1)))/2)):math.abs(close-box.get_top(array.get(tok_sess_or_box,array.size(tok_sess_or_box)-1))),2) 
+
+            i_tp2:=i_sess_tok_tp2
+            i_tp3:=i_sess_tok_tp3
+
+            tp1:=math.round(ep-(sl_abs*i_sess_tok_rr),2)
+            tp2:=i_tp2?math.round(ep-(sl_abs*i_sess_tok_rr2),2):0.0
+            tp3:=i_tp3?math.round(ep-(sl_abs*i_sess_tok_rr3),2):0.0
+
+            ps_v:=bot_execution(i_tp2, i_tp3, i_sess_tok_tp1ps, i_sess_tok_tp2ps, i_sess_tok_tp3ps, i_sess_tok_tsps, alert_init_raw2)
+     
+        //Trade Position Tracker Init
+        //{
+        if i_ps_tracker
+            v_ep:=line.new(et, ep, et+(math.abs(time-time[2])*5),ep, xloc=xloc.bar_time, color=color.gray)
+            v_sl:=line.new(et, sl, et+(math.abs(time-time[2])*5),sl, xloc=xloc.bar_time, color=s_bull_col)
+            v_tp1:=line.new(et, tp1, et+(math.abs(time-time[2])*5),tp1, xloc=xloc.bar_time, color=s_bear_col)
+            v_tp2:=i_tp2?line.new(et, tp2, et+(math.abs(time-time[2])*5),tp2, xloc=xloc.bar_time, color=s_bear_col):na
+            v_tp3:=i_tp3?line.new(et, tp3, et+(math.abs(time-time[2])*5),tp3, xloc=xloc.bar_time, color=s_bear_col):na
+            
+            v_loss:=box.new(et,sl,et+(math.abs(time-time[2])*5),ep,s_bull_col,xloc=xloc.bar_time, bgcolor=color.new(s_bull_col,85))
+            v_profit:=box.new(et,ep,et+(math.abs(time-time[2])*5),close,s_bear_col,xloc=xloc.bar_time, bgcolor=color.new(s_bear_col,85))
+
+
+            if i_ps_tracker_lbls!="None"
+                v_ep_lbl:=label.new(et, ep, (i_ps_tracker_lbls!="None"?"EP: ":"Entry Price: ") + str.tostring(ep), xloc.bar_time, yloc.price, color.gray, label.style_label_right, color.white  )
+                v_sl_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, (i_ps_tracker_lbls!="None"?"SL: ":"Stop Loss: ") + str.tostring(sl), xloc.bar_time, yloc.price, s_bull_col, label.style_label_left, color.white)
+
+                v_ts_lbl:=label.new(et+(math.abs(time-time[2])*7), sl, "", xloc.bar_time, yloc.price, color.new(color.black,100), label.style_label_left, color.white)
+
+                v_tp1_lbl:=label.new(et+(math.abs(time-time[2])*7), tp1, (i_ps_tracker_lbls!="None"?"TP1: ":"Take-Profit 1: ") + str.tostring(tp1), xloc.bar_time, yloc.price, s_bear_col, label.style_label_left, color.white)
+                v_tp2_lbl:=i_tp2?label.new(et+(math.abs(time-time[2])*7), tp2, (i_ps_tracker_lbls!="None"?"TP2: ":"Take-Profit 2: ") + str.tostring(tp2), xloc.bar_time, yloc.price, s_bear_col, label.style_label_left, color.white):na
+                v_tp3_lbl:=i_tp3?label.new(et+(math.abs(time-time[2])*7), tp3, (i_ps_tracker_lbls!="None"?"TP3: ":"Take-Profit 3: ") + str.tostring(tp3), xloc.bar_time, yloc.price, s_bear_col, label.style_label_left, color.white):na
+                
+        //}
+    else if trade_status < 0 and trade_status[1] <= 0
+
+        if i_ps_tracker
+            line.set_x2(v_ep,time+(math.abs(time-time[2])*5))
+            line.set_x2(v_sl,time+(math.abs(time-time[2])*5))
+            line.set_x2(v_tp1,time+(math.abs(time-time[2])*5))
+            if i_tp2
+                line.set_x2(v_tp2,time+(math.abs(time-time[2])*5))
+            if i_tp3
+                line.set_x2(v_tp3,time+(math.abs(time-time[2])*5))
+            
+            box.set_right(v_loss,time+(math.abs(time-time[2])*5))
+            box.set_right(v_profit,time+(math.abs(time-time[2])*5))
+            if close<box.get_bottom(v_profit)
+                box.set_bottom(v_profit,close)
+
+            if sl!=sl[1]
+                line.set_y1(v_sl,sl)
+                line.set_y2(v_sl,sl)
+
+            if t_tp1_hit
+                line.set_width(v_tp1,2)
+            if t_tp2_hit
+                line.set_width(v_tp2,2)
+            if t_tp3_hit
+                line.set_width(v_tp3,2)
+            
+            if i_ps_tracker_lbls!="None"
+                //label.set_x(v_ep_lbl,time+(math.abs(time-time[2])*7))
+                label.set_x(v_sl_lbl,time+(math.abs(time-time[2])*7))
+                label.set_x(v_ts_lbl,time+(math.abs(time-time[2])*7))
+                if sl!=sl[1]
+                    label.set_y(v_ts_lbl,sl)
+                    label.set_color(v_ts_lbl,s_bull_col)
+                    label.set_text(v_ts_lbl, (i_ps_tracker_lbls!="None"?"TS: ":"Trailing Stop: ") + str.tostring(sl) )
+                label.set_x(v_tp1_lbl,time+(math.abs(time-time[2])*7))
+                if i_tp2
+                    label.set_x(v_tp2_lbl,time+(math.abs(time-time[2])*7))
+                if i_tp3
+                    label.set_x(v_tp3_lbl,time+(math.abs(time-time[2])*7))
+                
+
+
+
+
+
+
+
+if trade_vars_reinit
+    ts_upd:=0
+    ts_adv:=false
+    be_adv:=false
+    trade_status:=0
+    ep:=0.0
+    sl:=0.0
+    tp1:=0.0 
+    tp2:=0.0 
+    tp3:=0.0
+    ts_trigger:=false
+    t_tp1_hitf := false
+    t_tp2_hitf := false
+    t_tp3_hitf := false
+
+
+
+
+
+
+
+
+
+
+
+
+plotshape(icc and i_show_sign and long and trade_status>0 and trade_status[1]<=0, "Buy Signals", shape.labelup, location.belowbar, s_bull_col, text = "Buy", textcolor = color.white)
+plotshape(icc and i_show_sign and short and trade_status<0 and trade_status[1]>=0, "Sell Signals", shape.labeldown, location.abovebar, s_bear_col, text = "Sell", textcolor = color.white)
+
+
+//}
+
+
+
+// //RENKO MASTER TABLE
+// //{
+
+
+// r_tbl_col = r_tbl_theme == "White Background" or r_tbl_theme == "Transparent White"?color.white:color.black
+// r_tbl_rowsf = 0, r_tbl_rows2 = 0
+// if r_show_tbl
+//     r_tbl_rowsf:=r_tbl_rowsf+13
+// if i_ps_rtable
+//     r_tbl_rowsf:=r_tbl_rowsf+9
+//     if i_tp2
+//         r_tbl_rowsf:=r_tbl_rowsf+3
+//     if i_tp3
+//         r_tbl_rowsf:=r_tbl_rowsf+3
+// r_tbl_rowsf:=r_tbl_rowsf+8
+
+// var table recap_table = na
+// recap_table := r_show_tbl or i_ps_rtable and time != time [1] ?  table.new(position.middle_right, 5, r_tbl_rowsf, r_tbl_theme == "Transparent White" or r_tbl_theme == "Transparent Black"?#00000000:r_tbl_col, #00000000) : na
+
+// stats_tbl_txt = r_tbl_theme=="Black Background" or r_tbl_theme == "Transparent Black"? color.white : color.black
+
+
+// if barstate.islast and (r_show_tbl or i_ps_rtable) and time != time [1]
+        
+//     var tcc=0
+//     tcc:= 0
+//     mf = i_ps_rtable and trade_status!=0?1:4
+
+//     table.merge_cells(recap_table,0,0,4,0)
+//     //table.merge_cells(recap_table,1,0,1,1+mf)
+//     //table.merge_cells(recap_table,3,0,3,1+mf)
+//     //table.merge_cells(recap_table,4,0,4,1+mf)
+
+//     table.cell(recap_table,0,tcc,"Master Table[i]\n\n",text_color=stats_tbl_txt,tooltip="-", text_size = r_tbl_size)
+//     tcc:=tcc+1
+
+
+//     if r_show_tbl
+        
+//         table.cell(recap_table,2,tcc,"Sessions",text_color=stats_tbl_txt,tooltip="This table helps you visualising the specs of your current active trade.", text_size = r_tbl_size)
+//         tcc:=tcc+1
+//         table.cell(recap_table,1,tcc,"NY:"+(ny_sess_status==1?"IN":"NA"),text_color=color.white, bgcolor = (ny_sess_status==1?i_sess_ny_col:color.gray), text_size = r_tbl_size)
+//         table.cell(recap_table,2,tcc,"LON:"+(lon_sess_status==1?"IN":"NA"),text_color=color.white, bgcolor =(lon_sess_status==1?i_sess_lon_col:color.gray), text_size = r_tbl_size)
+//         table.cell(recap_table,3,tcc,"TOK:"+(tok_sess_status==1?"IN":"NA"),text_color=color.white, bgcolor =(tok_sess_status==1?i_sess_tok_col:color.gray), text_size = r_tbl_size)
+//         tcc:=tcc+1
+
+        
+//         table.cell(recap_table,2,tcc,"Opening Ranges",text_color=stats_tbl_txt,tooltip="This table helps you visualising the specs of your current active trade.", text_size = r_tbl_size)
+//         tcc:=tcc+1
+//         table.cell(recap_table,1,tcc,"NY:"+(ny_or_sess_status==1 and array.size(ny_sess_or_box)>0?( close>box.get_top(array.get(ny_sess_or_box, array.size(ny_sess_box)-1))?"ABOVE":close<box.get_bottom(array.get(ny_sess_or_box, array.size(ny_sess_box)-1))?"BELOW":"INSIDE"  ):"NA"),text_color=color.white, bgcolor = (ny_sess_status==1?i_sess_ny_orcol:color.gray), text_size = r_tbl_size)
+//         table.cell(recap_table,2,tcc,"LON:"+(lon_or_sess_status==1 and array.size(lon_sess_or_box)>0 ?( close>box.get_top(array.get(lon_sess_or_box, array.size(lon_sess_box)-1))?"ABOVE":close<box.get_bottom(array.get(lon_sess_or_box, array.size(lon_sess_box)-1))?"BELOW":"INSIDE"  ):"NA"),text_color=color.white, bgcolor =(lon_sess_status==1?i_sess_lon_orcol:color.gray), text_size = r_tbl_size)
+//         table.cell(recap_table,3,tcc,"TOK:"+(tok_or_sess_status==1 and array.size(tok_sess_or_box)>0?( close>box.get_top(array.get(tok_sess_or_box, array.size(tok_sess_box)-1))?"ABOVE":close<box.get_bottom(array.get(tok_sess_or_box, array.size(tok_sess_box)-1))?"BELOW":"INSIDE"  ):"NA"),text_color=color.white, bgcolor =(tok_sess_status==1?i_sess_tok_orcol:color.gray), text_size = r_tbl_size)
+//         tcc:=tcc+1
+
+    
+//     table.merge_cells(recap_table,0,tcc,4,tcc)
+//     tcc:=tcc+1
+
+//     table.merge_cells(recap_table,0,tcc,1,r_tbl_rowsf-1)
+//     table.merge_cells(recap_table,3,tcc,4,r_tbl_rowsf-1)
+        
+
+//     //     table.merge_cells(recap_table,0,0,0,19)
+//     //     table.merge_cells(recap_table,1,0,1,19)
+//     //     table.merge_cells(recap_table,2,0,2,19)
+//     //     table.merge_cells(recap_table,0,0,2,0)
+//     if r_show_tbl
+        
+        
+
+//         // table.cell(recap_table,2,tcc,"HTF Liquidity",text_color=stats_tbl_txt, text_size = r_tbl_size)
+//         // tcc:=tcc+1
+//         // table.cell(recap_table,2,tcc,"TF:"+timeStep_translate(),text_color=color.white, bgcolor = color.new(color.gray,10), text_size = r_tbl_size)
+//         // tcc:=tcc+1
+
+        
+//         table.cell(recap_table,2,tcc,"Sigma Trend Spotter",text_color=stats_tbl_txt, text_size = r_tbl_size)
+//         tcc:=tcc+1
+        
+//         table.cell(recap_table,2,tcc, "Current Status: " + (mtsp_stat==1?"BULL":mtsp_stat==-1?"BEAR":"CHOP") ,text_color=color.white, bgcolor = mtsp_stat==1?i_mtsp_bullcol:mtsp_stat==-1?i_mtsp_bearcol:i_mtsp_chopcol, text_size = r_tbl_size)
+//         tcc:=tcc+1
+
+//         table.cell(recap_table,2,tcc,"Sigma Oscillator",text_color=stats_tbl_txt, text_size = r_tbl_size)
+//         tcc:=tcc+1
+        
+//         table.cell(recap_table,2,tcc, "Current Status: " + (i_mts_s1==1?"BULL":i_mts_s1==2?"STRONG BULL":i_mts_s1==-1?"BEAR":i_mts_s1==-2?"STRONG BEAR":"WEAKENING") ,text_color=color.white, bgcolor = i_mts_fcol, text_size = r_tbl_size)
+//         tcc:=tcc+1
+
+//         table.cell(recap_table,2,tcc,"\n")
+//         tcc:=tcc+1
+
+//     if i_ps_rtable
+
+//         table.cell(recap_table,2,tcc,"Position Section",text_color=color.white, text_halign=text.align_center, text_valign=text.align_center, bgcolor = color.gray, text_size = r_tbl_size)
+//         tcc:=tcc+1
+//         table.cell(recap_table,2,tcc,"\n")
+//         tcc:=tcc+1
+
+//         if trade_status==0
+//             table.clear(recap_table,2,tcc,2,r_tbl_rowsf-1)
+            
+//             table.cell(recap_table,2,tcc,"You don't have an open position.",text_color=color.white, text_halign=text.align_center, text_valign=text.align_center, bgcolor = color.gray, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+//             table.cell(recap_table,2,tcc,"\n")
+//             tcc:=tcc+1
+            
+//         else 
+
+//             table.clear(recap_table,2,tcc,2,r_tbl_rowsf-1)
+//             r_tpnl = trade_status>0?math.round(close-ep,2):math.round(ep-close,2)
+//             r_tpnlcol = trade_status>0?r_tpnl>0?s_bull_col:s_bear_col:r_tpnl>0?s_bear_col:s_bull_col
+
+//             table.cell(recap_table, 2, tcc, trade_status>0?"Trade Dir: Long":"Trade Dir: Short", text_color = color.white, bgcolor = trade_status>0?s_bull_col:s_bear_col, text_size = r_tbl_size)
+//             tcc:=tcc+1
+//             table.cell(recap_table, 2, tcc, "Trade Pnl: " + str.tostring(r_tpnl), text_color = r_tpnlcol, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+//             table.cell(recap_table, 2, tcc, "Trade Risk (Lots): "+str.tostring(ps_v), text_color = color.white, bgcolor = trade_status>0?s_bull_col:s_bear_col, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+            
+//             table.cell(recap_table,2,tcc,"\n")
+//             tcc:=tcc+1
+            
+//             table.cell(recap_table, 2, tcc, "SL: "+str.tostring(sl)+"/"+str.tostring(sl_abs), text_color = color.white, bgcolor = trade_status>0?s_bear_col:s_bull_col, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+//             sl_status = be_adv and i_ts_be!="None"? ts_adv and i_ts_on!="None"? "Trailing, Upd: " + str.tostring(ts_upd) : "BreakEven" : ts_adv and i_ts_on!="None"? "Trailing, Upd: " + str.tostring(ts_upd) :  "Initial"
+//             table.cell(recap_table, 2, tcc, "SL(Status): " + sl_status, text_color = color.white, bgcolor = trade_status>0?s_bear_col:s_bull_col, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+            
+
+//             table.cell(recap_table, 2, tcc, "TP1: "+str.tostring(tp1)+"/"+str.tostring(tp1-ep), text_color = color.white, bgcolor = trade_status>0?s_bull_col:s_bear_col, text_size = r_tbl_size)
+//             tcc:=tcc+1
+//             table.cell(recap_table, 2, tcc, "TP1(Status): "+ (t_tp1_hitf? "Hit!":"In Progress.."), text_color = color.white, bgcolor = t_tp1_hitf? trade_status>0?s_bull_col:s_bear_col:color.gray, text_size = r_tbl_size)
+//             tcc:=tcc+1
+
+           
+//             if i_tp2 
+
+//                 table.cell(recap_table, 2, tcc, "TP2: " +str.tostring(tp2)+"/"+str.tostring(tp2-ep), text_color = color.white, bgcolor = trade_status>0?s_bull_col:s_bear_col, text_size = r_tbl_size)
+//                 tcc:=tcc+1
+                
+//                 table.cell(recap_table, 2, tcc, "TP2(Status): " + (t_tp2_hitf? "Hit!":"In Progress.."), text_color = color.white, bgcolor = t_tp2_hitf? trade_status>0?s_bull_col:s_bear_col:color.gray, text_size = r_tbl_size)
+//                 tcc:=tcc+1
+
+                
+//             if i_tp3 
+
+//                 table.cell(recap_table, 2, tcc, "TP3: " +str.tostring(tp3)+"/"+str.tostring(tp3-ep), text_color = color.white, bgcolor = trade_status>0?s_bull_col:s_bear_col, text_size = r_tbl_size)
+//                 tcc:=tcc+1
+
+//                 table.cell(recap_table, 2, tcc, "TP3(Status): " + (t_tp3_hitf? "Hit!":"In Progress.."), text_color = color.white, bgcolor = t_tp3_hitf? trade_status>0?s_bull_col:s_bear_col:color.gray, text_size = r_tbl_size)
+//                 tcc:=tcc+1
+
+//             table.cell(recap_table,2,tcc,"\n")
+//             tcc:=tcc+1
+            
+        
+//     // else 
+        
+

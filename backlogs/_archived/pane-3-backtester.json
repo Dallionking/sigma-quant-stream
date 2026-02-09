@@ -1,0 +1,1310 @@
+{
+  "meta": {
+    "paneId": 3,
+    "workerType": "backtester",
+    "targetIterations": 100,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:12:41.949172",
+    "lastUpdatedAt": "2026-01-18T16:12:41.949303",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "backtest-001",
+      "type": "backtest_walk_forward",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:23:34Z"
+    },
+    {
+      "id": "combine-008",
+      "type": "combine_indicators",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Combine RSI with CCI for ES",
+      "description": "Test combining RSI with CCI as entry filter on ES. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:28:28Z"
+    },
+    {
+      "id": "backtest-009",
+      "type": "backtest_walk_forward",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:34:29Z"
+    },
+    {
+      "id": "combine-010",
+      "type": "combine_indicators",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Combine Volume Profile with Stochastic for YM",
+      "description": "Test combining Volume Profile with Stochastic as entry filter on YM. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:43:16Z"
+    },
+    {
+      "id": "backtest-014",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Backtest mean reversion on RTY",
+      "description": "Backtest mean reversion strategy on RTY with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T21:56:32Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-017",
+      "type": "backtest_walk_forward",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Run walk-forward validation for momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:03:02Z"
+    },
+    {
+      "id": "combine-018",
+      "type": "combine_indicators",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Test MFI + ATR combination",
+      "description": "Test combining MFI with ATR as entry filter on NQ. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:11:42Z"
+    },
+    {
+      "id": "backtest-021",
+      "type": "backtest_walk_forward",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Run walk-forward validation for momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:17:46Z"
+    },
+    {
+      "id": "backtest-022",
+      "type": "backtest_strategy",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Backtest pivot reversal on RTY",
+      "description": "Backtest pivot reversal strategy on RTY with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "passes": true,
+      "completed_at": "2026-01-18T22:25:27Z"
+    },
+    {
+      "id": "combine-031",
+      "type": "combine_indicators",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Combine ATR with RSI for NQ",
+      "description": "Test combining ATR with RSI as entry filter on NQ. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:32:58Z"
+    },
+    {
+      "id": "backtest-045",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Test OOS performance of momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T22:37:57Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-048",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 1,
+      "parallel_group": 2,
+      "title": "Validate gap fade with costs and slippage",
+      "description": "Backtest gap fade strategy on NQ with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:39:40Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-006",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 2,
+      "title": "Backtest VWAP bounce on YM",
+      "description": "Backtest VWAP bounce strategy on YM with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:41:09Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-023",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T22:42:39Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-033",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T22:44:04Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-039",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 2,
+      "title": "Combine RSI with VWAP for RTY",
+      "description": "Test combining RSI with VWAP as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T22:45:39Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-044",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 2,
+      "parallel_group": 2,
+      "title": "Combine Bollinger Bands with MACD for YM",
+      "description": "Test combining Bollinger Bands with MACD as entry filter on YM. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T22:47:12Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-002",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Combine CCI with Bollinger Bands for NQ",
+      "description": "Test combining CCI with Bollinger Bands as entry filter on NQ. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T22:48:47Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-004",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Test ATR + Stochastic combination",
+      "description": "Test combining ATR with Stochastic as entry filter on YM. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T22:50:33Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-007",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Validate VWAP bounce with costs and slippage",
+      "description": "Backtest VWAP bounce strategy on ES with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:52:13Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-012",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T22:53:26Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-016",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Run full backtest for trend following",
+      "description": "Backtest trend following strategy on NQ with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:54:35Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-024",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Backtest volatility contraction on RTY",
+      "description": "Backtest volatility contraction strategy on RTY with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:55:41Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-030",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Validate pivot reversal with costs and slippage",
+      "description": "Backtest pivot reversal strategy on ES with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T22:56:50Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-036",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Combine MFI with CCI for ES",
+      "description": "Test combining MFI with CCI as entry filter on ES. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T22:57:58Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-042",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 3,
+      "parallel_group": 2,
+      "title": "Run walk-forward validation for momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T22:59:09Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-003",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Run full backtest for pivot reversal",
+      "description": "Backtest pivot reversal strategy on RTY with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T23:00:17Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-005",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Validate momentum breakout with costs and slippage",
+      "description": "Backtest momentum breakout strategy on NQ with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T23:01:29Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-013",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Run walk-forward validation for momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:02:34Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-019",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Run walk-forward validation for momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:03:48Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-020",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:05:00Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-026",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Validate pivot reversal with costs and slippage",
+      "description": "Backtest pivot reversal strategy on NQ with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T23:06:05Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-028",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Combine OBV with MACD for RTY",
+      "description": "Test combining OBV with MACD as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:07:10Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-032",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Test OOS performance of momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:08:24Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-038",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:09:55Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-040",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Combine Volume Profile with Stochastic for NQ",
+      "description": "Test combining Volume Profile with Stochastic as entry filter on NQ. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:11:13Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-041",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Test OOS performance of momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:12:25Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-043",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:13:30Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-046",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Test OBV + RSI combination",
+      "description": "Test combining OBV with RSI as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:14:31Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-049",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 4,
+      "parallel_group": 2,
+      "title": "Test OOS performance of momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:15:34Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-011",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Test CCI + MFI combination",
+      "description": "Test combining CCI with MFI as entry filter on YM. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:16:36Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-015",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Test RSI + Stochastic combination",
+      "description": "Test combining RSI with Stochastic as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:17:39Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-025",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Run full backtest for VWAP bounce",
+      "description": "Backtest VWAP bounce strategy on ES with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T23:18:40Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-027",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:19:40Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-029",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Test ATR + MACD combination",
+      "description": "Test combining ATR with MACD as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:20:43Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-034",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Test OOS performance of momentum",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:21:59Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-035",
+      "type": "backtest_walk_forward",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Validate momentum generalization",
+      "description": "Run 5-window walk-forward validation for momentum. Use 70/30 train/test split per window. Calculate OOS decay (reject if >50%). Save results with in-sample and out-of-sample metrics to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "oos_decay",
+          "maxDecay": 0.3
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        }
+      ],
+      "failed_at": "2026-01-18T23:23:02Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-037",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Combine Volume Profile with MACD for ES",
+      "description": "Test combining Volume Profile with MACD as entry filter on ES. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:24:04Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "backtest-047",
+      "type": "backtest_strategy",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Validate counter-trend with costs and slippage",
+      "description": "Backtest counter-trend strategy on YM with: $2.50/side commission, 0.5 tick slippage, minimum 100 trades. Calculate Sharpe, max DD, win rate. Auto-reject if Sharpe>3.0 or win rate>80%. Save JSON results to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "backtest_passes"
+        },
+        {
+          "type": "sharpe_range",
+          "minSharpe": 1.0,
+          "maxSharpe": 3.0
+        },
+        {
+          "type": "min_trades",
+          "minTrades": 100
+        },
+        {
+          "type": "max_win_rate",
+          "maxWinRate": 0.8
+        },
+        {
+          "type": "no_mock_data",
+          "provider": "databento"
+        }
+      ],
+      "hypothesis": "",
+      "failed_at": "2026-01-18T23:25:05Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "combine-050",
+      "type": "combine_indicators",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 2,
+      "title": "Combine Stochastic with VWAP for RTY",
+      "description": "Test combining Stochastic with VWAP as entry filter on RTY. Document hypothesis first. Run backtest with costs. Save results showing improvement vs single indicator to output/backtests/2026-01-18/.",
+      "expectedOutput": "output/backtests/2026-01-18/",
+      "acceptanceCriteria": [
+        {
+          "type": "hypothesis_documented"
+        },
+        {
+          "type": "backtest_passes"
+        }
+      ],
+      "failed_at": "2026-01-18T23:26:06Z",
+      "failure_reason": "Max retries exceeded"
+    }
+  ]
+}

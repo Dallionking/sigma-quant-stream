@@ -1,0 +1,28 @@
+{
+  "id": "hyp-seed-006",
+  "title": "Volume Profile POC Reversion",
+  "hypothesis": "Price returns to Point of Control (POC) from previous day's volume profile with high probability during low-momentum periods",
+  "counterparty": "Breakout traders who enter when price moves away from value area",
+  "edgeSource": "Market microstructure - POC represents fair value consensus",
+  "markets": ["ES", "NQ"],
+  "timeframes": ["5m", "15m"],
+  "parameterCount": 3,
+  "priority": 2,
+  "source": "Market Profile concepts + institutional trading",
+  "references": [
+    "Dalton 'Markets in Profile'",
+    "Steidlmayer Market Profile"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.0, 1.6],
+    "winRateRange": [0.55, 0.68],
+    "tradesPerMonth": 15
+  },
+  "testConditions": {
+    "valueAreaPercent": 70,
+    "distanceFromPOC_ATR": [1.0, 1.5, 2.0],
+    "momentumFilter": true
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

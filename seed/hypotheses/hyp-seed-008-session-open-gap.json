@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-008",
+  "title": "Session Gap Fill Strategy",
+  "hypothesis": "Opening gaps from prior session close tend to fill within the first 2 hours of trading with 60%+ probability",
+  "counterparty": "Traders who chase the gap direction expecting continuation",
+  "edgeSource": "Market microstructure - overnight orders create temporary imbalance",
+  "markets": ["ES", "NQ", "YM"],
+  "timeframes": ["5m", "15m"],
+  "parameterCount": 4,
+  "priority": 1,
+  "source": "Gap statistics research + Larry Williams",
+  "references": [
+    "Williams 'Long-Term Secrets to Short-Term Trading'",
+    "Gap fill probability studies"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.0, 1.8],
+    "winRateRange": [0.58, 0.68],
+    "tradesPerMonth": 10
+  },
+  "testConditions": {
+    "minGapSize_ATR": 0.5,
+    "maxGapSize_ATR": 2.0,
+    "fillTimeLimit_minutes": 120,
+    "dayOfWeekFilter": true
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,990 @@
+{
+  "meta": {
+    "paneId": 5,
+    "workerType": "prop_firm_validator",
+    "targetIterations": 100,
+    "completedIterations": 0,
+    "strategiesValidated": 0,
+    "strategiesRejected": 0,
+    "createdAt": "2026-01-18T16:12:41.949416",
+    "lastUpdatedAt": "2026-01-18T16:12:41.949543",
+    "status": "active"
+  },
+  "tasks": [
+    {
+      "id": "validate-016",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:16:03Z"
+    },
+    {
+      "id": "validate-018",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:20:31Z"
+    },
+    {
+      "id": "validate-030",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:25:00Z"
+    },
+    {
+      "id": "validate-043",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:27:31Z"
+    },
+    {
+      "id": "validate-005",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:30:37Z"
+    },
+    {
+      "id": "validate-014",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:34:22Z"
+    },
+    {
+      "id": "validate-017",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:39:26Z"
+    },
+    {
+      "id": "validate-025",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:43:26Z"
+    },
+    {
+      "id": "validate-031",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:46:28Z"
+    },
+    {
+      "id": "validate-024",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:50:53Z"
+    },
+    {
+      "id": "validate-029",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T21:55:23Z"
+    },
+    {
+      "id": "validate-038",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:00:08Z"
+    },
+    {
+      "id": "validate-040",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:03:19Z"
+    },
+    {
+      "id": "validate-042",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:05:51Z"
+    },
+    {
+      "id": "validate-044",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:10:03Z"
+    },
+    {
+      "id": "validate-020",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:12:46Z"
+    },
+    {
+      "id": "validate-034",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:15:16Z"
+    },
+    {
+      "id": "validate-039",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:20:01Z"
+    },
+    {
+      "id": "validate-002",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:23:34Z"
+    },
+    {
+      "id": "validate-007",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:29:25Z"
+    },
+    {
+      "id": "validate-010",
+      "type": "validate_prop_firm",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Validate momentum against all 14 prop firms",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:31:48Z"
+    },
+    {
+      "id": "validate-021",
+      "type": "validate_prop_firm",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Test momentum prop firm compliance",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "failed_at": "2026-01-18T22:36:38Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "validate-033",
+      "type": "validate_prop_firm",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "failed_at": "2026-01-18T22:38:01Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "validate-046",
+      "type": "validate_prop_firm",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "failed_at": "2026-01-18T22:39:42Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "validate-049",
+      "type": "validate_prop_firm",
+      "status": "failed",
+      "priority": 5,
+      "parallel_group": 4,
+      "title": "Run prop firm simulation for momentum",
+      "description": "Simulate momentum against all 14 prop firms (TakeProfitTrader, TopStep, Apex 3.0, Tradeify, etc.). Check: daily loss limits, trailing drawdown, consistency rules. Mark deployment-ready if passes \u22653 firms. Save results to output/strategies/prop_firm_ready/.",
+      "expectedOutput": "output/strategies/prop_firm_ready/",
+      "acceptanceCriteria": [
+        {
+          "type": "prop_firm_passes",
+          "minFirmsPassing": 3
+        }
+      ],
+      "failed_at": "2026-01-18T22:41:10Z",
+      "failure_reason": "Max retries exceeded"
+    },
+    {
+      "id": "deploy-001",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:41:37Z"
+    },
+    {
+      "id": "deploy-004",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:04Z"
+    },
+    {
+      "id": "deploy-019",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:29Z"
+    },
+    {
+      "id": "deploy-023",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:42:54Z"
+    },
+    {
+      "id": "deploy-026",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:17Z"
+    },
+    {
+      "id": "deploy-028",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:43:43Z"
+    },
+    {
+      "id": "deploy-032",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:08Z"
+    },
+    {
+      "id": "deploy-041",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 1,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:44:34Z"
+    },
+    {
+      "id": "deploy-011",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:01Z"
+    },
+    {
+      "id": "deploy-012",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:30Z"
+    },
+    {
+      "id": "deploy-027",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 2,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:45:54Z"
+    },
+    {
+      "id": "deploy-006",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:15Z"
+    },
+    {
+      "id": "deploy-037",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 3,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:46:40Z"
+    },
+    {
+      "id": "deploy-013",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:10Z"
+    },
+    {
+      "id": "deploy-022",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:47:44Z"
+    },
+    {
+      "id": "deploy-035",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:13Z"
+    },
+    {
+      "id": "deploy-036",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:48:43Z"
+    },
+    {
+      "id": "deploy-045",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:16Z"
+    },
+    {
+      "id": "deploy-048",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 4,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:49:55Z"
+    },
+    {
+      "id": "deploy-003",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:50:26Z"
+    },
+    {
+      "id": "deploy-008",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:51:01Z"
+    },
+    {
+      "id": "deploy-009",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:51:40Z"
+    },
+    {
+      "id": "deploy-015",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:04Z"
+    },
+    {
+      "id": "deploy-047",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:25Z"
+    },
+    {
+      "id": "deploy-050",
+      "type": "deployment",
+      "status": "completed",
+      "priority": 5,
+      "parallel_group": 5,
+      "title": "Deploy momentum for production use",
+      "description": "Deploy momentum for production use. Create strategy class in output/strategies/deployed/. Include: signal generation, position sizing, risk limits. Ensure passes all quality gates before marking complete.",
+      "expectedOutput": "output/strategies/deployed/",
+      "acceptanceCriteria": [
+        {
+          "type": "file_exists",
+          "path": "output/strategies/deployed/{strategy}.py"
+        },
+        {
+          "type": "code_review_passed"
+        }
+      ],
+      "passes": true,
+      "completed_at": "2026-01-18T22:52:48Z"
+    }
+  ]
+}

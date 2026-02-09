@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-002",
+  "title": "Triple Barrier Method with Meta-Labeling",
+  "hypothesis": "Using triple barrier labeling (vertical + horizontal barriers) with meta-labeling improves signal quality by filtering false positives from primary model",
+  "counterparty": "Traders using fixed time exits miss optimal exit points",
+  "edgeSource": "Academic research - De Prado's triple barrier provides better P&L alignment than fixed exits",
+  "markets": ["ES", "NQ", "YM"],
+  "timeframes": ["5m", "15m", "1h"],
+  "parameterCount": 4,
+  "priority": 1,
+  "source": "De Prado 'Advances in Financial ML' Chapter 3",
+  "references": [
+    "De Prado Chapter 3: Triple Barrier Method",
+    "De Prado Chapter 6: Meta-Labeling"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.2, 2.5],
+    "winRateRange": [0.55, 0.70],
+    "tradesPerMonth": 20
+  },
+  "testConditions": {
+    "profitTakingMultiple": [1.5, 2.0, 2.5],
+    "stopLossMultiple": [1.0, 1.5],
+    "maxHoldingPeriod": [20, 50, 100],
+    "volatilityLookback": 20
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

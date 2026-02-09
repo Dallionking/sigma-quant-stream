@@ -1,0 +1,3355 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © theATR
+
+//@version=5
+strategy("MM SIGMA ALGO - Strategy [SigmaAlgo™]", "MM SIGMA ALGO - Strategy [SigmaAlgo™]", true, max_lines_count=500, max_labels_count=500, max_boxes_count=500, max_bars_back=541, calc_on_every_tick = true)
+
+//#region [ --- ALL INPUTS --- ]
+
+import thealgorithmictrader/HALib/7 as HALib
+import thealgorithmictrader/SessionInBoxesPro/11 as SessInBoxes
+
+//#endregion
+
+//#region [ --- ALL GLOBAL FUNCTIONS --- ]
+
+F_GLOBAL_MT_ROUND(float _val)=>
+    val = math.round_to_mintick(_val)
+    val
+
+F_GLOBAL_TO_MT(float _to_conv)=>
+    conv = 0.0
+    if syminfo.type == "forex" //We convert from PIPS to TICKS
+        conv := _to_conv * syminfo.mintick
+    else if syminfo.type == "futures" 
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "cfd"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "index"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "stock"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "crypto"
+        conv := _to_conv/syminfo.mintick
+    conv
+
+F_GLOBAL_TF_CONV(string _tf)=>
+    tf_conv = ""
+    if _tf == "1"
+        tf_conv := "1-MIN"
+    else if _tf == "2"
+        tf_conv := "2-MIN"
+    else if _tf == "3"
+        tf_conv := "3-MIN"
+    else if _tf == "5"
+        tf_conv := "5-MIN"
+    else if _tf == "10"
+        tf_conv := "10-MIN"
+    else if _tf == "15"
+        tf_conv := "15-MIN"
+    else if _tf == "30"
+        tf_conv := "30-MIN"
+    else if _tf == "45"
+        tf_conv := "45-MIN"
+    else if _tf == "60"
+        tf_conv := "1-HOUR"
+    else if _tf == "120"
+        tf_conv := "2-HOUR"
+    else if _tf == "180"
+        tf_conv := "3-HOUR"
+    else if _tf == "240"
+        tf_conv := "4-HOUR"
+    else if _tf == "480"
+        tf_conv := "8-HOUR"
+    else if _tf == "720"
+        tf_conv := "12-HOUR"
+    else if _tf == "D"
+        tf_conv := "1-DAY"
+    else if _tf == "W"
+        tf_conv := "1-WEEK"
+    else if _tf == "M"
+        tf_conv := "1-MONTH"
+    else if _tf == "3M"
+        tf_conv := "3-MONTH"
+    else if _tf == "6M"
+        tf_conv := "6-MONTH"
+    else if _tf == "Y"
+        tf_conv := "1-YEAR"
+    else
+        tf_conv := "NA"
+    tf_conv
+
+//#endregion
+
+//#region [ --- ALL INPUTS --- ]
+
+//#region [ --- USER CONSENSUS --- ]
+
+i_user_consensus = input.string(defval="", title="TYPE 'agree' TO ADD TO CHART. \nTrading involves substantial risk and may not be suitable for everyone. Past performance is not indicative of future results, and all signals or automated trading functions provided by this system are for educational purposes only. By typing ‘agree,’ you acknowledge that you are responsible for any trades executed manually or automatically, and you accept that Sigma Algo LLC is not liable for any financial losses. \nRELEASE INFORMATION 2021 © Sigma Algo LLC", confirm = true, group="consensus", inline="consensus-00")
+if i_user_consensus != "agree"
+    runtime.error("You must type 'agree' in our 'User Consensus' input (bottom of the settings menu) to continue and run the Algo.")
+
+//#endregion
+
+//#region [ --- TRADE DASHBOARD --- ]
+
+g_td = "🔵⚪🔵 TRADE DASHBOARD 🔵⚪🔵"
+
+
+i_td_bridge = input.bool(false, "Bridge", group = g_td, inline = "td-000")
+i_td_bridge_acct_id = input.string("", "| Account", group = g_td, inline = "td-000")
+i_td_bridge_sym = input.string("", "Symbol", group = g_td, inline = "td-000")
+i_td_show = input.bool(true, "Show Trades", group = g_td, inline = "td-00")
+i_td_labels = input.bool(false, "Labels", group = g_td, inline = "td-00")
+i_td_alerts = input.bool(false, "Alerts", group = g_td, inline = "td-00")
+i_td_dir_bias = input.string("Both", "Direction Bias", ["Both", "Long", "Short"], group = g_td, inline = "td-004")
+i_td_comp = input.bool(true, "Compound", group = g_td, inline = "td-01")
+i_td_acct = input.float(10000.0, "| Initial Balance", group = g_td, inline = "td-01")
+i_td_bt_from = input.time(timestamp("07 Oct 2024 00:00 +0300"), "Backtest → From", group = g_td, inline="td-02")
+i_td_bt_to = input.time(timestamp("07 Nov 2030 00:00 +0300"), "To", group = g_td, inline="td-02")
+i_td_risk_t = input.string("Percentage", "Risk → Type", ["Percentage", "Fixed"], group = g_td, inline="td-03")
+i_td_risk_v = input.float(2.0, "Value", group = g_td, inline="td-03")
+i_td_ce = input.bool(false, "Cash Exit", group = g_td, inline="td-04")
+i_td_ce_amt = input.float(500.0, "| $ Amount", group = g_td, inline="td-04")
+i_td_mw = input.bool(false, "Max Wins/Losses", group = g_td, inline="td-05")
+i_td_mw_w = input.int(3, "| W", group = g_td, inline="td-05")
+i_td_mw_l = input.int(1, "L", group = g_td, inline="td-05")
+
+i_td_col_win = input.color(color.blue, "Colors → Win", group = g_td, inline = "td-cols")
+i_td_col_loss = input.color(color.white, "Loss", group = g_td, inline = "td-cols")
+
+//#endregion
+
+//#region [ --- TABLE --- ]
+
+g_tbl = "🔵⚪🔵 TABLE 🔵⚪🔵"
+
+i_tbl_on = input.bool(true, "", group = g_tbl, inline = "tbl-00")
+i_tbl_t = input.string("Desktop", "| ", ["Desktop", "Mobile"], group = g_tbl, inline = "tbl-00")
+//i_tbl_pset = input.string("Custom", "| Preset", ["Custom", "Ghost"], group = g_tbl, inline = "tbl-00")
+i_tbl_x_pos = input.string("Right", "X", ["Left", "Right", "Center"], group = g_tbl, inline = "tbl-00")
+i_tbl_y_pos = input.string("Top", "Y", ["Top", "Bottom", "Middle"], group = g_tbl, inline = "tbl-00")
+tbl_pos = 
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Top" ? position.top_left :
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Bottom" ? position.bottom_left :
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Middle" ? position.middle_left :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Top" ? position.top_right :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Bottom" ? position.bottom_right :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Middle" ? position.middle_right :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Top" ? position.top_center :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Bottom" ? position.bottom_center :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Middle" ? position.middle_center : position.middle_center 
+
+i_tbl_bg = input.color(color.new(color.black, 50), "Bg", group = g_tbl, inline = "tbl-02")
+i_tbl_fr = input.color(color.new(color.gray, 0), "| Frame", group = g_tbl, inline = "tbl-02")
+i_tbl_bor = input.color(color.new(color.gray, 0), "| Borders", group = g_tbl, inline = "tbl-02")
+i_tbl_txt = input.color(color.new(color.white, 0), "| Text", group = g_tbl, inline = "tbl-02")
+
+
+//#endregion
+
+//#region [ --- DOW FILTERING --- ]
+
+g_dow = "🔵⚪🔵 DOW FILTERING 🔵⚪🔵"
+
+i_dow_tt_1 = "Select the days of the week you want to filter. No Trades will be taken during those days."
+
+i_dow_mon = input.bool(false, "Mon", group = g_dow, inline = "dow-00")
+i_dow_tue = input.bool(false, "Tue", group = g_dow, inline = "dow-00")
+i_dow_wed = input.bool(false, "Wed", group = g_dow, inline = "dow-00")
+i_dow_thu = input.bool(false, "Thu", group = g_dow, inline = "dow-00")
+i_dow_fri = input.bool(false, "Fri", group = g_dow, inline = "dow-00")
+i_dow_sat = input.bool(false, "Sat", group = g_dow, inline = "dow-00")
+i_dow_sun = input.bool(false, "Sun", group = g_dow, inline = "dow-00", tooltip = i_dow_tt_1)
+
+//#endregion
+
+//#region [ --- STOP LOSS --- ]
+
+g_sl = "🔵⚪🔵 STOP LOSS 🔵⚪🔵"
+
+i_sl_m = input.string("Fixed", "Type", ["Fixed", "ATR", "Bricks"], group = g_sl, inline = "tsl-00")
+i_sl_fix = input.float(50.0, "Fixed", group = g_sl, inline = "tsl-02")
+i_sl_atr_lb = input.int(14, "ATR → Len", group = g_sl, inline = "tsl-03")
+i_sl_atr_m = input.float(1.5, "Mult", group = g_sl, inline = "tsl-03")
+i_sl_br_amt = input.int(2, "Bricks → Amount", group = g_sl, inline = "tsl-01")
+i_sl_off = input.float(0.0, "Offset", group = g_sl, inline = "tsl-01")
+
+i_sl_fix := syminfo.type == "forex" ? i_sl_fix * syminfo.mintick : i_sl_fix
+i_sl_off := syminfo.type == "forex" ? i_sl_off * syminfo.mintick : i_sl_off
+//#endregion
+
+//#region [ --- TRAILING STOP --- ]
+
+g_ts = "🔵⚪🔵 TRAILING STOP 🔵⚪🔵"
+
+i_ts_tt_1 = "SB → Trailing Trigger 'Since Beginning', makes the Trailing active since the trade starts."
+
+i_be_tr = input.string("TP1", "BE → Trigger", ["None", "TP1", "TP2", "TP3"], group = g_ts, inline = "be-00")
+i_be_off = input.float(5.0, "Offset", group = g_ts, inline = "be-00")
+i_ts_m = input.string("Fixed", "TS → Model", ["None", "Fixed", "ATR", "Bricks", "SL"], group = g_ts, inline = "tts-00")
+i_ts_tr = input.string("TP1", "Trigger", ["SB", "TP1", "TP2", "TP3"], group = g_ts, inline = "tts-00", tooltip = i_ts_tt_1)
+i_ts_fix = input.float(25.0, "Fixed", group = g_ts, inline = "tts-02")
+i_ts_atr_lb = input.int(14, "ATR → Len", group = g_ts, inline = "tts-03")
+i_ts_atr_m = input.float(1.5, "Mult", group = g_ts, inline = "tts-03")
+i_ts_br_amt = input.int(2, "Bricks → Amount", group = g_ts, inline = "tts-01")
+
+i_be_off := syminfo.type == "forex" ? i_be_off * syminfo.mintick : i_be_off
+i_ts_fix := syminfo.type == "forex" ? i_ts_fix * syminfo.mintick : i_ts_fix
+//#endregion
+
+//#region [ --- TAKE PROFITS --- ]
+
+g_tp = "🔵⚪🔵 TAKE PROFITS 🔵⚪🔵"
+
+i_tp_tt_1 = "Make sure the TP1 value field is coherent with the Model selected."
+
+i_tp_run = input.bool(false, "Runner", group = g_tp, inline = "tpp-00")
+i_tp_m = input.string("Fixed", "| Model", ["Fixed", "RRR"], group = g_tp, inline = "tpp-00", tooltip = i_tp_tt_1)
+i_tp1_v = input.float(25.0, "TP1", group = g_tp, inline = "tpp-02")
+i_tp1_pct = input.float(50.0, "%", group = g_tp, inline = "tpp-02")
+i_tp2_on = input.bool(true, "", group = g_tp, inline = "tpp-03")
+i_tp2_v = input.float(50.0, "| TP2", group = g_tp, inline = "tpp-03")
+i_tp2_pct = input.float(20.0, "%", group = g_tp, inline = "tpp-03")
+i_tp3_on = input.bool(true, "", group = g_tp, inline = "tpp-04")
+i_tp3_v = input.float(100.0, "| TP3", group = g_tp, inline = "tpp-04")
+i_tp3_pct = input.float(10.0, "%", group = g_tp, inline = "tpp-04")
+
+i_tp1_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp1_v * syminfo.mintick : i_tp1_v
+i_tp2_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp2_v * syminfo.mintick : i_tp2_v
+i_tp3_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp3_v * syminfo.mintick : i_tp3_v
+//#endregion
+
+//#region [ --- RENKO BAND --- ]
+
+g_renko_band = "🔵⚪🔵 RENKO BAND 🔵⚪🔵"
+
+i_renko_band_show = input.bool(true, "Show", group = g_renko_band, inline = "renko-band-000")
+i_renko_band_alerts = input.bool(false, "Alerts", group = g_renko_band, inline = "renko-band-000")
+
+i_renko_band_exit = input.bool(false, "Exit", group = g_renko_band, inline = "renko-band-001")
+
+i_renko_band_v = input.string("V1", "Version", ["V1", "V2"], group = g_renko_band, inline = "renko-band-00")
+i_renko_band_type = input.string("Traditional", "| Type", ["Traditional", "ATR"], group = g_renko_band, inline = "renko-band-00")
+i_renko_band_src = input.string("Close", "Source", ["Close", "H/L"], group = g_renko_band, inline = "renko-band-00")
+
+i_renko_band_trad_size = input.float(20.0, "Traditional - Size", group = g_renko_band, inline = "renko-band-01")
+i_renko_band_atr_len = input.int(14, "ATR - Lenght", group = g_renko_band, inline = "renko-band-02")
+i_renko_band_atr_mult = input.float(1.5, "ATR - Multiplier", group = g_renko_band, inline = "renko-band-02")
+
+i_renko_band_col_bull = input.color(color.blue, "Colors → Bullish", group = g_renko_band, inline = "renko-band-cols")
+i_renko_band_col_bear = input.color(color.white, "Bearish", group = g_renko_band, inline = "renko-band-cols")
+
+//#endregion
+
+//#region [ --- STEPPED MA --- ]
+
+g_stepped_ma = "🔵⚪🔵 STEPPED MA 🔵⚪🔵"
+
+i_stepped_ma_strict = input.bool(false, "Strict", group = g_stepped_ma, inline = "stepped-ma-000")
+i_stepped_ma_exit = input.bool(false, "Exit", group = g_stepped_ma, inline = "stepped-ma-000")
+
+i_stepped_ma_alerts = input.bool(false, "Alerts", group = g_stepped_ma, inline = "stepped-ma-000")
+
+i_stepped_ma_show = input.bool(true, "Show", group = g_stepped_ma, inline = "stepped-ma-00")
+i_stepped_ma_src = input.source(close, "| Source", group = g_stepped_ma, inline = "stepped-ma-00")
+
+i_stepped_ma_type = input.string("ALMA", "Type", ["SMA", "EMA", "ALMA", "BLP"], group = g_stepped_ma, inline = "stepped-ma-01")
+i_stepped_ma_len = input.int(21, "Lenght", group = g_stepped_ma, inline = "stepped-ma-01")
+
+i_stepped_ma_lb = input.int(5, "Lookback", group = g_stepped_ma, inline = "stepped-ma-02")
+i_stepped_ma_delay = input.int(0, "Delay", group = g_stepped_ma, inline = "stepped-ma-02")
+
+i_stepped_ma_col_bull = input.color(color.new(color.blue,75), "Colors → Bullish", group = g_stepped_ma, inline = "stepped-ma-cols")
+i_stepped_ma_col_bear = input.color(color.new(color.white,75), "Bearish", group = g_stepped_ma, inline = "stepped-ma-cols")
+
+//#endregion
+
+//#region [ --- TRAIL CLOUD --- ]
+
+//g_tc = "🔵⚪🔵 TRAIL CLOUD 🔵⚪🔵"
+//
+//i_tc_strict = input.bool(false, "Strict", group = g_tc, inline = "tc-000")
+//i_tc_exit = input.bool(false, "Exit", group = g_tc, inline = "tc-000")
+//i_tc_alerts = input.bool(false, "Alerts", group = g_tc, inline = "tc-000")
+//
+//i_tc_show = input.bool(false, "Show", group = g_tc, inline = "tc-00")
+//i_tc_src = input.source(hl2, "| Source", group = g_tc, inline = "tc-00")
+//i_tc_length = input.int(22, "Period", group = g_tc, inline = "tc-01")
+//i_tc_mult = input.float(3.0, "Mult", group = g_tc, inline = "tc-01")
+//i_tc_wicks = input.bool(true, "Wicks", group = g_tc, inline = "tc-02")
+//
+//i_tc_col_bull = input.color(color.blue, "Colors → Bullish", group = g_tc, inline = "tc-cols")
+//i_tc_col_bear = input.color(color.white, "Bearish", group = g_tc, inline = "tc-cols")
+//i_tc_fill = input.bool(true, "Cloud Fill", group = g_tc, inline = "tc-cols-2")
+
+
+//#endregion
+
+//#region [ --- VOLUMETRIC TREND --- ]
+
+g_vt = "🔵⚪🔵 VOLUMETRIC TREND 🔵⚪🔵"
+
+i_vt_strict = input.bool(false, "Strict", group = g_vt, inline = "vt-000")
+i_vt_exit = input.bool(false, "Exit", group = g_vt, inline = "vt-000")
+i_vt_alerts = input.bool(false, "Alerts", group = g_vt, inline = "vt-000")
+i_vt_show = input.bool(true, "Show", group = g_vt, inline = "vt-00")
+i_vt_src = input.source(close, "| Source", group = g_vt, inline = "vt-00")
+i_vt_len = input.int(10, "Lenght", group = g_vt, inline = "vt-01")
+i_vt_momentum = input.int(20, "Momentum", group = g_vt, inline = "vt-01")
+i_vt_distance = input.int(2, "Band Distance", group = g_vt, inline = "vt-02")
+i_vt_col_bull = input.color(color.blue, "Colors → Bullish", group = g_vt, inline = "vt-cols")
+i_vt_col_bear = input.color(color.white, "Bearish", group = g_vt, inline = "vt-cols")
+
+//#endregion
+
+//#region [ --- VWAP --- ]
+
+g_vwaps = "🔵⚪🔵 VWAPS 🔵⚪🔵"
+
+i_vwap_1_strict = input.bool(false, "VWAP1", group = g_vwaps, inline = "vwap-000")
+i_vwap_2_strict = input.bool(false, "VWAP2 ← Stricts", group = g_vwaps, inline = "vwap-000")
+
+i_vwap_1_exit = input.bool(false, "VWAP1", group = g_vwaps, inline = "vwap-exi")
+i_vwap_2_exit = input.bool(false, "VWAP2 ← Exit", group = g_vwaps, inline = "vwap-exi")
+
+i_vwap_1_alerts = input.bool(false, "VWAP1", group = g_vwaps, inline = "vwap-alerts")
+i_vwap_2_alerts = input.bool(false, "VWAP2 ← Alerts", group = g_vwaps, inline = "vwap-alerts")
+
+i_vwap_1_show = input.bool(true, "Show VWAP1", group = g_vwaps, inline = "vwap-00")
+i_vwap_1_tf = input.timeframe("D", "| TF", group = g_vwaps, inline = "vwap-00")
+
+i_vwap_1_lbl_dyn = input.bool(true, "Dynamic", group = g_vwaps, inline = "vwap-01")
+i_vwap_1_lbl_close = input.bool(true, "Close ← VWAP1 Labels", group = g_vwaps, inline = "vwap-01")
+
+i_vwap_1_col_bull = input.color(color.blue, "VWAP1 Colors → Bullish", group = g_vwaps, inline = "vwap-cols")
+i_vwap_1_col_bear = input.color(color.white, "Bearish", group = g_vwaps, inline = "vwap-cols")
+
+i_vwap_2_show = input.bool(false, "Show VWAP2", group = g_vwaps, inline = "vwap-02")
+i_vwap_2_tf = input.timeframe("D", "| TF", group = g_vwaps, inline = "vwap-02")
+
+i_vwap_2_lbl_dyn = input.bool(true, "Dynamic", group = g_vwaps, inline = "vwap-03")
+i_vwap_2_lbl_close = input.bool(true, "Close ← VWAP2 Labels", group = g_vwaps, inline = "vwap-03")
+
+i_vwap_2_col_bull = input.color(#000088, "VWAP2 Colors → Bullish", group = g_vwaps, inline = "vwap-cols-2")
+i_vwap_2_col_bear = input.color(#9e9c9c, "Bearish", group = g_vwaps, inline = "vwap-cols-2")
+
+//#endregion
+
+//#region [ --- MOVING AVERAGES COLLECTION --- ]
+
+g_macoll = "🔵⚪🔵 MOVING AVERAGES COLLECTION 🔵⚪🔵"
+
+i_macoll_ma1_strict = input.bool(false, "Strict", group = g_macoll, inline = "macoll-ma1-000")
+i_macoll_ma1_exit = input.bool(false, "Exit", group = g_macoll, inline = "macoll-ma1-000")
+i_macoll_ma1_alerts = input.bool(false, "Alerts ← MA1", group = g_macoll, inline = "macoll-ma1-000")
+i_macoll_ma1_show = input.bool(false, "MA1 Show", group = g_macoll, inline = "macoll-ma1-00")
+i_macoll_ma1_src = input.source(close, "| Source", group = g_macoll, inline = "macoll-ma1-00")
+i_macoll_ma1_lbl = input.bool(true, "MA1 Label", group = g_macoll, inline = "macoll-ma1-01")
+i_macoll_ma1_type = input.string("EMA", "| MA1 Type", ["SMA", "EMA", "HULL MA", "WMA", "VWMA", "Smoothed MA", "ALMA"], group = g_macoll, inline = "macoll-ma1-01")
+i_macoll_ma1_len = input.int(20, "MA1 Lenght", group = g_macoll, inline = "macoll-ma1-01")
+i_macoll_ma1_col_bull = input.color(color.blue, "MA1 Color → Bullish", group = g_macoll, inline = "macoll-ma1-02")
+i_macoll_ma1_col_bear = input.color(color.white, "Bearish", group = g_macoll, inline = "macoll-ma1-02")
+
+i_macoll_ma2_strict = input.bool(false, "Strict", group = g_macoll, inline = "macoll-ma2-000")
+i_macoll_ma2_exit = input.bool(false, "Exit", group = g_macoll, inline = "macoll-ma2-000")
+i_macoll_ma2_alerts = input.bool(false, "Alerts ← MA2", group = g_macoll, inline = "macoll-ma2-000")
+i_macoll_ma2_show = input.bool(false, "MA2 Show", group = g_macoll, inline = "macoll-ma2-00")
+i_macoll_ma2_src = input.source(close, "| Source", group = g_macoll, inline = "macoll-ma2-00")
+i_macoll_ma2_lbl = input.bool(true, "MA2 Label", group = g_macoll, inline = "macoll-ma2-01")
+i_macoll_ma2_type = input.string("EMA", "| MA2 Type", ["SMA", "EMA", "HULL MA", "WMA", "VWMA", "Smoothed MA", "ALMA"], group = g_macoll, inline = "macoll-ma2-01")
+i_macoll_ma2_len = input.int(50, "MA2 Lenght", group = g_macoll, inline = "macoll-ma2-01")
+i_macoll_ma2_col_bull = input.color(#0101ba, "MA2 Color → Bullish", group = g_macoll, inline = "macoll-ma2-02")
+i_macoll_ma2_col_bear = input.color(#bdbaba, "Bearish", group = g_macoll, inline = "macoll-ma2-02")
+
+i_macoll_ma3_strict = input.bool(false, "Strict", group = g_macoll, inline = "macoll-ma3-000")
+i_macoll_ma3_exit = input.bool(false, "Exit", group = g_macoll, inline = "macoll-ma3-000")
+i_macoll_ma3_alerts = input.bool(false, "Alerts ← MA3", group = g_macoll, inline = "macoll-ma3-000")
+i_macoll_ma3_show = input.bool(false, "MA3 Show", group = g_macoll, inline = "macoll-ma3-00")
+i_macoll_ma3_src = input.source(close, "| Source", group = g_macoll, inline = "macoll-ma3-00")
+i_macoll_ma3_lbl = input.bool(true, "MA3 Label", group = g_macoll, inline = "macoll-ma3-01")
+i_macoll_ma3_type = input.string("EMA", "| MA3 Type", ["SMA", "EMA", "HULL MA", "WMA", "VWMA", "Smoothed MA", "ALMA"], group = g_macoll, inline = "macoll-ma3-01")
+i_macoll_ma3_len = input.int(100, "MA3 Lenght", group = g_macoll, inline = "macoll-ma3-01")
+i_macoll_ma3_col_bull = input.color(#01013e, "MA3 Color → Bullish", group = g_macoll, inline = "macoll-ma3-02")
+i_macoll_ma3_col_bear = input.color(#565656, "Bearish", group = g_macoll, inline = "macoll-ma3-02")
+
+//#endregion
+
+//#region [ --- TSI (TRUE STRENGTH INDEX) --- ]
+
+g_tsi = "🔵⚪🔵 TSI (TRUE STRENGTH INDEX) 🔵⚪🔵"
+
+i_tsi_strict = input.bool(false, "Strict", group = g_tsi, inline = "tsi-000")
+i_tsi_exit = input.bool(false, "Exit", group = g_tsi, inline = "tsi-000")
+i_tsi_alerts = input.bool(false, "Alerts", group = g_tsi, inline = "tsi-000")
+
+i_tsi_speed = input.string("Fast", "Speed", ["Fast", "Slow"], group = g_tsi, inline = "tsi-00")
+
+i_tsi_tt_1 = "Fast Len → Long\nFast Len → Short\nFast Len → Signal"
+i_tsi_fast_long_len = input.int(25, "Fast Len → L", group = g_tsi, inline = "tsi-01")
+i_tsi_fast_short_len = input.int(5, "S", group = g_tsi, inline = "tsi-01")
+i_tsi_fast_signal_len = input.int(14, "SIGN", group = g_tsi, inline = "tsi-01", tooltip = i_tsi_tt_1)
+
+i_tsi_tt_2 = "Slow Len → Long\nSlow Len → Short\nSlow Len → Signal"
+i_tsi_slow_long_len = input.int(25, "Slow Len → L", group = g_tsi, inline = "tsi-02")
+i_tsi_slow_short_len = input.int(13, "S", group = g_tsi, inline = "tsi-02")
+i_tsi_slow_signal_len = input.int(13, "SIGN", group = g_tsi, inline = "tsi-02", tooltip = i_tsi_tt_2)
+
+
+//#endregion
+
+//#region [ --- CAPO OSC. --- ]
+
+g_capo_osc = "🔵⚪🔵 CAPO OSC. 🔵⚪🔵"
+
+i_capo_osc_tt_1 = "L1 → LVL 1 Strict\nL2 → LVL 2 Strict\nL3 → LVL 3 Strict\nBBSQ → BB Squeeze Strict"
+i_capo_osc_l1_strict = input.bool(false, "L1", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_l2_strict = input.bool(false, "L2", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_l3_strict = input.bool(false, "L3", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_bbsq_strict = input.bool(false, "BBSQ ← Stricts", group = g_capo_osc, inline = "capo-str", tooltip = i_capo_osc_tt_1)
+
+i_capo_osc_tt_2 = "L1 → LVL 1 Exit\nL2 → LVL 2 Exit\nL3 → LVL 3 Exit\nBBSQ → BB Squeeze Exit"
+i_capo_osc_l1_exit = input.bool(false, "L1", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_l2_exit = input.bool(false, "L2", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_l3_exit = input.bool(false, "L3", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_bbsq_exit = input.bool(false, "BBSQ ← Exits", group = g_capo_osc, inline = "capo-exi", tooltip = i_capo_osc_tt_2)
+
+i_capo_osc_tf = input.timeframe("60", "Timeframe", group = g_capo_osc, inline = "capo-00")
+i_capo_osc_src = input.source(close, "Source", group = g_capo_osc, inline = "capo-00")
+
+i_capo_osc_ma_type = input.string("EMA", "MA Type", ["SMA", "EMA", "WMA", "HMA", "SSL", "SMOOTH"], group = g_capo_osc, inline = "capo-01")
+i_capo_osc_bblen = input.int(20, "BB Length", group = g_capo_osc, inline = "capo-01")
+i_capo_osc_bbmult = input.float(1.5, "BB Mult", group = g_capo_osc, inline = "capo-01")
+
+//#endregion
+
+//#region [ --- CHOPPER --- ]
+
+g_chop = "🔵⚪🔵 CHOPPER 🔵⚪🔵"
+
+i_chop_strict = input.bool(false, "Strict", group = g_chop, inline = "chop-000")
+i_chop_exit = input.bool(false, "Exit", group = g_chop, inline = "chop-000")
+i_chop_alerts = input.bool(false, "Alerts", group = g_chop, inline = "chop-000")
+
+i_chop_show = input.bool(true, "Show", group = g_chop, inline = "chop-00")
+i_chop_src = input.source(close, "| Source", group = g_chop, inline = "chop-00")
+
+i_chop_ma_type = input.string("EMA", "Smooth → MA", ["SMA", "EMA", "WMA", "VWMA", "DEMA", "TEMA", "HMA", "RMA", "JMA", "ALMA", "ATRWWMA"], group = g_chop, inline = "chop-01")
+i_chop_ma_len = input.int(50, "Length", group = g_chop, inline = "chop-01")
+
+i_chop_tt_1 = "UT → Range Upper Threshold\nLT → Range Lower Threshold"
+i_chop_ut = input.float(60.0, "UT", group = g_chop, inline = "chop-02")
+i_chop_lt = input.float(40.0, "LT", group = g_chop, inline = "chop-02", tooltip = i_chop_tt_1)
+
+i_chop_col = input.color(color.gray, "Color", group = g_chop, inline = "chop-cols")
+
+//#endregion
+
+//#region [ --- SESSIONS --- ]
+
+g_sessd = "🔵⚪🔵 SESSIONS DASHBOARD 🔵⚪🔵"
+
+bool SHOW = timeframe.isintraday and timeframe.multiplier <= 60 and timeframe.multiplier >= 1
+int LOOKBACKMINS = (9 * 60)
+
+i_sessd_h = input.bool(true, "History", group = g_sessd, inline = "sessd-00")
+i_sessd_alerts = input.bool(false, "Alerts", group = g_sessd, inline = "sessd-00")
+i_sessd_tz = input.string('America/New_York', title='| Timezone', options=["America/Los_Angeles", "America/New_York","America/El_Salvador","America/Chicago","America/Argentina/Buenos_Aires","Europe/London","Europe/Berlin","Europe/Moscow","Asia/Dubai","Asia/Ashkhabad","Asia/Bangkok","Asia/Hong_Kong","Asia/Tokyo","Australia/Brisbane","Australia/Sydney"], group=g_sessd, inline = "sessd-00", tooltip = "Make sure your chart timezone matches with the option selected to have reliable sessions identification.")
+
+sessd_psr_tt = "Show Pre Session Range\nStrict Pre Session Range\nLookback for PSR calculation"
+i_sessd_psr = input.bool(true, "Show PSR", group = g_sessd, inline = "sessd-01")
+i_sessd_psr_str = input.bool(false, "Strict PSR", group = g_sessd, inline = "sessd-01")
+i_sessd_psr_tf = input.string("1h", "| Lookback", ["15m","30m","45m","1h","2h","4h"], group=g_sessd, inline = "sessd-01", tooltip = sessd_psr_tt)
+
+sessd_or_tt = "Show Opening Range\nStrict Opening Range"
+sessd_or_tt_2 = "Lookback for OR calculation (minutes)\nOpacity for OR"
+i_sessd_or = input.bool(false, "Show OR", group = g_sessd, inline = "sessd-02")
+i_sessd_or_str = input.bool(false, "Strict OR", group = g_sessd, inline = "sessd-02", tooltip = sessd_or_tt)
+i_sessd_or_lb = input.int(15, "OR Lookback", minval=1, step=1, group=g_sessd, inline = "sessd-03")
+i_sessd_or_op = input.int(50, "OR Opacity", minval=0, maxval=100, step=1, group=g_sessd, inline = "sessd-03", tooltip = sessd_or_tt_2)
+
+i_sessd_fib = false //input.bool(false, "Show FIB", group = g_sessd, inline = "sessd-04")
+i_sessd_fib_ls = "Solid" //input.string("Solid", "| Linestyle", ["Solid", "Dot", "Dash"], group = g_sessd, inline = "sessd-04")
+i_sessd_fib_lw = 1 //input.int(1, "Width", minval=1, group = g_sessd, inline = "sessd-04")
+
+g_sess_sty = "🔵⚪🔵 SESSIONS STYLE 🔵⚪🔵"
+
+i_sess_sty_lbl = input.bool(true, "Labels", group = g_sess_sty, inline = "sess-sty-00") and SHOW
+i_sess_sty_lbl_sz = size.normal //input.string(size.auto, "Size", ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = g_sess_sty, inline = "sess-sty-00")
+i_sess_sty_lbl_pos = input.string("Inside", "| Position", ["Inside", "Outside"], group = g_sess_sty, inline = "sess-sty-00") == "Inside" ? label.style_label_upper_left : label.style_label_lower_left
+i_sess_sty_lbl_chg = input.string("NO", "Change Value", ["NO", "YES", "YESPIP"], group = g_sess_sty, inline = "sess-sty-01")
+i_sess_sty_lbl_fmt_day = input.bool(false, "Day", group = g_sess_sty, inline = "sess-sty-01")
+
+
+i_sess_sty_bs = input.string("Solid", "Linestyle", ["Solid", "Dot", "Dash"], group = g_sess_sty, inline = "sess-sty-02")
+i_sess_sty_bw = input.int(1, "Width", minval=1, group = g_sess_sty, inline = "sess-sty-02")
+i_sess_sty_bg = input.int(94, "Opacity", minval=0, maxval=100, step=1, group = g_sess_sty, inline = "sess-sty-03", tooltip = "Setting the 100 is no background color")
+i_sess_sty_sc = input.string("NO", "Closed Icon", ["YES", "NO"], group = g_sess_sty, inline = "sess-sty-03") == "YES"
+
+g_sess_lon = "🔵⚪🔵 SESSION - LONDON 🔵⚪🔵"
+
+i_sess_lon_strict = input.bool(false, "Strict", group = g_sess_lon, inline = "sess-lon-000")
+i_sess_lon_exit = input.bool(false, "Exit", group = g_sess_lon, inline = "sess-lon-000")
+i_sess_lon_show = input.bool(false, "Show", group = g_sess_lon, inline = "sess-lon-00") and SHOW
+i_sess_lon_col = input.color(color.green, "", group = g_sess_lon, inline = "sess-lon-00")
+i_sess_lon_sess = input.session('0300-1100', "| ", group = g_sess_lon, inline = "sess-lon-00")
+
+g_sess_ny = "🔵⚪🔵 SESSION - NEW YORK 🔵⚪🔵"
+
+i_sess_ny_strict = input.bool(false, "Strict", group = g_sess_ny, inline = "sess-ny-000")
+i_sess_ny_exit = input.bool(false, "Exit", group = g_sess_ny, inline = "sess-ny-000")
+i_sess_ny_show = input.bool(true, "Show", group = g_sess_ny, inline = "sess-ny-00") and SHOW
+i_sess_ny_col = input.color(color.red, "", group = g_sess_ny, inline = "sess-ny-00")
+i_sess_ny_sess = input.session('0800-1600', "| ", group = g_sess_ny, inline = "sess-ny-00")
+
+g_sess_tok = "🔵⚪🔵 SESSION - TOKIO 🔵⚪🔵"
+
+i_sess_tok_strict = input.bool(false, "Strict", group = g_sess_tok, inline = "sess-tok-000")
+i_sess_tok_exit = input.bool(false, "Exit", group = g_sess_tok, inline = "sess-tok-000")
+i_sess_tok_show = input.bool(false, "Show", group = g_sess_tok, inline = "sess-tok-00") and SHOW
+i_sess_tok_col = input.color(color.yellow, "", group = g_sess_tok, inline = "sess-tok-00")
+i_sess_tok_sess = input.session('1900-0300', "| ", group = g_sess_tok, inline = "sess-tok-00")
+
+RECT_LINESTYLE = i_sess_sty_bs == "Solid"?line.style_solid:(i_sess_sty_bs == "Dot"?line.style_dotted:line.style_dashed)
+FIB_LINESTYLE = i_sessd_fib_ls == "Solid"?line.style_solid:(i_sessd_fib_ls == "Dot"?line.style_dotted:line.style_dashed)
+string tz = (i_sessd_tz == "NO" or i_sessd_tz == '') ? na : i_sessd_tz
+
+//#endregion
+
+//#endregion
+
+
+//#region [ --- ALL LOGIC --- ]
+
+//#region [ --- RENKO BAND --- ]
+
+//#region [ --- V1 --- ]
+
+//calc atr val
+conv_atr(valu)=>
+    a = 0
+    num = syminfo.mintick
+    s = valu
+    if na(s)
+        s := syminfo.mintick
+    if num < 1
+        for i = 1 to 20
+            num := num * 10
+            if num > 1
+                break
+            a := a +1
+    for x = 1 to a 
+        s := s * 10
+    s := math.round(s)
+    for x = 1 to a
+        s := s / 10
+    s := s < syminfo.mintick  ? syminfo.mintick : s
+    s
+
+//ATR box size calculation
+rb_v1_atrboxsize = conv_atr(ta.atr(i_renko_band_atr_len))
+
+rb_v1_renko_adj=i_renko_band_trad_size
+if syminfo.type == "forex"
+    if syminfo.currency=="JPY"
+        rb_v1_renko_adj:=rb_v1_renko_adj/100
+    else
+        rb_v1_renko_adj:=rb_v1_renko_adj/10000
+
+float rb_v1_box = na
+rb_v1_box := na(rb_v1_box[1]) ? i_renko_band_type == 'ATR' ? rb_v1_atrboxsize : rb_v1_renko_adj : rb_v1_box[1] 
+c=0
+rb_v1_trend = 0
+rb_v1_trend := barstate.isfirst ? 0 : nz(rb_v1_trend[1])
+rb_v1_currentprice = 0.0
+rb_v1_currentprice := i_renko_band_src == 'Close' ? close : rb_v1_trend == 1 ? high : low
+float rb_v1_beginprice = na
+rb_v1_beginprice := barstate.isfirst ? math.floor(open / rb_v1_box) * rb_v1_box : nz(rb_v1_beginprice[1])
+var rb_v1_iopenprice = 0.0
+var rb_v1_icloseprice = 0.0
+
+if rb_v1_trend == 0 and rb_v1_box * 2 <= math.abs(rb_v1_beginprice - rb_v1_currentprice) and i_renko_band_v == "V1"
+    if rb_v1_beginprice > rb_v1_currentprice
+        numcell = math.floor(math.abs(rb_v1_beginprice - rb_v1_currentprice) / rb_v1_box)
+        rb_v1_iopenprice := rb_v1_beginprice
+        rb_v1_icloseprice := rb_v1_beginprice - numcell * rb_v1_box
+        rb_v1_trend := -1
+    if rb_v1_beginprice < rb_v1_currentprice
+        numcell = math.floor(math.abs(rb_v1_beginprice - rb_v1_currentprice) / rb_v1_box)
+        rb_v1_iopenprice := rb_v1_beginprice
+        rb_v1_icloseprice := rb_v1_beginprice + numcell * rb_v1_box
+        rb_v1_trend := 1
+
+if rb_v1_trend == -1 and i_renko_band_v == "V1"
+    nok = true
+    if rb_v1_beginprice > rb_v1_currentprice and rb_v1_box <= math.abs(rb_v1_beginprice - rb_v1_currentprice)
+        numcell = math.floor(math.abs(rb_v1_beginprice - rb_v1_currentprice) / rb_v1_box)
+        rb_v1_icloseprice := rb_v1_beginprice - numcell * rb_v1_box
+        rb_v1_trend := -1
+        rb_v1_beginprice := rb_v1_icloseprice
+        nok := false
+
+        if i_renko_band_alerts
+            alert_msg = "🚨 RENKO BAND V1 🚨\n⏫ Trend Following Bearish Update ⏫"
+            alert(alert_msg, alert.freq_once_per_bar_close)
+            
+    else
+        rb_v1_iopenprice := rb_v1_iopenprice == 0 ? nz(rb_v1_iopenprice[1]) : rb_v1_iopenprice
+        rb_v1_icloseprice := rb_v1_icloseprice == 0 ? nz(rb_v1_icloseprice[1]) : rb_v1_icloseprice
+    
+    tempcurrentprice = i_renko_band_src == 'Close' ? close : high
+    if rb_v1_beginprice < tempcurrentprice and rb_v1_box * 2 <= math.abs(rb_v1_beginprice - tempcurrentprice) and nok //new column
+        numcell = math.floor(math.abs(rb_v1_beginprice - tempcurrentprice) / rb_v1_box)
+        rb_v1_iopenprice := rb_v1_beginprice + rb_v1_box
+        rb_v1_icloseprice := rb_v1_beginprice + numcell * rb_v1_box
+        rb_v1_trend := 1
+        rb_v1_beginprice := rb_v1_icloseprice
+
+        if i_renko_band_alerts
+            alert_msg = "🚨 RENKO BAND V1 🚨\n⏫ Reversal Bullish Update ⏫"
+            alert(alert_msg, alert.freq_once_per_bar_close)
+    else
+        rb_v1_iopenprice := rb_v1_iopenprice == 0 ? nz(rb_v1_iopenprice[1]) : rb_v1_iopenprice
+        rb_v1_icloseprice := rb_v1_icloseprice == 0 ? nz(rb_v1_icloseprice[1]) : rb_v1_icloseprice
+else if rb_v1_trend == 1 and i_renko_band_v == "V1"
+    nok = true
+    if rb_v1_beginprice < rb_v1_currentprice and rb_v1_box <= math.abs(rb_v1_beginprice - rb_v1_currentprice)
+        numcell = math.floor(math.abs(rb_v1_beginprice - rb_v1_currentprice) / rb_v1_box)
+        rb_v1_icloseprice := rb_v1_beginprice + numcell * rb_v1_box
+        rb_v1_trend := 1
+        rb_v1_beginprice := rb_v1_icloseprice
+        nok := false
+
+        if i_renko_band_alerts
+            alert_msg = "🚨 RENKO BAND V1 🚨\n⏫ Trend Following Bullish Update ⏫"
+            alert(alert_msg, alert.freq_once_per_bar_close)
+    else
+        rb_v1_iopenprice := rb_v1_iopenprice == 0 ? nz(rb_v1_iopenprice[1]) : rb_v1_iopenprice
+        rb_v1_icloseprice := rb_v1_icloseprice == 0 ? nz(rb_v1_icloseprice[1]) : rb_v1_icloseprice
+
+    tempcurrentprice = i_renko_band_src == 'Close' ? close : low
+    if rb_v1_beginprice > tempcurrentprice and rb_v1_box * 2 <= math.abs(rb_v1_beginprice - tempcurrentprice) and nok //new column
+        numcell = math.floor(math.abs(rb_v1_beginprice - tempcurrentprice) / rb_v1_box)
+        rb_v1_iopenprice := rb_v1_beginprice - rb_v1_box
+        rb_v1_icloseprice := rb_v1_beginprice - numcell * rb_v1_box
+        rb_v1_trend := -1
+        rb_v1_beginprice := rb_v1_icloseprice
+
+        if i_renko_band_alerts
+            alert_msg = "🚨 RENKO BAND V1 🚨\n⏫ Reversal Bearish Update ⏫"
+            alert(alert_msg, alert.freq_once_per_bar_close)
+    else
+        rb_v1_iopenprice := rb_v1_iopenprice == 0 ? nz(rb_v1_iopenprice[1]) : rb_v1_iopenprice
+        rb_v1_icloseprice := rb_v1_icloseprice == 0 ? nz(rb_v1_icloseprice[1]) : rb_v1_icloseprice    
+
+//if rb_v1_icloseprice changed then recalculate rb_v1_box size
+rb_v1_box := ta.change(rb_v1_icloseprice) ?  i_renko_band_type == 'ATR' ? rb_v1_atrboxsize :  rb_v1_renko_adj : rb_v1_box
+
+
+oprice = 
+  rb_v1_trend == 1 ? nz(rb_v1_trend[1]) == 1 ? nz(rb_v1_icloseprice[1]) - nz(rb_v1_box[1]) : nz(rb_v1_icloseprice[1]) + nz(rb_v1_box[1]) : 
+  rb_v1_trend == -1 ? nz(rb_v1_trend[1]) == -1 ? nz(rb_v1_icloseprice[1]) + nz(rb_v1_box[1]) : nz(rb_v1_icloseprice[1]) - nz(rb_v1_box[1]) :
+  nz(rb_v1_icloseprice[1]) 
+oprice := oprice < 0 ? 0 : oprice
+
+openline = plot(i_renko_band_show and i_renko_band_v == "V1" and  oprice > 0? oprice : na, title = "Renko Open", color = oprice < 0 or oprice[1] < 0 ? na : color.gray, editable = false)
+closeline = plot(i_renko_band_show and i_renko_band_v == "V1" and rb_v1_icloseprice > 0 ? rb_v1_icloseprice : na, title = "Renko Close", color = rb_v1_icloseprice <= 0 or rb_v1_icloseprice[1] <= 0 ? na : rb_v1_trend == 1 ? color.new(i_renko_band_col_bull,10) : color.new(i_renko_band_col_bear,10), editable = false, linewidth=2)
+fill(openline, closeline, color = oprice <= 0 and rb_v1_icloseprice <=0 and i_renko_band_show and i_renko_band_v == "V1" ? na : color.new(rb_v1_trend == 1 ? i_renko_band_col_bull : i_renko_band_col_bear, 75), editable = false)
+
+//#endregion
+
+//#region [ --- V2 --- ]
+
+type S_RENKO_BRICK
+    int                         id
+    int                         dir
+    int                         bc
+    int                         idx_1
+    int                         idx_2
+    int                         dt_1
+    int                         dt_2
+    float                       o
+    float                       c
+    float                       size
+    int                         multi
+type S_RENKO_ATTR_TF
+    S_RENKO_BRICK[]             BRICKS
+
+    string                      desc
+    string                      tf
+    bool                        init
+    bool                        upd
+    bool                        upd_rev
+    bool                        upd_tf
+    bool                        upd_multi
+    int                         upd_multi_amt
+    int                         dir
+    int                         streak
+    float                       cb_c
+    float                       cb_o
+    float                       cb_size
+    bool                        cb_multi
+    color                       cb_col
+    color                       cb_col_opp
+    float                       nxt_rev
+    float                       nxt_tf
+    line[]                      nxt_rev_line_obj
+    label[]                     nxt_rev_label_obj
+    line[]                      nxt_tf_line_obj
+    label[]                     nxt_tf_label_obj  
+    int                         tot
+    int                         tot_bull
+    int                         tot_bear
+    float                       multi_loc
+
+type S_RENKO_INP_TF
+    bool                        on
+    string                      tf
+    int                         m
+    int                         src
+    float                       size
+    int                         lb
+    float                       mult
+    color                       col_bull
+    color                       col_bear
+
+type S_RENKO_ATTR_MTF
+    S_RENKO_ATTR_TF             CTF
+
+type S_RENKO_INP_MTF
+    bool                        alerts
+    S_RENKO_INP_TF              CTF
+
+type S_RENKO_MTF
+    S_RENKO_INP_MTF             INP
+    S_RENKO_ATTR_MTF            ATTR
+
+atr_rb = ta.atr(i_renko_band_atr_len)*i_renko_band_atr_mult
+var S_RENKO_ATTR_CTF = S_RENKO_ATTR_TF.new(
+  array.new<S_RENKO_BRICK>(),
+  "CTF",
+  timeframe.period,
+  false,
+  false,
+  false,
+  false,
+  false,
+  0,
+  0,
+  0,
+  0.0,
+  0.0,
+  0.0,
+  false,
+  na,
+  na,
+  0.0,
+  0.0,
+  array.new<line>(),
+  array.new<label>(),
+  array.new<line>(),
+  array.new<label>(),
+  0,
+  0,
+  0,
+  0.0
+  )
+
+var S_RENKO_INP_CTF = S_RENKO_INP_TF.new(
+  true,
+  timeframe.period,
+  i_renko_band_type == "Traditional" ? 0 : 1,
+  i_renko_band_src == "Close" ? 0 : 1,
+  i_renko_band_trad_size,
+  i_renko_band_atr_len,
+  i_renko_band_atr_mult,
+  i_renko_band_col_bull,
+  i_renko_band_col_bear
+  )
+
+var S_RENKO_INP_MTF = S_RENKO_INP_MTF.new(
+  i_renko_band_alerts,
+  S_RENKO_INP_CTF
+  )
+
+var S_RENKO_ATTR_MTF = S_RENKO_ATTR_MTF.new(
+  S_RENKO_ATTR_CTF
+  )
+
+var S_RENKO_MTF = S_RENKO_MTF.new(
+  S_RENKO_INP_MTF,
+  S_RENKO_ATTR_MTF
+  )
+
+
+//#region [ --- ALL LOGIC --- ]
+
+//#region [ --- BRICK --- ]
+
+method RENKO_BRICK_CREATE(
+  S_RENKO_INP_TF _S_RENKO_INP_TF, S_RENKO_ATTR_TF _S_RENKO_ATTR_TF,
+  int _id, int _dir, int _bc, int _dt_1, int _dt_2, float _o, float _c, float _size, int _multi
+  )=>
+
+    BRICK = S_RENKO_BRICK.new(
+      _id,
+      _dir,
+      _bc,
+      bar_index,
+      bar_index,
+      _dt_1,
+      _dt_2,
+      _o,
+      _c,
+      _size,
+      _multi
+      )
+    _S_RENKO_ATTR_TF.BRICKS.push(BRICK)
+    
+    _S_RENKO_ATTR_TF.dir := _dir
+    _S_RENKO_ATTR_TF.cb_c := _c
+    _S_RENKO_ATTR_TF.cb_o := _o
+    _S_RENKO_ATTR_TF.cb_size := _size
+    _S_RENKO_ATTR_TF.cb_col := _dir>0?_S_RENKO_INP_TF.col_bull:_S_RENKO_INP_TF.col_bear
+    _S_RENKO_ATTR_TF.cb_col_opp := _dir>0?_S_RENKO_INP_TF.col_bear:_S_RENKO_INP_TF.col_bull
+
+    _S_RENKO_ATTR_TF.nxt_rev := _dir>0 ? F_GLOBAL_MT_ROUND(_o - _size) : F_GLOBAL_MT_ROUND(_o + _size)
+    _S_RENKO_ATTR_TF.nxt_tf := _dir>0 ? F_GLOBAL_MT_ROUND(_c + _size) : F_GLOBAL_MT_ROUND(_c - _size)
+
+    if _S_RENKO_ATTR_TF.desc == "CTF"
+        if _S_RENKO_ATTR_TF.nxt_rev_line_obj.size() > 0
+            _S_RENKO_ATTR_TF.nxt_rev_line_obj.shift().delete()
+            _S_RENKO_ATTR_TF.nxt_rev_label_obj.shift().delete()
+        if _S_RENKO_ATTR_TF.nxt_tf_line_obj.size() > 0
+            _S_RENKO_ATTR_TF.nxt_tf_line_obj.shift().delete()
+            _S_RENKO_ATTR_TF.nxt_tf_label_obj.shift().delete()
+
+
+        t_delta = math.abs(time - time[1])*10
+
+        _S_RENKO_ATTR_TF.nxt_rev_line_obj.push(line.new(time, _S_RENKO_ATTR_TF.nxt_rev, time + t_delta, _S_RENKO_ATTR_TF.nxt_rev, xloc.bar_time, extend.none, _S_RENKO_ATTR_TF.cb_col_opp, line.style_dashed))
+        _S_RENKO_ATTR_TF.nxt_rev_label_obj.push(label.new(time + t_delta, _S_RENKO_ATTR_TF.nxt_rev, "NXT REV 🔃 - " + str.tostring(_S_RENKO_ATTR_TF.nxt_rev, format.mintick) + " / " + str.tostring(_S_RENKO_ATTR_TF.cb_size, format.mintick), xloc.bar_time, yloc.price, #00000000, label.style_label_left, _S_RENKO_ATTR_TF.cb_col_opp))
+
+        _S_RENKO_ATTR_TF.nxt_tf_line_obj.push(line.new(time, _S_RENKO_ATTR_TF.nxt_tf, time + t_delta, _S_RENKO_ATTR_TF.nxt_tf, xloc.bar_time, extend.none, _S_RENKO_ATTR_TF.cb_col, line.style_dashed))
+        _S_RENKO_ATTR_TF.nxt_tf_label_obj.push(label.new(time + t_delta, _S_RENKO_ATTR_TF.nxt_tf, "NXT TF 🎯 - " + str.tostring(_S_RENKO_ATTR_TF.nxt_tf, format.mintick) + " / " + str.tostring(_S_RENKO_ATTR_TF.cb_size, format.mintick), xloc.bar_time, yloc.price, #00000000, label.style_label_left, _S_RENKO_ATTR_TF.cb_col))
+
+    _S_RENKO_ATTR_TF.tot := _S_RENKO_ATTR_TF.tot+1
+    _S_RENKO_ATTR_TF.tot_bull := _dir>0 ? _S_RENKO_ATTR_TF.tot_bull+1 : _S_RENKO_ATTR_TF.tot_bull
+    _S_RENKO_ATTR_TF.tot_bear := _dir<0 ? _S_RENKO_ATTR_TF.tot_bear+1 : _S_RENKO_ATTR_TF.tot_bear
+
+
+//#endregion
+
+//#region [ --- TF --- ]
+
+//#region [ --- DEV --- ]
+
+method RENKO_TF_DEV(
+  S_RENKO_MTF _S_RENKO_MTF, S_RENKO_INP_TF _S_RENKO_INP_TF, S_RENKO_ATTR_TF _S_RENKO_ATTR_TF
+  )=>
+    _S_RENKO_ATTR_TF.upd := false
+    _S_RENKO_ATTR_TF.upd_rev := false
+    _S_RENKO_ATTR_TF.upd_tf := false
+    _S_RENKO_ATTR_TF.multi_loc := na
+    _S_RENKO_ATTR_TF.cb_multi := false
+
+    upd_c = 0
+    src_rev = _S_RENKO_INP_TF.src == 0 ? close : 
+      _S_RENKO_ATTR_TF.dir > 0 ? low : high 
+
+    cond_rev = _S_RENKO_ATTR_TF.dir > 0 ? src_rev < _S_RENKO_ATTR_TF.nxt_rev : src_rev > _S_RENKO_ATTR_TF.nxt_rev 
+
+    if cond_rev
+
+        upd_c:=upd_c+1
+        _S_RENKO_ATTR_TF.upd_rev:=true
+
+        _S_RENKO_ATTR_TF.upd := true
+        _S_RENKO_ATTR_TF.multi_loc := _S_RENKO_ATTR_TF.cb_c
+
+        brick_size = _S_RENKO_INP_TF.m == 0 ? F_GLOBAL_MT_ROUND(_S_RENKO_INP_TF.size) : F_GLOBAL_MT_ROUND(atr_rb)
+        brick_dir = _S_RENKO_ATTR_TF.dir*(-1)
+        brick_c = brick_dir > 0 ? _S_RENKO_ATTR_TF.cb_o + brick_size : _S_RENKO_ATTR_TF.cb_o - brick_size
+        brick_o = brick_dir > 0 ? brick_c - brick_size : brick_c + brick_size
+
+        _S_RENKO_INP_TF.RENKO_BRICK_CREATE(_S_RENKO_ATTR_TF, _S_RENKO_ATTR_TF.tot, brick_dir, 0, time, time, brick_o, brick_c, brick_size, 0)
+
+
+        log.info("[RENKO-" + _S_RENKO_ATTR_TF.desc + "] - 🔃 REV UPD - NEW BRICK CREATED 🔃")
+
+    src_tf = _S_RENKO_INP_TF.src == 0 ? close : 
+      _S_RENKO_ATTR_TF.dir > 0 ? high : low 
+
+    cond_tf = true
+    while cond_tf
+        
+        cond_tf := _S_RENKO_ATTR_TF.dir > 0 ? src_tf > _S_RENKO_ATTR_TF.nxt_tf : src_tf < _S_RENKO_ATTR_TF.nxt_tf 
+
+        if cond_tf 
+
+            upd_c:=upd_c+1
+            _S_RENKO_ATTR_TF.upd_tf:=true
+
+            _S_RENKO_ATTR_TF.upd := true
+
+            if na(_S_RENKO_ATTR_TF.multi_loc)
+                _S_RENKO_ATTR_TF.multi_loc:=_S_RENKO_ATTR_TF.cb_c
+            
+            brick_size = _S_RENKO_INP_TF.m == 0 ? F_GLOBAL_MT_ROUND(_S_RENKO_INP_TF.size) : F_GLOBAL_MT_ROUND(atr_rb)
+            brick_dir = _S_RENKO_ATTR_TF.dir
+            brick_c = brick_dir > 0 ? _S_RENKO_ATTR_TF.cb_c + brick_size : _S_RENKO_ATTR_TF.cb_c - brick_size
+            brick_o = _S_RENKO_ATTR_TF.cb_c 
+
+            _S_RENKO_INP_TF.RENKO_BRICK_CREATE(_S_RENKO_ATTR_TF, _S_RENKO_ATTR_TF.tot, brick_dir, 0, time, time, brick_o, brick_c, brick_size, upd_c>1?upd_c:0)
+
+            log.info("[RENKO-" + _S_RENKO_ATTR_TF.desc + "] - 🔃 TF UPD - NEW BRICK CREATED 🔃")
+    
+    if upd_c>1
+        _S_RENKO_ATTR_TF.upd_multi := true
+        _S_RENKO_ATTR_TF.upd_multi_amt := upd_c
+        label.new(chart.point.new(time[1], bar_index[1], _S_RENKO_ATTR_TF.multi_loc), str.tostring(upd_c)+(_S_RENKO_ATTR_TF.dir>0?"⇧":"⇩"), xloc.bar_time, _S_RENKO_ATTR_TF.dir>0?yloc.belowbar:yloc.abovebar, _S_RENKO_ATTR_TF.dir>0?_S_RENKO_INP_TF.col_bull:_S_RENKO_INP_TF.col_bear, label.style_diamond, _S_RENKO_ATTR_TF.dir>0?_S_RENKO_INP_TF.col_bull:_S_RENKO_INP_TF.col_bear, tooltip = "M-"+_S_RENKO_ATTR_TF.desc)
+        _S_RENKO_ATTR_TF.cb_multi := true
+
+    if _S_RENKO_MTF.INP.alerts and upd_c>0
+        log.info("[RENKO-" + _S_RENKO_ATTR_TF.desc + "] - ⚡ UPD - TOT: " + str.tostring(upd_c) + " - REV UPD: " + (cond_rev ? "TRUE" : "FALSE") + " - TF UPD: " + (cond_tf ? "TRUE" : "FALSE") + " - IS MULTI: " + (upd_c>1 ? "TRUE" : "FALSE") + " ⚡")
+        alert(
+          "[RENKO-" + _S_RENKO_ATTR_TF.desc + "] - ⚡ UPD - TOT: " + str.tostring(upd_c) + " - REV UPD: " + (cond_rev ? "TRUE" : "FALSE") + " - TF UPD: " + (cond_tf ? "TRUE" : "FALSE") + " - IS MULTI: " + (upd_c>1 ? "TRUE" : "FALSE") + " ⚡", 
+          alert.freq_once_per_bar_close
+          )
+
+    if _S_RENKO_ATTR_TF.BRICKS.size() > 0
+        //log.info("[RENKO-" + _S_RENKO_ATTR_TF.desc + "] - ⏩ EXTENDED ⏩")
+
+        BRICK = _S_RENKO_ATTR_TF.BRICKS.last()
+        BRICK.idx_2 := bar_index
+        BRICK.dt_2 := time
+        BRICK.bc := _S_RENKO_ATTR_TF.BRICKS.last().bc + 1
+
+
+        if _S_RENKO_ATTR_TF.desc == "CTF"
+
+            t_delta = math.abs(time - time[1])*10
+
+            if _S_RENKO_ATTR_TF.nxt_rev_line_obj.size() > 0
+                _S_RENKO_ATTR_TF.nxt_rev_line_obj.last().set_x1(time)
+                _S_RENKO_ATTR_TF.nxt_rev_line_obj.last().set_x2(time + t_delta)
+                _S_RENKO_ATTR_TF.nxt_rev_label_obj.last().set_x(time + t_delta)
+            if _S_RENKO_ATTR_TF.nxt_tf_line_obj.size() > 0
+                _S_RENKO_ATTR_TF.nxt_tf_line_obj.last().set_x1(time)
+                _S_RENKO_ATTR_TF.nxt_tf_line_obj.last().set_x2(time + t_delta)
+                _S_RENKO_ATTR_TF.nxt_tf_label_obj.last().set_x(time + t_delta)
+
+//#endregion
+
+//#region [ --- INIT --- ]
+
+method RENKO_TF_INIT(
+  S_RENKO_INP_TF _S_RENKO_INP_TF, S_RENKO_ATTR_TF _S_RENKO_ATTR_TF
+  )=>
+    if _S_RENKO_INP_TF.m == 1 ? (not na(atr_rb) and atr_rb!=0.0) : true
+        
+        _S_RENKO_ATTR_TF.init := true
+
+        start = ohlc4
+        
+        brick_size = _S_RENKO_INP_TF.m == 0 ? F_GLOBAL_MT_ROUND(_S_RENKO_INP_TF.size) : atr_rb
+        brick_dir = 1
+        brick_c = brick_dir > 0 ? start + brick_size/2 : start - brick_size/2
+        brick_o = brick_dir > 0 ? start - brick_size/2 : start + brick_size/2
+        
+       
+        _S_RENKO_INP_TF.RENKO_BRICK_CREATE(_S_RENKO_ATTR_TF, _S_RENKO_ATTR_TF.tot, brick_dir, 0, time, time, brick_o, brick_c, brick_size, 0)
+
+
+//#endregion
+
+//#region [ --- CYCLE --- ]
+
+method RENKO_TF_CYCLE(S_RENKO_MTF _S_RENKO_MTF, S_RENKO_INP_TF _S_RENKO_INP_TF, S_RENKO_ATTR_TF _S_RENKO_ATTR_TF)=>
+    if not _S_RENKO_ATTR_TF.init
+        RENKO_TF_INIT(_S_RENKO_INP_TF, _S_RENKO_ATTR_TF)
+        0
+    else
+        _S_RENKO_MTF.RENKO_TF_DEV(_S_RENKO_INP_TF, _S_RENKO_ATTR_TF)
+        0
+
+//#endregion
+
+//#endregion
+
+//#region [ --- MTF --- ]
+
+method RENKO_MTF_CYCLE(S_RENKO_MTF _S_RENKO_MTF)=>
+    
+    _S_RENKO_MTF.RENKO_TF_CYCLE(_S_RENKO_MTF.INP.CTF, _S_RENKO_MTF.ATTR.CTF)
+
+
+//#endregion
+
+//#endregion
+
+if i_renko_band_v == "V2"
+    RENKO_MTF_CYCLE(S_RENKO_MTF)
+    
+p_renko_ctf_o = plot(i_renko_band_v == "V2" and S_RENKO_MTF.ATTR.CTF.cb_c!=0.0?S_RENKO_MTF.ATTR.CTF.cb_o:na,"RENKO-CTF OPEN",#00000000,2,plot.style_line)
+p_renko_ctf_c = plot(i_renko_band_v == "V2" and S_RENKO_MTF.ATTR.CTF.cb_c!=0.0?S_RENKO_MTF.ATTR.CTF.cb_c:na,"RENKO-CTF CLOSE",S_RENKO_MTF.ATTR.CTF.cb_col,2,plot.style_line)
+
+fill(p_renko_ctf_c, p_renko_ctf_o, S_RENKO_MTF.ATTR.CTF.dir>0?S_RENKO_MTF.ATTR.CTF.nxt_tf:S_RENKO_MTF.ATTR.CTF.cb_o, S_RENKO_MTF.ATTR.CTF.dir>0?S_RENKO_MTF.ATTR.CTF.cb_o:S_RENKO_MTF.ATTR.CTF.nxt_tf, i_renko_band_v == "V2" ? color.new(S_RENKO_MTF.ATTR.CTF.cb_col, S_RENKO_MTF.ATTR.CTF.dir>0?30:95) : na, i_renko_band_v == "V2" ? color.new(S_RENKO_MTF.ATTR.CTF.cb_col, S_RENKO_MTF.ATTR.CTF.dir>0?95:30) : na, fillgaps = true)
+
+
+
+//#endregion
+
+var renko_final = 0.0
+renko_final := i_renko_band_v == "V2" ? S_RENKO_MTF.ATTR.CTF.cb_c : rb_v1_icloseprice
+var renko_final_size = 0.0
+renko_final_size := i_renko_band_v == "V2" ? S_RENKO_MTF.ATTR.CTF.cb_size : rb_v1_box
+var color renko_final_col = na
+renko_final_col := renko_final > renko_final[1] ? i_renko_band_col_bull : i_renko_band_col_bear
+
+//#endregion
+
+//#region [ --- STEPPED MA --- ]
+
+var stepped_ma_v = 0.0
+var stepped_ma_dir = 0
+var stepped_ma_last_ch = 0
+var stepped_ma_new_v = 0
+var color stepped_ma_col = na
+
+//#region [ --- FUNCTIONS --- ]
+
+F_STEPPED_MA_CALCS_SMA(bool _new_v)=>
+    
+    var vals = array.new_float(0)
+
+    if _new_v
+        array.push(vals, i_stepped_ma_src)
+
+        if array.size(vals) > i_stepped_ma_len
+            array.remove(vals, 0)
+
+    SMA = array.avg(vals)
+    SMA
+
+F_STEPPED_MA_CALCS_EMA(bool _new_v)=>
+    
+    var val = array.new_float(0)
+    var ema_val = array.new_float(1)
+
+    if _new_v
+        array.push(val, i_stepped_ma_src)
+
+        if array.size(val) > 1
+            array.remove(val, 0)
+
+        if na(array.get(ema_val, 0))
+            array.fill(ema_val, array.get(val, 0))
+
+        array.set(ema_val, 0, (array.get(val, 0) - array.get(ema_val, 0))*(2/(i_stepped_ma_len + 1)) + array.get(ema_val, 0))
+
+    EMA = array.get(ema_val, 0)
+    EMA
+
+F_STEPPED_MA_CALCS_ALMA(bool _new_v)=>
+
+    m = 0.85*(i_stepped_ma_len - 1)
+    s = i_stepped_ma_len/6
+
+    var vals = array.new_float(0)
+    var weights = array.new_float(0)
+    var wvals = array.new_float(i_stepped_ma_len, 0.0)
+
+    if _new_v
+        array.push(vals, i_stepped_ma_src)
+
+        if array.size(vals) <= i_stepped_ma_len
+            array.push(weights, math.exp(-math.pow(array.size(vals) - 1 - m, 2)/(2*math.pow(s, 2))))
+            array.set(wvals, array.size(vals) - 1, array.get(vals, array.size(vals) - 1)*array.get(weights, array.size(vals) - 1))
+
+        if array.size(vals) > i_stepped_ma_len
+            array.remove(vals, 0)
+            for i = 0 to (i_stepped_ma_len - 1)
+                array.set(wvals, i, array.get(vals, i)*array.get(weights, i))
+
+    ALMA = array.sum(wvals)/array.sum(weights)
+    ALMA
+
+F_STEPPED_MA_CALCS_BLP(bool _new_v)=>
+    
+    a = math.exp(-math.sqrt(2)*math.atan(1)*4/i_stepped_ma_len)
+    b = 2*a*math.cos(math.sqrt(2)*math.atan(1)*4/i_stepped_ma_len)
+    c = math.pow(a, 2)
+    d = ((1 - b + c)/4)
+
+    var vals = array.new_float(0)
+    var blp_vals = array.new_float(3)
+
+    if _new_v
+        array.push(vals, i_stepped_ma_src)
+
+        if array.size(vals) > 3
+            array.remove(vals, 0)
+
+        if array.size(vals) == 3
+            if na(array.get(blp_vals, 1))
+                array.fill(blp_vals, array.get(vals, 2))
+            array.set(blp_vals, 2, array.get(blp_vals, 1))
+            array.set(blp_vals, 1, array.get(blp_vals, 0))
+            array.set(blp_vals, 0, b*array.get(blp_vals, 1) - c*array.get(blp_vals, 2) + d*(array.get(vals, 2) + 2*array.get(vals, 1) + array.get(vals, 0)))
+
+    BLP = array.get(blp_vals, 0)
+    BLP
+
+F_STEPPED_MA_CALCS_NEW_V()=>
+    var bar_sum  = 0.0
+    bar_sum := bar_sum + 1
+    new_v = (bar_sum - i_stepped_ma_delay) % i_stepped_ma_lb == 0 ? 1 : 0
+    new_v
+
+//#endregion
+
+stepped_ma_new_v := F_STEPPED_MA_CALCS_NEW_V()
+
+if stepped_ma_new_v != 0
+    stepped_ma_last_ch := bar_index
+    if i_stepped_ma_type == "SMA"
+        stepped_ma_v := F_STEPPED_MA_CALCS_SMA(stepped_ma_new_v != 0)
+
+    if i_stepped_ma_type == "EMA"
+        stepped_ma_v := F_STEPPED_MA_CALCS_EMA(stepped_ma_new_v != 0)
+
+    if i_stepped_ma_type == "ALMA"
+        stepped_ma_v := F_STEPPED_MA_CALCS_ALMA(stepped_ma_new_v != 0)
+
+    if i_stepped_ma_type == "BLP"
+        stepped_ma_v := F_STEPPED_MA_CALCS_BLP(stepped_ma_new_v != 0)
+
+    if close > stepped_ma_v
+        stepped_ma_dir := 1
+
+    if close < stepped_ma_v
+        stepped_ma_dir := -1
+
+if stepped_ma_dir != stepped_ma_dir[1]
+    if i_stepped_ma_alerts
+        alert_msg = "🚨 STEPPED MA 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+stepped_ma_col := close > stepped_ma_v ? i_stepped_ma_col_bull : i_stepped_ma_col_bear
+p_stepped_ma = plot(i_stepped_ma_show?stepped_ma_v:na, "STEPPED MA", stepped_ma_col, 2, plot.style_line, title = "STEPPED MA")
+
+//#endregion
+
+//#region [ --- TRAIL CLOUD --- ]
+
+//var tc_v = 0.0
+//var tc_dir = 1
+//var color tc_col = na
+//
+//tc_atr = i_tc_mult * ta.atr(i_tc_length)
+//
+//tc_highp = i_tc_wicks ? high : close
+//tc_lowp = i_tc_wicks ? low : close
+//
+//tc_dojip = open == close and open == low and open == high
+//
+//tc_long_stop = i_tc_src - tc_atr
+//tc_long_stop_prev = nz(tc_long_stop[1], tc_long_stop)
+//
+//if tc_long_stop > 0
+//    if tc_dojip
+//        tc_long_stop := tc_long_stop_prev
+//    else
+//        tc_long_stop := (tc_lowp[1] > tc_long_stop_prev ? math.max(tc_long_stop, tc_long_stop_prev) : tc_long_stop)
+//else
+//    tc_long_stop := tc_long_stop_prev
+//
+//tc_short_stop = i_tc_src + tc_atr
+//tc_short_stop_prev = nz(tc_short_stop[1], tc_short_stop)
+//
+//if tc_short_stop > 0
+//    if tc_dojip
+//        tc_short_stop := tc_short_stop_prev
+//    else
+//        tc_short_stop := (tc_highp[1] < tc_short_stop_prev ? math.min(tc_short_stop, tc_short_stop_prev) : tc_short_stop)
+//else
+//    tc_short_stop := tc_short_stop_prev
+//
+//
+//tc_dir :=
+//  tc_dir == -1 and tc_highp > tc_short_stop_prev ? 1 :
+//  tc_dir == 1 and tc_lowp < tc_long_stop_prev ? -1 :
+//  tc_dir
+//
+//tc_v := tc_dir > 0 ? tc_long_stop : tc_short_stop
+//tc_col := tc_dir > 0 ? i_tc_col_bull : i_tc_col_bear
+//tc_col := tc_dir != tc_dir[1] ? na : tc_col
+//
+//tc_show_shape = i_tc_show and tc_dir != tc_dir[1]
+//if tc_dir != tc_dir[1]
+//    if i_tc_alerts
+//        alert_msg = "🚨 TRAIL CLOUD 🚨\n🔃 Direction Change 🔃"
+//        alert(alert_msg, alert.freq_once_per_bar)
+//
+//p_tc_fill = plot(i_tc_show ? ohlc4 : na, title="", style=plot.style_circles, linewidth=0, display=display.none, editable=false)
+//p_tc = plot(i_tc_show ? tc_v : na, color = tc_col,style = plot.style_linebr)
+//plotshape(tc_show_shape ? tc_v : na, title="TRAIL CLOUD", location=location.absolute, style=shape.circle, size=size.tiny, color=tc_col)
+//fill(p_tc_fill, p_tc, color.new(tc_col, i_tc_fill?70:0), title="TRAIL CLOUD FILL")
+
+//#endregion
+
+//#region [ --- VOLUMETRIC TREND --- ]
+
+var vol_trend_v = 0.0
+var vol_trend_dir = 0
+var color vol_trend_col = na
+
+//#region [ --- FUNCTIONS --- ]
+
+F_VT_CALC(float _src, int _len, int _momentum)=>
+    float momentum         = ta.change(_src)
+    float sum_pos_momentum = math.sum((momentum >= 0) ? momentum : 0.0, _momentum)
+    float sum_neg_momentum = math.sum((momentum >= 0) ? 0.0 : -momentum, _momentum)
+    float abs_cmo          = math.abs(100 * (sum_pos_momentum - sum_neg_momentum) / (sum_pos_momentum + sum_neg_momentum))
+    float alpha            = 2 / (_len + 1)
+    var float vidya_value  = 0.0
+    vidya_value           := alpha * abs_cmo / 100 * _src + (1 - alpha * abs_cmo / 100) * nz(vidya_value[1])
+
+    ta.sma(vidya_value, 15)
+
+//#endregion
+
+vol_trend_vt = F_VT_CALC(i_vt_src, i_vt_len, i_vt_momentum)
+vol_trend_atr = ta.atr(200)
+
+float vol_trend_upper_band = vol_trend_vt + vol_trend_atr * i_vt_distance
+float vol_trend_lower_band = vol_trend_vt - vol_trend_atr * i_vt_distance
+
+if i_vt_src > vol_trend_upper_band and vol_trend_dir<=0
+    vol_trend_dir := 1
+
+if i_vt_src < vol_trend_lower_band and vol_trend_dir>=0
+    vol_trend_dir := -1
+
+vol_trend_v := vol_trend_dir > 0 ? vol_trend_lower_band : vol_trend_upper_band
+vol_trend_col := vol_trend_dir > 0 ? i_vt_col_bull : i_vt_col_bear
+vol_trend_col := vol_trend_dir != vol_trend_dir[1] ? na : vol_trend_col
+
+if vol_trend_dir != vol_trend_dir[1]
+    if i_vt_alerts
+        alert_msg = "🚨 VOLUMETRIC TREND 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+p_vol = plot(i_vt_show ? vol_trend_v : na, color = vol_trend_col,style = plot.style_linebr, title = "VOLUMETRIC TREND")
+
+
+//#endregion
+
+//#region [ --- VWAPS --- ]
+
+var vwap_1_dir = 0
+var vwap_1_v = 0.0
+var color vwap_1_col = na
+var label vwap_1_lbl_dyn = na
+var label vwap_1_lbl_close = na
+
+vwap_1_w = ta.barssince(ta.change(request.security(syminfo.tickerid, i_vwap_1_tf, time, lookahead=barmerge.lookahead_on)))
+vwap_1_p = 0.0
+vwap_1_p := vwap_1_w == 0 ? ohlc4 : ohlc4 + nz(vwap_1_p[1])
+vwap_1_v := vwap_1_p / (vwap_1_w + 1)
+
+vwap_1_dir := close > vwap_1_v ? 1 : close < vwap_1_v ? -1 : vwap_1_dir
+vwap_1_col := vwap_1_dir > 0 ? i_vwap_1_col_bull : i_vwap_1_col_bear
+vwap_1_col := vwap_1_dir != vwap_1_dir[1] ? na : vwap_1_col
+
+vwap_1_res = ta.change(time(i_vwap_1_tf)) != 0
+vwap_1_close = ta.valuewhen(vwap_1_res, vwap_1_v[1], 0)
+
+p_vwap_1 = plot(i_vwap_1_show ? vwap_1_v : na, title='VWAP1', color=vwap_1_col, linewidth=1, style=plot.style_circles)
+p_vwap_1_close = plot(i_vwap_1_show ? vwap_1_close : na, color=color.new(vwap_1_col,50), linewidth=1, style=plot.style_circles, title='VWAP1 CL')
+
+if vwap_1_dir != vwap_1_dir[1]
+    if i_vwap_1_alerts
+        alert_msg = "🚨 VWAP1 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+if i_vwap_1_lbl_dyn and i_vwap_1_show
+    label.delete(vwap_1_lbl_dyn[1])
+    vwap_1_lbl_dyn := label.new(bar_index + 5, vwap_1_v, F_GLOBAL_TF_CONV(i_vwap_1_tf), xloc.bar_index, yloc.price, color.new(vwap_1_col,75), label.style_label_left, vwap_1_col)
+if i_vwap_1_lbl_close and i_vwap_1_show
+    label.delete(vwap_1_lbl_close[1])
+    vwap_1_lbl_close := label.new(bar_index + 5, vwap_1_close, F_GLOBAL_TF_CONV(i_vwap_1_tf) + " CL", xloc.bar_index, yloc.price, color.new(vwap_1_col,75), label.style_label_left, vwap_1_col)
+
+
+var vwap_2_dir = 0
+var vwap_2_v = 0.0
+var color vwap_2_col = na
+var label vwap_2_lbl_dyn = na
+var label vwap_2_lbl_close = na
+
+vwap_2_w = ta.barssince(ta.change(request.security(syminfo.tickerid, i_vwap_2_tf, time, lookahead=barmerge.lookahead_on)))
+vwap_2_p = 0.0
+vwap_2_p := vwap_2_w == 0 ? ohlc4 : ohlc4 + nz(vwap_2_p[1])
+vwap_2_v := vwap_2_p / (vwap_2_w + 1)
+
+vwap_2_dir := close > vwap_2_v ? 1 : close < vwap_2_v ? -1 : vwap_2_dir
+vwap_2_col := vwap_2_dir > 0 ? i_vwap_2_col_bull : i_vwap_2_col_bear
+vwap_2_col := vwap_2_dir != vwap_2_dir[1] ? na : vwap_2_col
+
+vwap_2_res = ta.change(time(i_vwap_2_tf)) != 0
+vwap_2_close = ta.valuewhen(vwap_2_res, vwap_2_v[1], 0)
+
+p_vwap_2 = plot(i_vwap_2_show ? vwap_2_v : na, title='VWAP1', color=vwap_2_col, linewidth=1, style=plot.style_circles)
+p_vwap_2_close = plot(i_vwap_2_show ? vwap_2_close : na, color=color.new(vwap_2_col,50), linewidth=1, style=plot.style_circles, title='VWAP1 CL')
+
+if vwap_2_dir != vwap_2_dir[1]
+    if i_vwap_2_alerts
+        alert_msg = "🚨 VWAP2 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+if i_vwap_2_lbl_dyn and i_vwap_2_show
+    label.delete(vwap_2_lbl_dyn[1])
+    vwap_2_lbl_dyn := label.new(bar_index + 5, vwap_2_v, F_GLOBAL_TF_CONV(i_vwap_2_tf), xloc.bar_index, yloc.price, color.new(vwap_2_col,75), label.style_label_left, vwap_2_col)
+if i_vwap_2_lbl_close and i_vwap_2_show
+    label.delete(vwap_2_lbl_close[1])
+    vwap_2_lbl_close := label.new(bar_index + 5, vwap_2_close, F_GLOBAL_TF_CONV(i_vwap_2_tf) + " CL", xloc.bar_index, yloc.price, color.new(vwap_2_col,75), label.style_label_left, vwap_2_col)
+
+
+//#endregion
+
+//#region [ --- MOVING AVERAGES COLLECTION --- ]
+
+var ma_coll_ma1_dir = 0
+var ma_coll_ma2_dir = 0
+var ma_coll_ma3_dir = 0
+var color ma_coll_ma1_col = na
+var color ma_coll_ma2_col = na
+var color ma_coll_ma3_col = na
+var label ma_coll_ma1_lbl = na
+var label ma_coll_ma2_lbl = na
+var label ma_coll_ma3_lbl = na
+
+ma_coll_ma1_smma = 0.0
+ma_coll_ma1_smma := na(ma_coll_ma1_smma[1]) ? ta.sma(i_macoll_ma1_src, i_macoll_ma1_len) : (ma_coll_ma1_smma[1] * (i_macoll_ma1_len - 1) + i_macoll_ma1_src) / i_macoll_ma1_len
+
+ma_coll_ma1 = i_macoll_ma1_type == "SMA" ? ta.sma(i_macoll_ma1_src, i_macoll_ma1_len) : i_macoll_ma1_type == "EMA" ? ta.ema(i_macoll_ma1_src, i_macoll_ma1_len) : i_macoll_ma1_type == "HULL MA" ? ta.hma(i_macoll_ma1_src, i_macoll_ma1_len) : i_macoll_ma1_type == "WMA" ? ta.wma(i_macoll_ma1_src, i_macoll_ma1_len) : i_macoll_ma1_type == "VWMA" ? ta.vwma(i_macoll_ma1_src, i_macoll_ma1_len) : i_macoll_ma1_type == "Smoothed MA" ? ma_coll_ma1_smma : i_macoll_ma1_type == "ALMA" ? ta.alma(i_macoll_ma1_src, i_macoll_ma1_len, 0.85, 6) : na
+
+ma_coll_ma1_dir := close > ma_coll_ma1 ? 1 : close < ma_coll_ma1 ? -1 : ma_coll_ma1_dir
+ma_coll_ma1_col := ma_coll_ma1_dir > 0 ? i_macoll_ma1_col_bull : i_macoll_ma1_col_bear
+
+ma_coll_ma2_smma = 0.0
+ma_coll_ma2_smma := na(ma_coll_ma2_smma[1]) ? ta.sma(i_macoll_ma2_src, i_macoll_ma2_len) : (ma_coll_ma2_smma[1] * (i_macoll_ma2_len - 1) + i_macoll_ma2_src) / i_macoll_ma2_len
+
+ma_coll_ma2 = i_macoll_ma2_type == "SMA" ? ta.sma(i_macoll_ma2_src, i_macoll_ma2_len) : i_macoll_ma2_type == "EMA" ? ta.ema(i_macoll_ma2_src, i_macoll_ma2_len) : i_macoll_ma2_type == "HULL MA" ? ta.hma(i_macoll_ma2_src, i_macoll_ma2_len) : i_macoll_ma2_type == "WMA" ? ta.wma(i_macoll_ma2_src, i_macoll_ma2_len) : i_macoll_ma2_type == "VWMA" ? ta.vwma(i_macoll_ma2_src, i_macoll_ma2_len) : i_macoll_ma2_type == "Smoothed MA" ? ma_coll_ma2_smma : i_macoll_ma2_type == "ALMA" ? ta.alma(i_macoll_ma2_src, i_macoll_ma2_len, 0.85, 6) : na
+
+ma_coll_ma2_dir := close > ma_coll_ma2 ? 1 : close < ma_coll_ma2 ? -1 : ma_coll_ma2_dir
+ma_coll_ma2_col := ma_coll_ma2_dir > 0 ? i_macoll_ma2_col_bull : i_macoll_ma2_col_bear
+
+ma_coll_ma3_smma = 0.0
+ma_coll_ma3_smma := na(ma_coll_ma3_smma[1]) ? ta.sma(i_macoll_ma3_src, i_macoll_ma3_len) : (ma_coll_ma3_smma[1] * (i_macoll_ma3_len - 1) + i_macoll_ma3_src) / i_macoll_ma3_len
+
+ma_coll_ma3 = i_macoll_ma3_type == "SMA" ? ta.sma(i_macoll_ma3_src, i_macoll_ma3_len) : i_macoll_ma3_type == "EMA" ? ta.ema(i_macoll_ma3_src, i_macoll_ma3_len) : i_macoll_ma3_type == "HULL MA" ? ta.hma(i_macoll_ma3_src, i_macoll_ma3_len) : i_macoll_ma3_type == "WMA" ? ta.wma(i_macoll_ma3_src, i_macoll_ma3_len) : i_macoll_ma3_type == "VWMA" ? ta.vwma(i_macoll_ma3_src, i_macoll_ma3_len) : i_macoll_ma3_type == "Smoothed MA" ? ma_coll_ma3_smma : i_macoll_ma3_type == "ALMA" ? ta.alma(i_macoll_ma3_src, i_macoll_ma3_len, 0.85, 6) : na
+
+ma_coll_ma3_dir := close > ma_coll_ma3 ? 1 : close < ma_coll_ma3 ? -1 : ma_coll_ma3_dir
+ma_coll_ma3_col := ma_coll_ma3_dir > 0 ? i_macoll_ma3_col_bull : i_macoll_ma3_col_bear
+
+if ma_coll_ma1_dir != ma_coll_ma1_dir[1]
+    if i_macoll_ma1_alerts
+        alert_msg = "🚨 MOVING AVERAGES COLLECTION - MA1 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+if ma_coll_ma2_dir != ma_coll_ma2_dir[1]
+    if i_macoll_ma2_alerts
+        alert_msg = "🚨 MOVING AVERAGES COLLECTION - MA2 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+if ma_coll_ma3_dir != ma_coll_ma3_dir[1]
+    if i_macoll_ma3_alerts
+        alert_msg = "🚨 MOVING AVERAGES COLLECTION - MA3 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+plot(i_macoll_ma1_show ? ma_coll_ma1 : na, color=ma_coll_ma1_col, linewidth=1, title="MACOLL-MA1")
+plot(i_macoll_ma2_show ? ma_coll_ma2 : na, color=ma_coll_ma2_col, linewidth=1, title="MACOLL-MA2")
+plot(i_macoll_ma3_show ? ma_coll_ma3 : na, color=ma_coll_ma3_col, linewidth=1, title="MACOLL-MA3")
+
+if i_macoll_ma1_lbl and i_macoll_ma1_show
+    label.delete(ma_coll_ma1_lbl[1])
+    ma_coll_ma1_lbl := label.new(bar_index + 5, ma_coll_ma1, "MA1", xloc.bar_index, yloc.price, color.new(ma_coll_ma1_col,75), label.style_label_left, ma_coll_ma1_col)
+if i_macoll_ma2_lbl and i_macoll_ma2_show
+    label.delete(ma_coll_ma2_lbl[1])
+    ma_coll_ma2_lbl := label.new(bar_index + 5, ma_coll_ma2, "MA2", xloc.bar_index, yloc.price, color.new(ma_coll_ma2_col,75), label.style_label_left, ma_coll_ma2_col)
+if i_macoll_ma3_lbl and i_macoll_ma3_show
+    label.delete(ma_coll_ma3_lbl[1])
+    ma_coll_ma3_lbl := label.new(bar_index + 5, ma_coll_ma3, "MA3", xloc.bar_index, yloc.price, color.new(ma_coll_ma3_col,75), label.style_label_left, ma_coll_ma3_col)
+
+//#endregion
+
+//#region [ --- TSI --- ]
+
+bool  tsifast     = i_tsi_speed == "Fast"
+int   shortvar    = tsifast ? i_tsi_fast_short_len  : i_tsi_slow_short_len  
+int   longvar     = tsifast ? i_tsi_fast_long_len   : i_tsi_slow_long_len   
+int   signalvar   = tsifast ? i_tsi_fast_signal_len : i_tsi_slow_signal_len 
+float tsi         = ta.tsi(close, shortvar, longvar) * 100
+float tsl         = ta.ema(tsi, signalvar)
+
+var tsi_dir = 0
+tsi_dir := tsi > tsi[1] ? 1 : tsi < tsi[1] ? -1 : tsi_dir
+
+if tsi_dir != tsi_dir[1]
+    if i_tsi_alerts
+        alert_msg = "🚨 TSI 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+//#endregion
+
+//#region [ --- CAPO OSC --- ]
+
+//#region [ --- FUNCTIONS --- ]
+
+ma_capo_oscMTF(type, src, len) =>
+    almaCalc = request.security(syminfo.tickerid, i_capo_osc_tf, ta.alma(src, len, 0.85, 6), lookahead=barmerge.lookahead_on)
+    stDev = request.security(syminfo.tickerid, i_capo_osc_tf, ta.stdev(src, i_capo_osc_bblen), lookahead=barmerge.lookahead_on)
+    [almaCalc,stDev]
+    
+ma_capo_osc(type, src, len) =>
+    float result = 0
+    [smaCalc, emaCalc, wmaCalc, hmaCalc, emaHigh, emaLow, stDev, tf_src] = request.security(syminfo.tickerid, i_capo_osc_tf, [ta.sma(src, len),ta.ema(src, len),ta.wma(src, len),ta.hma(src, len), ta.hma(high, len), ta.hma(low, len), ta.stdev(src, i_capo_osc_bblen), src], lookahead=barmerge.lookahead_off)
+    
+    Hlv = int(na)
+    Hlv := tf_src > emaHigh ? 1 : tf_src < emaLow ? -1 : Hlv[1]
+    
+    if type=="SMA" // Simple
+        result := smaCalc
+    if type=="EMA" // Exponential
+        result := emaCalc
+    if type=="WMA" // Weighted
+        result := wmaCalc
+    if type=="HMA" // Hull
+        result := hmaCalc
+    if type=="SSL"
+        result:= Hlv < 0 ? emaHigh : emaLow
+    if type=="SMOOTH"
+        result := na(result[1]) ? smaCalc : (result[1] * (len - 1) + src) / len
+    
+    [result, stDev]
+
+//#endregion
+
+[capo_basis, capo_stDev] = ma_capo_osc(i_capo_osc_ma_type, i_capo_osc_src, i_capo_osc_bblen)
+capo_dev = i_capo_osc_bbmult * capo_stDev
+capo_upper = capo_basis + capo_dev
+capo_lower = capo_basis - capo_dev
+capo_upper1 = capo_basis + capo_dev/2
+capo_lower1 = capo_basis - capo_dev/2
+capo_upper3 = capo_basis + capo_dev*1.5
+capo_lower3 = capo_basis - capo_dev*1.5
+capo_up_bar=open<=close
+capo_up_break2=high-capo_upper
+capo_low_break2=low-capo_lower
+capo_up_break1=high-capo_upper1
+capo_low_break1=low-capo_lower1
+capo_up_break3=high-capo_upper3
+capo_low_break3=low-capo_lower3
+
+//#endregion
+
+//#region [ --- CHOPPER --- ]
+
+var chop_act = false
+var chop_cond = false
+var chop_status = 0
+
+chop_up = HALib.anyma(math.max(ta.change(i_chop_src), 0),i_chop_ma_len,i_chop_ma_type)
+chop_down = HALib.anyma(-math.min(ta.change(i_chop_src), 0),i_chop_ma_len,i_chop_ma_type)
+chop_rsi = chop_down == 0 ? 100 : chop_up == 0 ? 0 : 100 - (100 / (1 + chop_up / chop_down))
+
+chop_cond := chop_rsi >= i_chop_lt and chop_rsi <= i_chop_ut
+if chop_cond and not chop_act[1]
+    chop_act := true
+else if chop_cond and chop_act[1] and chop_act
+    chop_status := 1
+else
+    chop_act := false
+
+if i_chop_alerts
+    if chop_act and not chop_act[1]
+        alert_msg = "🚨 CHOPPER 🚨\n💤 Entering Chop Zone 💤"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+    if not chop_act and chop_act[1]
+        alert_msg = "🚨 CHOPPER 🚨\n⚡ Exiting Chop Zone ⚡"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+barcolor(i_chop_show and chop_act ? i_chop_col : na, title = "CHOPPER")
+
+//#endregion
+
+//#region [ --- SESSIONS --- ]
+
+int sess1 = time(timeframe.period, i_sess_lon_sess,tz)
+int sess2 = time(timeframe.period, i_sess_ny_sess,tz)
+int sess3 = time(timeframe.period, i_sess_tok_sess,tz)
+
+int sess1_str = time(timeframe.period, i_sess_lon_sess,tz)
+int sess2_str = time(timeframe.period, i_sess_ny_sess,tz)
+int sess3_str = time(timeframe.period, i_sess_tok_sess,tz)
+
+[sess1T, sess1B] = SessInBoxes.get_positions_func(sess1, LOOKBACKMINS)
+[sess2T, sess2B] = SessInBoxes.get_positions_func(sess2, LOOKBACKMINS)
+[sess3T, sess3B] = SessInBoxes.get_positions_func(sess3, LOOKBACKMINS)
+
+[lon_co_s, lon_cu_s] = SessInBoxes.get_op_stricts(sess1, SessInBoxes.is_start(sess1), sess1T, sess1B,i_sessd_or_lb)
+[ny_co_s, ny_cu_s] = SessInBoxes.get_op_stricts(sess2, SessInBoxes.is_start(sess2), sess2T, sess2B,i_sessd_or_lb)
+[tok_co_s, tok_cu_s] = SessInBoxes.get_op_stricts(sess3, SessInBoxes.is_start(sess3), sess3T, sess3B,i_sessd_or_lb)
+
+[lon_pmt_s_, lon_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_lon_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess1)
+[ny_pmt_s_, ny_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_ny_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess2)
+[tok_pmt_s_, tok_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_tok_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess3)
+
+
+lon_pmt_s =0.0 
+lon_pmb_s =0.0
+ny_pmt_s  =0.0
+ny_pmb_s  =0.0
+tok_pmt_s =0.0
+tok_pmb_s =0.0
+
+lon_pmt_s := sess1 and not sess1[1] ? lon_pmt_s_:lon_pmt_s[1]
+lon_pmb_s := sess1 and not sess1[1] ? lon_pmb_s_:lon_pmb_s[1]
+ny_pmt_s  := sess2 and not sess2[1] ?ny_pmt_s_:ny_pmt_s[1] 
+ny_pmb_s  := sess2 and not sess2[1] ?ny_pmb_s_:ny_pmb_s[1] 
+tok_pmt_s := sess3 and not sess3[1] ? tok_pmt_s_:tok_pmt_s[1]
+tok_pmb_s := sess3 and not sess3[1] ? tok_pmb_s_:tok_pmb_s[1]
+
+
+lon_s = SessInBoxes.draw(i_sess_lon_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess1, i_sess_lon_col, "London", "NO", i_sessd_fib, i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess1T, sess1B,tz,i_sess_sty_lbl_fmt_day)
+ny_s = SessInBoxes.draw(i_sess_ny_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess2, i_sess_ny_col, "New York", "NO", i_sessd_fib, i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess2T, sess2B,tz,i_sess_sty_lbl_fmt_day)
+tok_s = SessInBoxes.draw(i_sess_tok_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess3, i_sess_tok_col, "Tokyo", "NO", i_sessd_fib,  i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess3T, sess3B,tz,i_sess_sty_lbl_fmt_day)
+
+
+if i_sessd_alerts
+
+    if lon_s and not lon_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇬🇧 London Session Started 🇬🇧"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    if not lon_s and lon_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇬🇧 London Session Ended 🇬🇧"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    if ny_s and not ny_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇺🇸 New York Session Started 🇺🇸"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    if not ny_s and ny_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇺🇸 New York Session Ended 🇺🇸"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    if tok_s and not tok_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇯🇵 Tokyo Session Started 🇯🇵"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    if not tok_s and tok_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇯🇵 Tokyo Session Ended 🇯🇵"
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+
+//#endregion
+
+//#endregion
+
+//#region [ --- TRADE MANAGEMENT --- ]
+
+type TRADE 
+    int id 
+    string id_str
+    string id_str_bridge
+    int dt_0
+    int dt_1
+    int idx_1 
+    int idx_2
+    int dir 
+    int st
+    float ps
+    float ep
+    float sl
+    float sl_abs
+    bool sl_tb
+    bool ts_act
+    float ts
+    float ts_abs
+    int ts_upd
+    float tp1
+    float tp1_abs
+    bool tp1_hit
+    float tp2
+    float tp2_abs
+    bool tp2_hit
+    float tp3
+    float tp3_abs
+    bool tp3_hit
+    box[] profit_box
+    box[] loss_box
+    line[] ep_line
+    label[] ep_label
+    line[] sl_line
+    label[] sl_label
+    line[] ts_line
+    label[] ts_label
+    line[] tp1_line
+    label[] tp1_label
+    line[] tp2_line
+    label[] tp2_label
+    line[] tp3_line
+    label[] tp3_label
+    label[] misc_label
+    float pnl
+    int result
+
+var is_trade = false
+var trades = array.new<TRADE>()
+var signal = 0
+var trade_mxwl = false
+var trade_mxwl_w = 0
+var trade_mxwl_l = 0
+
+if i_td_mw
+    if timeframe.change('D')
+        trade_mxwl := false
+        trade_mxwl_w := 0
+        trade_mxwl_l := 0
+    else 
+
+        if not trade_mxwl
+            if trade_mxwl_w >= i_td_mw_w
+                trade_mxwl := true
+            if trade_mxwl_l >= i_td_mw_l
+                trade_mxwl := true
+
+
+//#region [ --- FUNCTIONS --- ]
+
+//#region [ --- OBJ FUNCTIONS --- ]
+
+//---
+method F_TRADE_MNGMT_LINE_GEN(
+  line[] _line,
+  bool _is_line,
+  int _t0,
+  int _t1,
+  float _v,
+  color _col,
+  string _sty,
+  int _w
+  )=>
+    _line.push(
+      _is_line ?
+      line.new(
+      _t0,
+      _v,
+      _t1,
+      _v,
+      xloc.bar_time,
+      extend.none,
+      _col,
+      _sty,
+      _w
+      )
+      :na
+      )
+//---
+method F_TRADE_MNGMT_LINE_UPD(
+  line[] _line,
+  bool _is_line,
+  float _v
+  )=>
+    if _is_line
+        _line.last().set_y1(_v)
+        _line.last().set_y2(_v)
+//---
+method F_TRADE_MNGMT_LABEL_GEN(
+  label[] _label,
+  bool _is_lbl,
+  int _t0,
+  float _v,
+  string _txt,
+  color _col,
+  string _sty,
+  color _col_txt,
+  string _yloc = "yloc.price"
+  )=>
+    _label.push(
+      _is_lbl ?
+      label.new(
+      _t0,
+      _v,
+      _txt,
+      xloc.bar_time,
+      _yloc,
+      _col,
+      _sty,
+      _col_txt
+      )
+      : na
+      )
+//---
+method F_TRADE_MNGMT_LABEL_UPD(
+  label[] _label,
+  bool _is_lbl,
+  float _v
+  )=>
+    if _is_lbl
+        _label.last().set_y(_v)
+//---
+
+//#endregion
+
+F_SIGNAL_ENTRY()=>
+
+    signal = renko_final > renko_final[1] ? 1 : renko_final < renko_final[1] ? -1 : 0
+
+    if signal != 0
+
+        strict_any = 
+          i_stepped_ma_strict or
+          //i_tc_strict or
+          i_vt_strict or
+          i_vwap_1_strict or
+          i_vwap_2_strict or
+          i_macoll_ma1_strict or
+          i_macoll_ma2_strict or
+          i_macoll_ma3_strict or
+          i_tsi_strict or
+          i_capo_osc_l1_strict or
+          i_capo_osc_l2_strict or
+          i_capo_osc_l3_strict or
+          i_capo_osc_bbsq_strict or
+          i_chop_strict or
+          i_dow_mon or
+          i_dow_tue or 
+          i_dow_wed or
+          i_dow_thu or
+          i_dow_fri or
+          i_dow_sat or
+          i_dow_sun or
+          i_td_dir_bias != "Both"
+
+        strict_stepped_ma = signal > 0 ? stepped_ma_dir > 0 : stepped_ma_dir < 0
+        //strict_tc = signal > 0 ? tc_dir > 0 : tc_dir < 0
+        strict_vt = signal > 0 ? vol_trend_dir > 0 : vol_trend_dir < 0
+        strict_vwap_1 = signal > 0 ? vwap_1_dir > 0 : vwap_1_dir < 0
+        strict_vwap_2 = signal > 0 ? vwap_2_dir > 0 : vwap_2_dir < 0
+        strict_macoll_ma1 = signal > 0 ? ma_coll_ma1_dir > 0 : ma_coll_ma1_dir < 0
+        strict_macoll_ma2 = signal > 0 ? ma_coll_ma2_dir > 0 : ma_coll_ma2_dir < 0
+        strict_macoll_ma3 = signal > 0 ? ma_coll_ma3_dir > 0 : ma_coll_ma3_dir < 0
+        strict_tsi = signal > 0 ? tsi_dir > 0 : tsi_dir < 0
+        strict_capo_osc_l1 = signal > 0 ? capo_up_break1 >= 0 : capo_up_break1 <= 0
+        strict_capo_osc_l2 = signal > 0 ? capo_up_break2 >= 0 : capo_up_break2 <= 0
+        strict_capo_osc_l3 = signal > 0 ? capo_up_break3 >= 0 : capo_up_break3 <= 0
+        strict_chopper = not chop_act
+
+        strict_dow = i_dow_mon or i_dow_tue or i_dow_wed or i_dow_thu or i_dow_fri or i_dow_sat or i_dow_sun
+        strict_dow_conf = (i_dow_mon ? dayofweek == 2 : false) or (i_dow_tue ? dayofweek == 3 : false) or (i_dow_wed ? dayofweek == 4 : false) or (i_dow_thu ? dayofweek == 5 : false) or (i_dow_fri ? dayofweek == 6 : false) or (i_dow_sat ? dayofweek == 7 : false) or (i_dow_sun ? dayofweek == 1 : false)
+
+        strict_td_dir_bias = i_td_dir_bias != "Both" 
+        strict_td_dir_bias_conf = i_td_dir_bias == "Long" ? signal > 0 : i_td_dir_bias == "Short" ? signal < 0 : true
+
+        strictTimeframe = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str) or (i_sess_lon_strict and sess1_str  ) or (i_sess_ny_strict and sess2_str  )) : true
+        strictTimeframeORb = i_sessd_or_str ? ((i_sessd_or_str and tok_co_s) or (i_sessd_or_str and lon_co_s) or (i_sessd_or_str and ny_co_s)) : true 
+        strictTimeframeORs = i_sessd_or_str ? ((i_sessd_or_str and tok_cu_s) or (i_sessd_or_str and lon_cu_s) or (i_sessd_or_str and ny_cu_s)) : true
+
+        strictTimeframePMT = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str and (i_sessd_psr_str? (close>tok_pmt_s) :true )) or (i_sess_lon_strict and sess1_str and (i_sessd_psr_str? (close>lon_pmt_s) :true ) ) or (i_sess_ny_strict and sess2_str and (i_sessd_psr_str? (close>ny_pmt_s) :true ) )) : true
+        strictTimeframePMB = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str and (i_sessd_psr_str? (close<tok_pmb_s) :true )) or (i_sess_lon_strict and sess1_str and (i_sessd_psr_str? (close<lon_pmb_s) :true ) ) or (i_sess_ny_strict and sess2_str and (i_sessd_psr_str? (close<ny_pmb_s) :true ) )) : true
+
+
+
+        strict = 
+          (i_stepped_ma_strict ? strict_stepped_ma : true) and
+          //(i_tc_strict ? strict_tc : true) and
+          (i_vt_strict ? strict_vt : true) and
+          (i_vwap_1_strict ? strict_vwap_1 : true) and
+          (i_vwap_2_strict ? strict_vwap_2 : true) and
+          (i_macoll_ma1_strict ? strict_macoll_ma1 : true) and
+          (i_macoll_ma2_strict ? strict_macoll_ma2 : true) and
+          (i_macoll_ma3_strict ? strict_macoll_ma3 : true) and
+          (i_tsi_strict ? strict_tsi : true) and
+          (i_capo_osc_l1_strict ? strict_capo_osc_l1 : true) and
+          (i_capo_osc_l2_strict ? strict_capo_osc_l2 : true) and
+          (i_capo_osc_l3_strict ? strict_capo_osc_l3 : true) and
+          (i_chop_strict ? strict_chopper : true) and
+          (strict_dow ? not strict_dow_conf : true) and
+          (strict_td_dir_bias ? strict_td_dir_bias_conf : true)
+
+        signal := strict_any ? strict ? signal : 0 : signal
+
+        if signal > 0
+            if strictTimeframe and strictTimeframeORb and strictTimeframePMT
+                signal := signal
+            else
+                signal := 0
+        else if signal < 0
+            if strictTimeframe and strictTimeframeORs and strictTimeframePMB
+                signal := signal
+            else
+                signal := 0
+
+
+    signal
+
+F_SIGNAL_EXIT(int _dir)=>
+    exit_any = 
+      i_renko_band_exit or
+      i_stepped_ma_exit or
+      //i_tc_exit or
+      i_vt_exit or
+      i_vwap_1_exit or
+      i_vwap_2_exit or
+      i_macoll_ma1_exit or
+      i_macoll_ma2_exit or
+      i_macoll_ma3_exit or
+      i_tsi_exit or
+      i_capo_osc_l1_exit or
+      i_capo_osc_l2_exit or
+      i_capo_osc_l3_exit or
+      i_capo_osc_bbsq_exit or
+      i_chop_exit or
+      i_sess_tok_exit or
+      i_sess_lon_exit or
+      i_sess_ny_exit
+
+    exit_renko_band = _dir > 0 ? renko_final < renko_final[1] : renko_final > renko_final[1]
+    exit_stepped_ma = _dir > 0 ? stepped_ma_dir < 0 : stepped_ma_dir > 0
+    //exit_tc = _dir > 0 ? tc_dir < 0 : tc_dir > 0
+    exit_vt = _dir > 0 ? vol_trend_dir < 0 : vol_trend_dir > 0
+    exit_vwap_1 = _dir > 0 ? vwap_1_dir < 0 : vwap_1_dir > 0
+    exit_vwap_2 = _dir > 0 ? vwap_2_dir < 0 : vwap_2_dir > 0
+    exit_macoll_ma1 = _dir > 0 ? ma_coll_ma1_dir < 0 : ma_coll_ma1_dir > 0
+    exit_macoll_ma2 = _dir > 0 ? ma_coll_ma2_dir < 0 : ma_coll_ma2_dir > 0
+    exit_macoll_ma3 = _dir > 0 ? ma_coll_ma3_dir < 0 : ma_coll_ma3_dir > 0
+    exit_tsi = _dir > 0 ? tsi_dir < 0 : tsi_dir > 0
+    exit_capo_osc_l1 = _dir > 0 ? capo_low_break1 <= 0 : capo_low_break1 >= 0
+    exit_capo_osc_l2 = _dir > 0 ? capo_low_break2 <= 0 : capo_low_break2 >= 0
+    exit_capo_osc_l3 = _dir > 0 ? capo_low_break3 <= 0 : capo_low_break3 >= 0
+    exit_chopper = chop_act
+
+    exit_session = i_sess_tok_exit or i_sess_lon_exit or i_sess_ny_exit
+    exit_session_conf = 
+      (i_sess_tok_exit and (not sess3_str) and sess3_str[1]) or 
+      (i_sess_lon_exit and (not sess1_str) and sess1_str[1]) or 
+      (i_sess_ny_exit and (not sess2_str) and sess2_str[1])
+
+    exit = 
+      (i_renko_band_exit ? exit_renko_band : false) or
+      (i_stepped_ma_exit ? exit_stepped_ma : false) or
+      //(i_tc_exit ? exit_tc : false) or
+      (i_vt_exit ? exit_vt : false) or
+      (i_vwap_1_exit ? exit_vwap_1 : false) or
+      (i_vwap_2_exit ? exit_vwap_2 : false) or
+      (i_macoll_ma1_exit ? exit_macoll_ma1 : false) or
+      (i_macoll_ma2_exit ? exit_macoll_ma2 : false) or
+      (i_macoll_ma3_exit ? exit_macoll_ma3 : false) or
+      (i_tsi_exit ? exit_tsi : false) or
+      (i_capo_osc_l1_exit ? exit_capo_osc_l1 : false) or
+      (i_capo_osc_l2_exit ? exit_capo_osc_l2 : false) or
+      (i_capo_osc_l3_exit ? exit_capo_osc_l3 : false) or
+      (i_chop_exit ? exit_chopper : false) or
+      (exit_session ? exit_session_conf : false)
+
+    exit := exit_any ? exit : false
+    exit
+
+
+var id_str_ch_arr = array.new_string()
+if barstate.isfirst
+    id_str_ch_arr.push("a")
+    id_str_ch_arr.push("b")
+    id_str_ch_arr.push("c")
+    id_str_ch_arr.push("d")
+    id_str_ch_arr.push("e")
+    id_str_ch_arr.push("f")
+    id_str_ch_arr.push("g")
+    id_str_ch_arr.push("h")
+    id_str_ch_arr.push("i")
+    id_str_ch_arr.push("j")
+    id_str_ch_arr.push("k")
+    id_str_ch_arr.push("l")
+    id_str_ch_arr.push("m")
+    id_str_ch_arr.push("n")
+    id_str_ch_arr.push("o")
+    id_str_ch_arr.push("p")
+    id_str_ch_arr.push("q")
+    id_str_ch_arr.push("r")
+    id_str_ch_arr.push("s")
+    id_str_ch_arr.push("t")
+    id_str_ch_arr.push("u")
+    id_str_ch_arr.push("v")
+    id_str_ch_arr.push("w")
+    id_str_ch_arr.push("x")
+    id_str_ch_arr.push("y")
+    id_str_ch_arr.push("z")
+    id_str_ch_arr.push("0")
+    id_str_ch_arr.push("1")
+    id_str_ch_arr.push("2")
+    id_str_ch_arr.push("3")
+    id_str_ch_arr.push("4")
+    id_str_ch_arr.push("5")
+    id_str_ch_arr.push("6")
+    id_str_ch_arr.push("7")
+    id_str_ch_arr.push("8")
+    id_str_ch_arr.push("9")
+    
+F_TRADE_ID_STR_GEN(int _id)=>
+    
+    id_str_f = ""
+    for i = 0 to 16
+        idx = 0
+        idx := math.ceil( math.random(0, array.size(id_str_ch_arr)-1) )
+        id_str_f := id_str_f + id_str_ch_arr.get(idx)
+    if id_str_f == ""
+        runtime.error("Failure in generating Trade ID for Trade[" + str.tostring(_id) + "]. Please Reload the Strategy on your Chart.")
+    id_str_f:="id-"+id_str_f
+    id_str_f
+
+
+atr_sl = ta.atr(i_sl_atr_lb)*i_sl_atr_m
+atr_ts = ta.atr(i_ts_atr_lb)*i_ts_atr_m
+
+var id_string = ""
+
+F_TRADE_OPEN(int _dir)=>
+
+    var TRADE new_trade = TRADE.new()
+    new_trade.id := array.size(trades)
+    new_trade.id_str := str.tostring(new_trade.id)
+    new_trade.id_str_bridge := id_string 
+
+    new_trade.dt_0 := time
+    new_trade.dt_1 := time + ((time-time[1])*5)
+    new_trade.idx_1 := bar_index
+    new_trade.idx_2 := bar_index
+    new_trade.dir := _dir
+    new_trade.st := _dir
+    new_trade.ep := close
+
+    //#region [ --- SL --- ]
+
+    sl_fix = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * i_sl_fix)
+    sl_atr = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * atr_sl)
+    sl_bricks = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * i_sl_br_amt * renko_final_size)
+   
+    sl = 
+      i_sl_m == "Fixed" ? sl_fix :
+      i_sl_m == "ATR" ? sl_atr :
+      i_sl_m == "Bricks" ? sl_bricks :
+      na
+
+    new_trade.sl := F_GLOBAL_MT_ROUND(_dir > 0 ? sl - (i_sl_m == "Bricks" ? i_sl_off : 0) : sl + (i_sl_m == "Bricks" ? i_sl_off : 0))
+      
+    new_trade.sl_abs := math.abs(new_trade.sl-new_trade.ep)
+
+    //#endregion
+
+    //#region [ --- TS --- ]
+
+    new_trade.sl_tb := false
+    new_trade.ts_act := i_ts_tr == "SB" and i_ts_m != "None"
+
+    ts_fix = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * i_ts_fix)
+    ts_atr = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * atr_ts)
+    ts_bricks = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * i_ts_br_amt * renko_final_size)
+    
+    ts = 
+      i_ts_m == "Fixed" ? ts_fix :
+      i_ts_m == "ATR" ? ts_atr :
+      i_ts_m == "Bricks" ? ts_bricks :
+      i_ts_m == "SL" ? new_trade.sl :
+      na
+
+    new_trade.ts :=  new_trade.ts_act ? ts : _dir > 0 ? 0.0 : 100000000000.0
+    new_trade.ts_abs := math.abs(new_trade.ts-new_trade.ep)
+    new_trade.ts_upd := 0
+
+    //#endregion
+
+    //#region [ --- TP1 --- ]
+
+    tp1 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp1_v : new_trade.ep - i_tp1_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp1_v*new_trade.sl_abs) : new_trade.ep - (i_tp1_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp1 := tp1
+    new_trade.tp1_abs := math.abs(new_trade.tp1-new_trade.ep)
+    new_trade.tp1_hit := false
+
+    //#endregion
+
+    //#region [ --- TP2 --- ]
+
+    tp2 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp2_v : new_trade.ep - i_tp2_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp2_v*new_trade.sl_abs) : new_trade.ep - (i_tp2_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp2 := i_tp2_on ? tp2 : na
+    new_trade.tp2_abs := i_tp2_on ? math.abs(new_trade.tp2-new_trade.ep) : na
+    new_trade.tp2_hit := false
+
+    //#endregion
+
+    //#region [ --- TP3 --- ]
+
+    tp3 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp3_v : new_trade.ep - i_tp3_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp3_v*new_trade.sl_abs) : new_trade.ep - (i_tp3_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp3 := i_tp3_on ? tp3 : na
+    new_trade.tp3_abs := i_tp3_on ? math.abs(new_trade.tp3-new_trade.ep) : na
+    new_trade.tp3_hit := false
+
+    //#endregion
+
+    //#region [ --- OBJ --- ]
+
+    new_trade.misc_label := array.new<label>()
+
+    new_trade.profit_box := array.new<box>()
+    new_trade.profit_box.push(
+      box.new(
+      new_trade.dt_0,
+      new_trade.ep,
+      new_trade.dt_1,
+      new_trade.ep,
+      i_td_col_win,
+      1,
+      line.style_solid,
+      extend.none,
+      xloc.bar_time,
+      color.new(i_td_col_win, 75)
+      )
+      )
+
+    new_trade.loss_box := array.new<box>()
+    new_trade.loss_box.push(
+      box.new(
+      new_trade.dt_0,
+      new_trade.st > 0 ? new_trade.ep : new_trade.sl,
+      new_trade.dt_1,
+      new_trade.st > 0 ? new_trade.sl : new_trade.ep,
+      i_td_col_loss,
+      1,
+      line.style_solid,
+      extend.none,
+      xloc.bar_time,
+      color.new(i_td_col_loss, 75)
+      )
+      )
+
+    new_trade.ep_line := array.new<line>()
+    new_trade.ep_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.ep, color.new(color.white, 50), line.style_solid, 1)
+
+    new_trade.sl_line := array.new<line>()
+    new_trade.sl_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.sl, color.new(i_td_col_loss, 50), line.style_solid, 1)
+
+    new_trade.sl_label := array.new<label>()
+    new_trade.sl_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, new_trade.dt_1, new_trade.sl, "❌ SL: " + str.tostring(new_trade.sl, format.mintick) + " / " + str.tostring(new_trade.sl_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+
+    new_trade.ts_line := array.new<line>()
+    new_trade.ts_line.F_TRADE_MNGMT_LINE_GEN(new_trade.ts_act, new_trade.dt_0, new_trade.dt_1, new_trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+
+    new_trade.ts_label := array.new<label>()
+    new_trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(new_trade.ts_act and i_td_labels, new_trade.dt_1, new_trade.ts, "🔴 TS: " + str.tostring(new_trade.ts, format.mintick) + " / " + str.tostring(new_trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+
+    new_trade.tp1_line := array.new<line>()
+    new_trade.tp1_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.tp1, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp1_label := array.new<label>()
+    new_trade.tp1_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, new_trade.dt_1, new_trade.tp1, str.format("🎯 TP1 [{0, number, percent}]: ", i_tp1_pct/100) + str.tostring(new_trade.tp1, format.mintick) + " / " + str.tostring(new_trade.tp1_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+    new_trade.tp2_line := array.new<line>()
+    new_trade.tp2_line.F_TRADE_MNGMT_LINE_GEN(i_tp2_on, new_trade.dt_0, new_trade.dt_1, new_trade.tp2, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp2_label := array.new<label>()
+    new_trade.tp2_label.F_TRADE_MNGMT_LABEL_GEN(i_tp2_on and i_td_labels, new_trade.dt_1, new_trade.tp2, str.format("🎯 TP2 [{0, number, percent}]: ", i_tp2_pct/100) + str.tostring(new_trade.tp2, format.mintick) + " / " + str.tostring(new_trade.tp2_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+    new_trade.tp3_line := array.new<line>()
+    new_trade.tp3_line.F_TRADE_MNGMT_LINE_GEN(i_tp3_on, new_trade.dt_0, new_trade.dt_1, new_trade.tp3, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp3_label := array.new<label>()
+    new_trade.tp3_label.F_TRADE_MNGMT_LABEL_GEN(i_tp3_on and i_td_labels, new_trade.dt_1, new_trade.tp3, str.format("🎯 TP3 [{0, number, percent}]: ", i_tp3_pct/100) + str.tostring(new_trade.tp3, format.mintick) + " / " + str.tostring(new_trade.tp3_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+
+    //#endregion
+
+    //#region [ --- ALERTS --- ]
+
+    if i_td_alerts
+        alert_msg = 
+          "🚨 TRADE SIGNAL 🚨\n" + 
+          "ID: " + str.tostring(new_trade.id) + "\n" +
+          "DIR: " + (new_trade.dir>0?"LONG":"SHORT") + "\n" +
+          "EP: " + str.tostring(new_trade.ep, format.mintick) + "\n" +
+          "SL: " + str.tostring(new_trade.sl, format.mintick) + "\n" +
+          (new_trade.ts_act ? ("TS: " + str.tostring(new_trade.ts, format.mintick) + "\n") : "") +
+          "TP1: " + str.tostring(new_trade.tp1, format.mintick) + "\n" +
+          (i_tp2_on ? ("TP2: " + str.tostring(new_trade.tp2, format.mintick) + "\n") : "") +
+          (i_tp3_on ? ("TP3: " + str.tostring(new_trade.tp3, format.mintick) + "\n") : "")
+
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    //#region [ --- STRATEGY --- ]
+
+    ps_rk = 
+      i_td_risk_t == "Fixed" ? 
+      i_td_risk_v : 
+      (strategy.initial_capital + (i_td_comp ? strategy.netprofit : 0.0)) * i_td_risk_v/100
+    new_trade.ps := 
+      i_td_risk_t == "Fixed" ?
+      i_td_risk_v :
+      ps_rk / (syminfo.pointvalue * new_trade.sl_abs)
+    strategy.entry(new_trade.id_str, new_trade.st > 0 ? strategy.long : strategy.short, new_trade.ps, stop = new_trade.sl, comment = new_trade.st > 0 ? "[L]" : "[S]")
+    
+    strategy.exit(new_trade.id_str+"|TP1", new_trade.id_str, qty_percent=i_tp1_pct, limit=new_trade.tp1, stop=new_trade.sl, comment_profit = "TP1", comment_loss = "SL")
+    if i_tp2_on
+        strategy.exit(new_trade.id_str+"|TP2", new_trade.id_str, qty_percent=i_tp2_pct, limit=new_trade.tp2, stop=new_trade.sl, comment_profit = "TP2", comment_loss = "SL")
+    if i_tp3_on
+        strategy.exit(new_trade.id_str+"|TP3", new_trade.id_str, qty_percent=i_tp3_pct, limit=new_trade.tp3, stop=new_trade.sl, comment_profit = "TP3", comment_loss = "SL")
+    strategy.exit(new_trade.id_str+"|SL", new_trade.id_str, qty_percent=100, limit = new_trade.st > 0 ? 10000000.0 : 0.0, stop=new_trade.sl, comment_loss = "SL")
+    //if new_trade.ts_act 
+    //    strategy.exit(new_trade.id_str+"|TS", new_trade.id_str, trail_price = new_trade.ts, trail_offset = 0, comment_loss = "TS")
+
+    //#endregion
+
+    //#region [ --- BRIDGE --- ]
+
+    if i_td_bridge 
+
+        //bridge_json = str.format(
+        //  "BRIDGE,action=entry,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},risk_t={6},risk_v={7},ep={8},sl_abs={9},sl_abs_ticks={10},tp_abs={11},tp2_on={12},tp2_abs={13},tp3_on={14},tp3_abs={15},type={16}",
+        //  "MM-SIGMA-ALGO",  // strat_id (0)
+        //  i_td_bridge_acct_id,  // acct_id (1)
+        //  i_td_bridge_sym,  // sym (2)
+        //  timeframe.period, // tf (3)
+        //  new_trade.id_str_bridge, // id (4)
+        //  new_trade.dir,    // dir (5)
+        //  str.lower(i_td_risk_t), // risk_t (6) - will be "fixed" or "%"
+        //  i_td_risk_v,     // risk_v (7)
+        //  new_trade.ep,     // ep (8)
+        //  new_trade.sl_abs, // sl_abs (9)
+        //  math.round(new_trade.sl_abs/syminfo.mintick), // sl_abs_ticks (10)
+        //  new_trade.tp1_abs, // tp_abs (11)
+        //  str.tostring(i_tp2_on), // tp2_on (12)
+        //  new_trade.tp2_abs,  // tp2_abs (13)
+        //  str.tostring(i_tp3_on), // tp3_on (14)
+        //  new_trade.tp3_abs,  // tp3_abs (15)
+        //  "market"  // type (16) - will be "market" or "limit"
+        //  )
+        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+        bridge_json_f = 
+          "{ \"entry\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+          "\", \"sym\" : \"" + i_td_bridge_sym + 
+          "\", \"tf\" : \"" + timeframe.period + 
+          "\", \"id\" : \"" + new_trade.id_str_bridge + 
+          "\", \"dir\" : \"" + str.tostring(new_trade.dir) + 
+          "\", \"risk_t\" : \"" + i_td_risk_t + 
+          "\", \"risk_v\" : \"" + str.tostring(i_td_risk_v) + 
+          "\", \"ep\" : \"" + str.tostring(new_trade.ep) + 
+          "\", \"sl_abs\" : \"" + str.tostring(new_trade.sl_abs) + 
+          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(new_trade.sl_abs/syminfo.mintick)) + 
+          "\", \"tp_abs\" : \"" + str.tostring(new_trade.tp1_abs) + 
+          "\", \"tp2_on\" : \"" + str.tostring(i_tp2_on) + 
+          "\", \"tp2_abs\" : \"" + str.tostring(new_trade.tp2_abs) + 
+          "\", \"tp3_on\" : \"" + str.tostring(i_tp3_on) + 
+          "\", \"tp3_abs\" : \"" + str.tostring(new_trade.tp3_abs) + 
+          "\", \"type\" : \"market\" } }"
+        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    new_trade.pnl := 0.0
+    new_trade.result := 0
+
+    array.push(trades, new_trade)
+
+F_TRADE_MANAGE()=>
+    
+    result = 0
+
+    
+
+    var TRADE trade = trades.last()
+    trade.dt_1 := time + math.abs(time-time[1])*5
+
+    //#region [ --- TMP VARS --- ]
+
+    trade_reinit = false
+
+    trade_sl_hit = false
+    trade_ts_hit = false
+
+    trade_tp1_hit = false
+    trade_tp2_hit = false
+    trade_tp3_hit = false
+    trade_tp4_hit = false
+
+    trade_ts_tr = false
+    trade_sltb_tr = false
+
+    trade_exit = false
+
+    //#endregion
+    
+    //#region [ --- UPDATE TRADE OBJECTS --- ]
+
+    trade.profit_box.last().set_right(trade.dt_1)
+    trade.loss_box.last().set_right(trade.dt_1)
+
+    trade.ep_line.last().set_x2(trade.dt_1)
+    
+    trade.sl_line.last().set_x2(trade.dt_1)
+    if i_td_labels
+        trade.sl_label.last().set_x(trade.dt_1)
+
+    if trade.ts_act
+        trade.ts_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.ts_label.last().set_x(trade.dt_1)
+
+    
+    trade.tp1_line.last().set_x2(trade.dt_1)
+    if i_td_labels
+        trade.tp1_label.last().set_x(trade.dt_1)
+
+    if i_tp2_on
+        trade.tp2_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.tp2_label.last().set_x(trade.dt_1)
+
+    if i_tp3_on
+        trade.tp3_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.tp3_label.last().set_x(trade.dt_1)
+
+
+    //#endregion
+
+    //#region [ --- EXIT --- ]
+
+    exit = F_SIGNAL_EXIT(trade.dir)
+    if exit and barstate.isconfirmed
+        trade_exit := true
+        trade_reinit := true
+        strategy.close_all(comment = "EXIT")
+        if i_td_alerts
+            alert_msg = 
+              "🚨 TRADE MANAGEMENT 🚨\n" +
+              "ID: " + trade.id_str + "\n" +
+              "🚫 EXIT SIGNAL HIT 🚫"
+            alert(alert_msg, alert.freq_once_per_bar_close)
+
+        if i_td_bridge
+
+            //bridge_json = str.format(
+            //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+            //  "MM-SIGMA-ALGO",  // strat_id (0)
+            //  i_td_bridge_acct_id, // acct_id (1)
+            //  i_td_bridge_sym, // sym (2)
+            //  timeframe.period, // tf (3)
+            //  trade.id_str_bridge,     // id (4)
+            //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+            //  )
+            //alert(bridge_json, alert.freq_once_per_bar_close)    
+
+            bridge_json_f = 
+              "{ \"close_all\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+              "\", \"sym\" : \"" + i_td_bridge_sym + 
+              "\", \"tf\" : \"" + timeframe.period + 
+              "\", \"id\" : \"" + trade.id_str_bridge + 
+              "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+              "\" } }"
+            alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    //#region [ --- CASH EXIT --- ]
+
+    cash_exit = false
+    if i_td_ce and barstate.isconfirmed
+        if strategy.openprofit >= i_td_ce_amt
+            cash_exit := true
+            trade_reinit := true
+            strategy.close_all(comment = "C.E.")
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+                //  "MM-SIGMA-ALGO",  // strat_id (0)
+                //  i_td_bridge_acct_id, // acct_id (1)
+                //  i_td_bridge_sym, // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar_close)  
+
+                bridge_json_f = 
+                  "{ \"close_all\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    //#region [ --- SL/TS --- ]
+	
+    if trade.st > 0 ? low <= trade.sl : high >= trade.sl
+        trade_reinit := true
+        trade_sl_hit := true
+        log.info("[TRADE-MNGMT] - ❌ SL HIT | TRADE: " + trade.id_str + " ❌")
+        if i_td_alerts
+
+            alert_msg = 
+              "🚨 TRADE MANAGEMENT 🚨\n" +
+              "ID: " + trade.id_str + "\n" +
+              "❌ SL HIT ❌"
+            alert(alert_msg, alert.freq_once_per_bar)
+    if trade.ts_act or trade.sl_tb 
+        if trade.st > 0 ? low <= trade.ts : high >= trade.ts
+            //label.new(bar_index,close, str.tostring(TRADE.st)+"/"+str.tostring(TRADE.ts)+"/"+str.tostring(high))
+            trade_reinit := true
+            trade_ts_hit := true
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "❌ TS HIT ❌"
+                alert(alert_msg, alert.freq_once_per_bar)   
+
+    //#endregion
+
+    if not trade_reinit
+
+        //#region [ --- TP1 --- ]
+
+        if not trade.tp1_hit and (trade.st > 0 ? high >= trade.tp1 : low <= trade.tp1) and (trade.st > 0 ? trade.st == 1 : trade.st == -1)
+            trade.tp1_hit := true
+            trade_tp1_hit := true
+            trade.tp1_line.last().set_width(2)
+
+            if i_ts_tr == "TP1"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP1"
+                trade_sltb_tr := true
+
+            if i_tp1_pct == 100
+                trade_reinit := true
+            else
+                
+                tp1_ps = trade.ps*i_tp1_pct/100
+                trade.st := 
+                  i_tp2_on ? (trade.st > 0 ? 2 : -2) : (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP1 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "MM-SIGMA-ALGO",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp1_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp1_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+			
+        //#endregion
+
+        //#region [ --- TP2 --- ]
+
+        if not trade.tp2_hit and (trade.st > 0 ? high >= trade.tp2 : low <= trade.tp2) and (trade.st > 0 ? trade.st == 2 : trade.st == -2)
+            trade.tp2_hit := true
+            trade_tp2_hit := true
+            trade.tp2_line.last().set_width(2)
+
+            if i_ts_tr == "TP2"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP2"
+                trade_sltb_tr := true
+
+            if i_tp2_pct == 100
+                trade_reinit := true
+            else
+                
+                tp2_ps = trade.ps*i_tp2_pct/100
+                trade.st := 
+                  i_tp2_on ? (trade.st > 0 ? 3 : -3) : (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP2 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "MM-SIGMA-ALGO",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp2_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp2_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+        //#endregion
+
+        //#region [ --- TP3 --- ]
+
+        if not trade.tp3_hit and (trade.st > 0 ? high >= trade.tp3 : low <= trade.tp3) and (trade.st > 0 ? trade.st == 3 : trade.st == -3)
+            trade.tp3_hit := true
+            trade_tp3_hit := true
+            trade.tp3_line.last().set_width(2)
+
+            if i_ts_tr == "TP3"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP3"
+                trade_sltb_tr := true
+
+            if i_tp3_pct == 100
+                trade_reinit := true
+            else
+                
+                tp3_ps = trade.ps*i_tp3_pct/100
+                trade.st := 
+                  (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP3 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "MM-SIGMA-ALGO",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp3_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp3_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+			
+
+        //#endregion
+
+        //#region [ --- SLTB --- ]
+
+        if i_be_tr != "None" and not trade.sl_tb and barstate.isconfirmed
+            if trade_sltb_tr
+
+                sl_new = 
+                  F_GLOBAL_MT_ROUND(
+                  trade.st > 0 ? trade.ep + i_be_off : trade.ep - i_be_off
+                  )
+
+                if trade.st > 0 ? sl_new > trade.sl and (trade.ts_act ? sl_new > trade.ts : true) and (close > sl_new) : sl_new < trade.sl and (trade.ts_act ? sl_new < trade.ts : true) and (close < sl_new)
+
+
+                    trade.sl_tb := true
+                    trade.ts := sl_new
+                    trade.ts_abs := math.abs(sl_new - close)
+
+                    if i_td_alerts
+                        alert_msg = 
+                          "🚨 TRADE MANAGEMENT 🚨\n" +
+                          "ID: " + trade.id_str + "\n" +
+                          "🆕 SL TO BE UPDATE 🆕"
+                        alert(alert_msg, alert.freq_once_per_bar_close)
+
+                    if na(trade.ts_line.last())
+                        trade.ts_line.F_TRADE_MNGMT_LINE_GEN(true, trade.dt_0, trade.dt_1, trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+                        trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, trade.dt_1, trade.ts, "🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+                    else
+                        trade.ts_line.last().set_y1(trade.ts)
+                        trade.ts_line.last().set_y2(trade.ts)
+                        trade.ts_label.last().set_y(trade.ts)
+                        trade.ts_label.last().set_text("🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick))
+
+                    //strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, stop=trade.sl, comment_loss = "SL")
+                    
+                    if (not trade.tp1_hit)
+                        strategy.exit(trade.id_str+"|TP1", trade.id_str, qty_percent=i_tp1_pct, limit=trade.tp1, stop=trade.ts, comment_profit = "TP1", comment_loss = "TS")
+                    if i_tp2_on and (not trade.tp2_hit)
+                        strategy.exit(trade.id_str+"|TP2", trade.id_str, qty_percent=i_tp2_pct, limit=trade.tp2, stop=trade.ts, comment_profit = "TP2", comment_loss = "TS")
+                    if i_tp3_on and (not trade.tp3_hit)
+                        strategy.exit(trade.id_str+"|TP3", trade.id_str, qty_percent=i_tp3_pct, limit=trade.tp3, stop=trade.ts, comment_profit = "TP3", comment_loss = "TS")
+                    strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, limit = trade.st > 0 ? 10000000.0 : 0.0, stop=trade.ts, comment_loss = "SL")
+                    //if trade.ts_act 
+                    //    strategy.exit(trade.id_str+"|TS", trade.id_str, trail_price = trade.ts, trail_offset = 0, comment_loss = "TS")
+
+                    if i_td_bridge
+
+                        //bridge_json = str.format(
+                        //  "BRIDGE,action=sl-upd,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},sl_abs={6},sl_abs_ticks={7}",
+                        //  "MM-SIGMA-ALGO",  // strat_id (0)
+                        //  "default",        // acct_id (1)
+                        //  i_td_bridge_sym,  // sym (2)
+                        //  timeframe.period, // tf (3)
+                        //  trade.id_str_bridge,     // id (4)
+                        //  trade.dir,        // dir (5)
+                        //  trade.ts_abs,     // sl_abs (6) - in currency units
+                        //  math.round(trade.ts_abs/syminfo.mintick)  // sl_abs_ticks (7) - converted to ticks
+                        //  )
+                        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+                        bridge_json_f = 
+                          "{ \"sl_update\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                          "\", \"sym\" : \"" + i_td_bridge_sym + 
+                          "\", \"tf\" : \"" + timeframe.period + 
+                          "\", \"id\" : \"" + trade.id_str_bridge + 
+                          "\", \"dir\" : \"" + str.tostring(trade.dir) +
+                          "\", \"cp\" : \"" + str.tostring(close) +  
+                          "\", \"sl_abs\" : \"" + str.tostring(trade.ts_abs) + 
+                          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(trade.ts_abs/syminfo.mintick)) + 
+                          "\" } }"
+                        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+        //#endregion
+
+        //#region [ --- TS --- ]
+
+        if i_ts_tr != "None"
+
+            if not trade.ts_act
+                trade.ts_act := trade_ts_tr
+
+            if trade.ts_act and barstate.isconfirmed
+
+                dir = trade.st > 0 ? 1 : -1
+
+                ts_fix = F_GLOBAL_MT_ROUND(close + (dir*-1) * i_ts_fix)
+                ts_atr = F_GLOBAL_MT_ROUND(close + (dir*-1) * atr_ts)
+                ts_bricks = F_GLOBAL_MT_ROUND(close + (dir*-1) * i_ts_br_amt * renko_final_size)
+                ts_sl = F_GLOBAL_MT_ROUND(close + (dir*-1) * trade.sl_abs)
+                
+                ts = 
+                  i_ts_m == "Fixed" ? ts_fix :
+                  i_ts_m == "ATR" ? ts_atr :
+                  i_ts_m == "Bricks" ? ts_bricks :
+                  i_ts_m == "SL" ? ts_sl :
+                  na
+
+                cond_trigger = trade.st > 0 ? ts > trade.ts : ts < trade.ts
+
+                if cond_trigger
+                    
+                    trade.ts := ts
+                    trade.ts_abs := math.abs(F_GLOBAL_MT_ROUND(trade.ts - close))
+                    trade.ts_upd := trade.ts_upd + 1
+
+                    if i_td_alerts
+                        alert_msg = 
+                          "🚨 TRADE MANAGEMENT 🚨\n" +
+                          "ID: " + trade.id_str + "\n" +
+                          "🆕 TS UPDATE 🆕"
+                        alert(alert_msg, alert.freq_once_per_bar_close)
+
+                    if not na(trade.ts_line.last())
+                        trade.ts_line.last().set_y1(trade.ts)
+                        trade.ts_line.last().set_y2(trade.ts)
+                        trade.ts_label.last().set_y(trade.ts)
+                        trade.ts_label.last().set_text("🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick))
+                    else
+                        trade.ts_line.F_TRADE_MNGMT_LINE_GEN(true, trade.dt_0, trade.dt_1, trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+                        trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, trade.dt_1, trade.ts, "🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+                    
+                    //strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, stop=trade.sl, comment_loss = "SL")
+                    if (not trade.tp1_hit)
+                        strategy.exit(trade.id_str+"|TP1", trade.id_str, qty_percent=i_tp1_pct, limit=trade.tp1, stop=trade.ts, comment_profit = "TP1", comment_loss = "TS")
+                    if i_tp2_on and (not trade.tp2_hit)
+                        strategy.exit(trade.id_str+"|TP2", trade.id_str, qty_percent=i_tp2_pct, limit=trade.tp2, stop=trade.ts, comment_profit = "TP2", comment_loss = "TS")
+                    if i_tp3_on and (not trade.tp3_hit)
+                        strategy.exit(trade.id_str+"|TP3", trade.id_str, qty_percent=i_tp3_pct, limit=trade.tp3, stop=trade.ts, comment_profit = "TP3", comment_loss = "TS")
+                    strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, limit = trade.st > 0 ? 10000000.0 : 0.0, stop=trade.ts, comment_loss = "SL")
+                    //if trade.ts_act 
+                    //    strategy.exit(trade.id_str+"|TS", trade.id_str, trail_price = trade.ts, trail_offset = 0, comment_loss = "TS")
+
+                    
+                    if i_td_bridge
+
+                        //bridge_json = str.format(
+                        //  "BRIDGE,action=sl-upd,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},sl_abs={6},sl_abs_ticks={7}",
+                        //  "MM-SIGMA-ALGO",  // strat_id (0)
+                        //  "default",        // acct_id (1)
+                        //  i_td_bridge_sym,  // sym (2)
+                        //  timeframe.period, // tf (3)
+                        //  trade.id_str_bridge,     // id (4)
+                        //  trade.dir,        // dir (5)
+                        //  trade.ts_abs,     // sl_abs (6) - in currency units
+                        //  math.round(trade.ts_abs/syminfo.mintick)  // sl_abs_ticks (7) - converted to ticks
+                        //  )
+                        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+                        bridge_json_f = 
+                          "{ \"sl_update\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                          "\", \"sym\" : \"" + i_td_bridge_sym + 
+                          "\", \"tf\" : \"" + timeframe.period + 
+                          "\", \"id\" : \"" + trade.id_str_bridge + 
+                          "\", \"dir\" : \"" + str.tostring(trade.dir) +
+                          "\", \"cp\" : \"" + str.tostring(close) +   
+                          "\", \"sl_abs\" : \"" + str.tostring(trade.ts_abs) + 
+                          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(trade.ts_abs/syminfo.mintick)) + 
+                          "\" } }"
+                        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+        //#endregion
+
+    //#region [ --- LABELS --- ]
+
+    if trade_exit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "🚫 EXIT 🚫", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    if cash_exit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "💰 C.E. 💰", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+
+    if trade_sl_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "❌ SL ❌", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    if trade_ts_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.ts, "🔴 TS 🔴", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    trade_tp1_tp2_hit = trade_tp1_hit and trade_tp2_hit
+    trade_tp1_tp2_tp3_hit = trade_tp1_tp2_hit and trade_tp3_hit
+    trade_tp1_tp2_tp3_tp4_hit = trade_tp1_tp2_tp3_hit and trade_tp4_hit
+
+    trade_tp2_tp3_hit = trade_tp2_hit and trade_tp3_hit
+    trade_tp2_tp3_tp4_hit = trade_tp2_tp3_hit and trade_tp4_hit
+
+    trade_tp3_tp4_hit = trade_tp3_hit and trade_tp4_hit
+
+    trade_tp_mult_hit = 
+      trade_tp1_tp2_hit or 
+      trade_tp1_tp2_tp3_hit or 
+      trade_tp1_tp2_tp3_tp4_hit or 
+      trade_tp2_tp3_hit or 
+      trade_tp2_tp3_tp4_hit or 
+      trade_tp3_tp4_hit
+
+    if trade_tp1_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP1 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp2_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP2 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp3_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP3 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp4_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP4 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp_mult_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🚀 MTP 🚀", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+
+    //#endregion
+
+    //#region [ --- REINIT --- ]
+        
+    if trade_reinit
+        //if _S_TRADE_MNGMT.INP.bt
+        //    strategy.close_all(comment = "REINIT")
+
+        if i_td_bridge and strategy.opentrades != 0
+            //bridge_json = str.format(
+            //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+            //  "MM-SIGMA-ALGO",  // strat_id (0)
+            //  i_td_bridge_acct_id, // acct_id (1)
+            //  i_td_bridge_sym, // sym (2)
+            //  timeframe.period, // tf (3)
+            //  trade.id_str_bridge,     // id (4)
+            //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+            //  )
+            //alert(bridge_json, alert.freq_once_per_bar_close)
+
+            bridge_json_f = 
+              "{ \"close_all\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+              "\", \"sym\" : \"" + i_td_bridge_sym + 
+              "\", \"tf\" : \"" + timeframe.period + 
+              "\", \"id\" : \"" + trade.id_str_bridge + 
+              "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+              "\" } }"
+            alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+        if strategy.opentrades != 0
+            strategy.close_all(comment = "REINIT")
+
+        trade.sl_label.last().delete()
+        trade.ts_label.last().delete()
+        trade.tp1_label.last().delete()
+        trade.tp2_label.last().delete()
+        trade.tp3_label.last().delete()
+        
+        //TRADE.pnl_label_obj.shift().delete()
+        trade.profit_box.shift().delete()
+        trade.loss_box.shift().delete()
+        trade.ep_line.shift().delete()
+        trade.sl_line.shift().delete()
+        trade.sl_label.shift()
+        trade.ts_line.shift().delete()
+        trade.ts_label.shift()
+        if trade.ts_line.size() > 0
+            for ts in trade.ts_line
+                ts.delete()
+            trade.ts_line.clear()
+        if trade.ts_label.size() > 0
+            for ts in trade.ts_label
+                ts.delete()
+            trade.ts_label.clear()
+        trade.tp1_line.shift().delete()
+        trade.tp1_label.shift()
+        trade.tp2_line.shift().delete()
+        trade.tp2_label.shift()
+        trade.tp3_line.shift().delete()
+        trade.tp3_label.shift()
+
+        if trade.misc_label.size() > 0
+            trade.misc_label.clear()
+
+        trade.result := trade.dir > 0 ? close > trade.ep ? 1 : -1 : close < trade.ep ? 1 : -1
+
+        result := -1
+
+    //#endregion
+
+    [result, trade.result]
+
+
+
+//#endregion
+
+
+signal := F_SIGNAL_ENTRY()
+if not is_trade and (time >= i_td_bt_from and time <= i_td_bt_to) and signal!=0 and i_td_show and (i_td_mw ? not trade_mxwl : true) 
+    if barstate.isconfirmed
+        F_TRADE_OPEN(signal)
+        is_trade := true
+else if is_trade 
+    [result, trade_wl] = F_TRADE_MANAGE()
+    if result == -1 
+        is_trade := false
+        id_string := F_TRADE_ID_STR_GEN(trades.last().id)
+
+        if trade_wl > 0
+            trade_mxwl_w := trade_mxwl_w + 1
+        else
+            trade_mxwl_l := trade_mxwl_l + 1
+
+plotshape(signal>0 and is_trade and not is_trade[1], "LONGS", shape.labelup, location.belowbar, i_td_col_win, text = "LONG", textcolor = color.white)
+plotshape(signal<0 and is_trade and not is_trade[1], "SHORTS", shape.labeldown, location.abovebar, i_td_col_loss, text = "SHORT", textcolor =color.black)
+
+
+//#endregion
+
+
+//#region [ --- TABLES --- ]
+
+tbl_rows_comp_dkt = 
+  1 +
+  (i_renko_band_show ? 2 : 0) + 
+  (i_stepped_ma_show ? 2 : 0) + 
+  //(i_tc_show ? 2 : 0) + 
+  (i_vt_show ? 2 : 0) + 
+  (i_vwap_1_show ? 2 : 0) + 
+  (i_vwap_2_show ? 2 : 0) +
+  (i_macoll_ma1_show ? 2 : 0) + 
+  (i_macoll_ma2_show ? 2 : 0) +
+  (i_macoll_ma3_show ? 2 : 0) +
+  (i_chop_show ? 2 : 0)
+
+tbl_rows_sess_dkt = 
+  1 +
+  (i_sess_lon_show ? 2 : 0) +
+  (i_sess_ny_show ? 2 : 0) + 
+  (i_sess_tok_show ? 2 : 0)
+
+tbl_rows_trade_dkt = 
+  4 +
+  (i_tp2_on ? 1 : 0) +
+  (i_tp3_on ? 1 : 0) 
+
+tbl_row_tot_dkt = tbl_rows_comp_dkt + tbl_rows_sess_dkt + tbl_rows_trade_dkt
+
+var table trades_tbl = na
+trades_tbl := table.new(tbl_pos, 4, tbl_row_tot_dkt, i_tbl_bg, i_tbl_fr, 1, i_tbl_bor, 1)
+
+table.delete(trades_tbl[1])
+
+//mmdon_bl1_st = mmdon_bl1_dir > 0 ? "▲" : "▼"
+
+if i_tbl_t == "Desktop"
+
+    row_idx = 0
+    col_idx = 0
+
+    trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+    trades_tbl.cell(col_idx,row_idx,"📈 MM SIGMA ALGO Table 📈", text_color = i_tbl_txt)
+    
+    row_idx := row_idx + 1
+
+    if i_renko_band_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"RENKO", text_color = i_tbl_txt, tooltip = "Renko Band")
+
+        renko_st = renko_final > renko_final[1] ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,renko_st, text_color = renko_final_col, bgcolor = color.new(renko_final_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(renko_final, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+        
+    if i_stepped_ma_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"STEPPED MA", text_color = i_tbl_txt, tooltip = "Stepped MA")
+
+        stepped_ma_st = stepped_ma_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,stepped_ma_st, text_color = stepped_ma_col, bgcolor = color.new(stepped_ma_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(stepped_ma_v, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    //if i_tc_show
+    //    trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+    //    trades_tbl.cell(col_idx,row_idx,"TRAIL CLOUD", text_color = i_tbl_txt, tooltip = "Trail Cloud")
+    //    tc_st = tc_dir > 0 ? "BULL" : "BEAR"
+    //    trades_tbl.cell(col_idx,row_idx+1,tc_st, text_color = tc_col, bgcolor = color.new(tc_col, 75))
+    //    trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(tc_v, format.mintick), text_color = i_tbl_txt)
+    //    row_idx := col_idx == 0 ? row_idx : row_idx + 2
+    //    col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_vt_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"VT", text_color = i_tbl_txt, tooltip = "Volumetric Trend")
+
+        vol_trend_st = vol_trend_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,vol_trend_st, text_color = vol_trend_col, bgcolor = color.new(vol_trend_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(vol_trend_v, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+        
+    if i_vwap_1_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"VWAP 1", text_color = i_tbl_txt, tooltip = "VWAP 1")
+
+        vwap_1_st = vwap_1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,vwap_1_st, text_color = vwap_1_col, bgcolor = color.new(vwap_1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(vwap_1_v, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_vwap_2_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"VWAP 2", text_color = i_tbl_txt, tooltip = "VWAP 2")
+
+        vwap_2_st = vwap_2_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,vwap_2_st, text_color = vwap_2_col, bgcolor = color.new(vwap_2_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(vwap_2_v, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_macoll_ma1_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"MA1", text_color = i_tbl_txt, tooltip = "Moving Average 1")
+
+        macoll_ma1_st = ma_coll_ma1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma1_st, text_color = ma_coll_ma1_col, bgcolor = color.new(ma_coll_ma1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(ma_coll_ma1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_macoll_ma2_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"MA2", text_color = i_tbl_txt, tooltip = "Moving Average 2")
+
+        macoll_ma2_st = ma_coll_ma2_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma2_st, text_color = ma_coll_ma2_col, bgcolor = color.new(ma_coll_ma2_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(ma_coll_ma2, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+    
+    if i_macoll_ma3_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"MA3", text_color = i_tbl_txt, tooltip = "Moving Average 3")
+
+        macoll_ma3_st = ma_coll_ma3_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma3_st, text_color = ma_coll_ma3_col, bgcolor = color.new(ma_coll_ma3_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(ma_coll_ma3, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_chop_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"CHOP", text_color = i_tbl_txt, tooltip = "Chopper Indicator")
+
+        chop_st = chop_act ? "CHOPPY" : "TRENDING"
+
+        trades_tbl.cell(col_idx,row_idx+1,"STATUS", text_color = i_tbl_txt)
+        trades_tbl.cell(col_idx+1,row_idx+1,chop_st, text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if col_idx != 0
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx," ", text_color = i_tbl_txt)
+
+        trades_tbl.cell(col_idx,row_idx+1," ", text_color = i_tbl_txt)
+        trades_tbl.cell(col_idx+1,row_idx+1," ", text_color = i_tbl_txt)
+
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+        row_idx := row_idx + 2
+
+    if i_sess_lon_show or i_sess_ny_show or i_sess_tok_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"🕐 Sessions 🕔", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if i_sess_lon_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"LON", text_color = i_tbl_txt)
+
+            sess_lon_st = lon_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_lon_col = lon_s ? i_sess_lon_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_lon_st, text_color = sess_lon_col, bgcolor = color.new(sess_lon_col, 75))
+
+
+            row_idx := row_idx + 1
+        
+        if i_sess_ny_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"NY", text_color = i_tbl_txt)
+
+            sess_ny_st = ny_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_ny_col = ny_s ? i_sess_ny_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_ny_st, text_color = sess_ny_col, bgcolor = color.new(sess_ny_col, 75))
+
+            row_idx := row_idx + 1
+
+        if i_sess_tok_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"TOK", text_color = i_tbl_txt)
+
+            sess_tok_st = tok_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_tok_col = tok_s ? i_sess_tok_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_tok_st, text_color = sess_tok_col, bgcolor = color.new(sess_tok_col, 75))
+
+            row_idx := row_idx + 1
+
+    if i_td_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"💰 Trades 💰", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if is_trade 
+
+            var TRADE trade = trades.last()
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+
+            trade_dir = trade.dir > 0 ? " ▲ LONG ▲ " : " ▼ SHORT ▼ "
+            trade_dir_col = trade.dir > 0 ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx,row_idx,trade_dir, text_color = trade_dir_col, bgcolor = color.new(trade_dir_col, 75))
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+
+            trade_pnl_curr = str.tostring(math.abs(close - trade.ep), format.mintick)
+            trade_pnl_curr_col = trade.dir > 0 ? close > trade.ep ? i_td_col_win : i_td_col_loss : close < trade.ep ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx+2,row_idx,trade_pnl_curr, text_color = trade_pnl_curr_col, bgcolor = color.new(trade_pnl_curr_col, 75))
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"SL", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,str.tostring((trade.ts_upd > 0 ? trade.ts : trade.sl), format.mintick) + " ❌", text_color = i_tbl_txt)
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.sl_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.ts_upd > 0 ? "Updates: " + str.tostring(trade.ts_upd) + " 🔎" : "Initial 🔒", text_color = i_tbl_txt)
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"TP1", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,str.tostring(trade.tp1, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.tp1_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.tp1_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+            row_idx := row_idx + 1
+
+            if i_tp2_on
+
+                trades_tbl.cell(0,row_idx,"TP2", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,str.tostring(trade.tp2, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp2_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp2_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+                row_idx := row_idx + 1
+
+            if i_tp3_on
+
+                trades_tbl.cell(0,row_idx,"TP3", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,str.tostring(trade.tp3, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp3_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp3_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+                row_idx := row_idx + 1
+
+        else
+            trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"🛑 Trade Not Active 🛑", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+    trades_tbl.merge_cells(0,row_idx,3,row_idx)
+    trades_tbl.cell(0,row_idx,"💎 Licenced By SigmaAlgo™ 💎", text_color = i_tbl_txt)
+else
+
+    row_idx = 0
+    col_idx = 0
+
+    trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+    trades_tbl.cell(col_idx,row_idx,"📈 MM SIGMA 📈", text_color = i_tbl_txt)
+    
+    row_idx := row_idx + 1
+
+    if i_renko_band_show
+
+        trades_tbl.cell(col_idx,row_idx,"RB", text_color = i_tbl_txt, tooltip = "Renko Band")
+        renko_st = renko_final > renko_final[1] ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,renko_st, text_color = renko_final_col, bgcolor = color.new(renko_final_col, 75), tooltip = renko_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+        
+    if i_stepped_ma_show
+
+        trades_tbl.cell(col_idx,row_idx,"ST.MA", text_color = i_tbl_txt, tooltip = "Stepped Moving Average")
+        stepped_ma_st = stepped_ma_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,stepped_ma_st, text_color = stepped_ma_col, bgcolor = color.new(stepped_ma_col, 75), tooltip = stepped_ma_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    //if i_tc_show
+    //    trades_tbl.cell(col_idx,row_idx,"TC", text_color = i_tbl_txt, tooltip = "Trail Cloud")
+    //    tc_st = tc_dir > 0 ? " ▲ " : " ▼ "
+    //    trades_tbl.cell(col_idx,row_idx+1,tc_st, text_color = tc_col, bgcolor = color.new(tc_col, 75), tooltip = tc_st == " ▲ " ? "Bullish" : "Bearish")
+    //    row_idx := col_idx != 3 ? row_idx : row_idx + 2
+    //    col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_vt_show
+
+        trades_tbl.cell(col_idx,row_idx,"VT", text_color = i_tbl_txt, tooltip = "Volumetric Trend")
+        vol_trend_st = vol_trend_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,vol_trend_st, text_color = vol_trend_col, bgcolor = color.new(vol_trend_col, 75), tooltip = vol_trend_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+    
+    if i_vwap_1_show
+
+        trades_tbl.cell(col_idx,row_idx,"V1", text_color = i_tbl_txt, tooltip = "VWAP 1")
+        vwap_1_st = vwap_1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,vwap_1_st, text_color = vwap_1_col, bgcolor = color.new(vwap_1_col, 75), tooltip = vwap_1_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_vwap_2_show
+
+        trades_tbl.cell(col_idx,row_idx,"V2", text_color = i_tbl_txt, tooltip = "VWAP 2")
+        vwap_2_st = vwap_2_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,vwap_2_st, text_color = vwap_2_col, bgcolor = color.new(vwap_2_col, 75), tooltip = vwap_2_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_macoll_ma1_show
+
+        trades_tbl.cell(col_idx,row_idx,"M1", text_color = i_tbl_txt, tooltip = "Moving Average 1")
+        macoll_ma1_st = ma_coll_ma1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma1_st, text_color = ma_coll_ma1_col, bgcolor = color.new(ma_coll_ma1_col, 75), tooltip = macoll_ma1_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_macoll_ma2_show
+
+        trades_tbl.cell(col_idx,row_idx,"M2", text_color = i_tbl_txt, tooltip = "Moving Average 2")
+        macoll_ma2_st = ma_coll_ma2_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma2_st, text_color = ma_coll_ma2_col, bgcolor = color.new(ma_coll_ma2_col, 75), tooltip = macoll_ma2_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_macoll_ma3_show
+
+        trades_tbl.cell(col_idx,row_idx,"M3", text_color = i_tbl_txt, tooltip = "Moving Average 3")
+        macoll_ma3_st = ma_coll_ma3_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,macoll_ma3_st, text_color = ma_coll_ma3_col, bgcolor = color.new(ma_coll_ma3_col, 75), tooltip = macoll_ma3_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_chop_show
+
+        trades_tbl.cell(col_idx,row_idx,"CHOP", text_color = i_tbl_txt, tooltip = "Chopper Indicator")
+        chop_st = chop_act ? "↝" : "⇵"
+        trades_tbl.cell(col_idx,row_idx+1,chop_st, text_color = i_tbl_txt, tooltip = chop_act ? "Choppy" : "Trending")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if col_idx != 0
+
+        while col_idx != 3
+
+            trades_tbl.cell(col_idx,row_idx," ", text_color = i_tbl_txt)
+            trades_tbl.cell(col_idx,row_idx+1," ", text_color = i_tbl_txt)
+
+            col_idx := col_idx + 1
+
+    
+        row_idx := row_idx + 2
+
+    col_idx := 0
+
+    if i_sess_lon_show or i_sess_ny_show or i_sess_tok_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"🕐 Sessions 🕔", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if i_sess_lon_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"LON", text_color = i_tbl_txt)
+
+            sess_lon_st = lon_s ? "⚡" : "😴"
+            sess_lon_tt = lon_s ? "In-Session" : "Not Active"
+            sess_lon_col = lon_s ? i_sess_lon_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_lon_st, text_color = sess_lon_col, bgcolor = color.new(sess_lon_col, 75), tooltip = sess_lon_tt)
+
+
+            row_idx := row_idx + 1
+        
+        if i_sess_ny_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"NY", text_color = i_tbl_txt)
+
+            sess_ny_st = ny_s ? "⚡" : "😴"
+            sess_ny_tt = ny_s ? "In-Session" : "Not Active"
+            sess_ny_col = ny_s ? i_sess_ny_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_ny_st, text_color = sess_ny_col, bgcolor = color.new(sess_ny_col, 75), tooltip = sess_ny_tt)
+
+            row_idx := row_idx + 1
+
+        if i_sess_tok_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"TOK", text_color = i_tbl_txt)
+
+            sess_tok_st = tok_s ? "⚡" : "😴"
+            sess_tok_tt = tok_s ? "In-Session" : "Not Active"
+            sess_tok_col = tok_s ? i_sess_tok_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_tok_st, text_color = sess_tok_col, bgcolor = color.new(sess_tok_col, 75), tooltip = sess_tok_tt)
+
+            row_idx := row_idx + 1
+
+    if i_td_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"💰 Trades 💰", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if is_trade 
+
+            var TRADE trade = trades.last()
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+
+            trade_dir = trade.dir > 0 ? " ▲ " : " ▼ "
+            trade_dir_col = trade.dir > 0 ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx,row_idx,trade_dir, text_color = trade_dir_col, bgcolor = color.new(trade_dir_col, 75))
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+
+            trade_pnl_curr = str.tostring(math.abs(close - trade.ep), format.mintick)
+            trade_pnl_curr_col = trade.dir > 0 ? close > trade.ep ? i_td_col_win : i_td_col_loss : close < trade.ep ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx+2,row_idx,trade_pnl_curr, text_color = trade_pnl_curr_col, bgcolor = color.new(trade_pnl_curr_col, 75))
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"SL", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,"❌", text_color = i_tbl_txt, tooltip = str.tostring((trade.ts_upd > 0 ? trade.ts : trade.sl), format.mintick) + " ❌")
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.sl_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.ts_upd > 0 ? "🔛" : "🔒", text_color = i_tbl_txt, tooltip = trade.ts_upd > 0 ? "Updates: " + str.tostring(trade.ts_upd) + " 🔎" : "Initial 🔒")
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"TP1", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp1, format.mintick) + " 🚀")
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.tp1_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.tp1_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp1_hit ? "Reached 🎯" : "Progress... 🧲")
+
+            row_idx := row_idx + 1
+
+            if i_tp2_on
+
+                trades_tbl.cell(0,row_idx,"TP2", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp2, format.mintick) + " 🚀")
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp2_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp2_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp2_hit ? "Reached 🎯" : "Progress... 🧲")
+
+                row_idx := row_idx + 1
+
+            if i_tp3_on
+
+                trades_tbl.cell(0,row_idx,"TP3", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp3, format.mintick) + " 🚀")
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp3_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp3_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp3_hit ? "Reached 🎯" : "Progress... 🧲")
+
+                row_idx := row_idx + 1
+
+        else
+
+            trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"🛑 NA 🛑", text_color = i_tbl_txt, tooltip = "No Active Trades")
+
+    trades_tbl.merge_cells(0,row_idx,3,row_idx)
+    trades_tbl.cell(0,row_idx,"💎 SigmaAlgo™ 💎", text_color = i_tbl_txt)
+
+

@@ -1,0 +1,22 @@
+{
+  "id": "conv-seed-007",
+  "name": "SuperTrend Indicator",
+  "description": "Volatility-based trend following indicator using ATR for dynamic stop placement",
+  "source_url": "https://www.tradingview.com/script/example-supertrend/",
+  "pinescript_version": "v5",
+  "complexity": "low",
+  "priority": 2,
+  "reason": "Popular trend following indicator with built-in stop logic",
+  "indicatorType": "overlay",
+  "parameters": {
+    "atr_period": 10,
+    "multiplier": 3.0
+  },
+  "signals": {
+    "uptrend": "Price closes above SuperTrend line",
+    "downtrend": "Price closes below SuperTrend line",
+    "flip": "Trend reversal signal"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

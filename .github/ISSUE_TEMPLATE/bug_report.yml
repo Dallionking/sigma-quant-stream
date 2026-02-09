@@ -1,0 +1,125 @@
+name: Bug Report
+description: Report a bug in Sigma-Quant Stream
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Run `sigma-quant start`
+        2. Wait for backtester to pick up a queue item
+        3. Observe the error in pane 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+      placeholder: The backtester should run walk-forward validation and output results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened. Include error messages and log output.
+      placeholder: |
+        The backtester crashed with:
+        ```
+        KeyError: 'close'
+        ```
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the system is affected?
+      options:
+        - CLI (sigma-quant command)
+        - Researcher worker
+        - Converter worker
+        - Backtester worker
+        - Optimizer worker
+        - Backtest runner (lib/)
+        - Crypto adapters (lib/crypto/)
+        - Market profiles
+        - Queue system
+        - Pattern files
+        - Ralph loop (scripts/)
+        - tmux launcher
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: market
+    attributes:
+      label: Market Profile
+      description: Which market profile were you using?
+      options:
+        - Futures (CME)
+        - Crypto CEX (Binance)
+        - Crypto CEX (Bybit)
+        - Crypto CEX (OKX)
+        - Crypto DEX (Hyperliquid)
+        - N/A
+    validations:
+      required: false
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: Output of `python --version`
+      placeholder: "3.11.8"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "macOS 15.2 / Ubuntu 24.04 / etc."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste any relevant log output. This will be auto-formatted as code.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem (screenshots, config snippets, etc.).
+    validations:
+      required: false

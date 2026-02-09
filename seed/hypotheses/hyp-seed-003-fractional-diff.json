@@ -1,0 +1,28 @@
+{
+  "id": "hyp-seed-003",
+  "title": "Fractionally Differentiated Features",
+  "hypothesis": "Using fractionally differentiated price series preserves memory while achieving stationarity, improving ML model performance",
+  "counterparty": "Traders using raw prices or simple returns lose important long-term memory",
+  "edgeSource": "Statistical - fractional differentiation balances stationarity vs memory retention",
+  "markets": ["ES", "NQ", "GC", "CL"],
+  "timeframes": ["15m", "1h", "4h"],
+  "parameterCount": 2,
+  "priority": 2,
+  "source": "De Prado 'Advances in Financial ML' Chapter 5",
+  "references": [
+    "De Prado Chapter 5: Fractionally Differentiated Features",
+    "Hosking (1981) fractional differencing"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [1.0, 1.8],
+    "winRateRange": [0.52, 0.62],
+    "tradesPerMonth": 10
+  },
+  "testConditions": {
+    "differentiationOrder": [0.3, 0.4, 0.5, 0.6],
+    "adfThreshold": 0.05,
+    "memoryRetention": 0.95
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,29 @@
+{
+  "id": "hyp-seed-010",
+  "title": "Adaptive EMA Crossover",
+  "hypothesis": "EMA crossover signals filtered by volatility regime (only trade in trending volatility) improve win rate",
+  "counterparty": "Traders using static crossover systems in all market conditions",
+  "edgeSource": "Regime filtering - crossovers work in trends, fail in chop",
+  "markets": ["ES", "NQ", "CL"],
+  "timeframes": ["15m", "1h", "4h"],
+  "parameterCount": 4,
+  "priority": 2,
+  "source": "Kaufman AMA + regime detection research",
+  "references": [
+    "Kaufman 'Trading Systems and Methods'",
+    "ADX regime filter studies"
+  ],
+  "expectedMetrics": {
+    "sharpeRange": [0.8, 1.4],
+    "winRateRange": [0.45, 0.55],
+    "tradesPerMonth": 6
+  },
+  "testConditions": {
+    "fastEMA": [8, 10, 12],
+    "slowEMA": [21, 26, 50],
+    "adxThreshold": [20, 25],
+    "atrRankingPercentile": 50
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

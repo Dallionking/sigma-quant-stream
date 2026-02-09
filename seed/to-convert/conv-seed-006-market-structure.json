@@ -1,0 +1,23 @@
+{
+  "id": "conv-seed-006",
+  "name": "Market Structure Break (MSB)",
+  "description": "Identifies break of structure (BOS) and change of character (CHoCH) based on swing highs/lows",
+  "source_url": "https://www.tradingview.com/script/example-msb/",
+  "pinescript_version": "v5",
+  "complexity": "medium",
+  "priority": 1,
+  "reason": "Core ICT/SMC concept for trend identification",
+  "indicatorType": "overlay",
+  "parameters": {
+    "swing_length": 5,
+    "show_bos": true,
+    "show_choch": true
+  },
+  "signals": {
+    "bullish_bos": "Higher high breaks above previous high",
+    "bearish_bos": "Lower low breaks below previous low",
+    "choch": "First opposite structure break after trend"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H003",
+  "hypothesis": "Buy after >$100M in liquidations within 1 hour -- forced selling overshoots fair value, mean reversion occurs within 4 hours as arbitrageurs step in",
+  "edgeType": "structural",
+  "edgeSource": "Liquidation engine forces market orders regardless of price, creating temporary mispricing",
+  "counterparty": "Forced sellers (liquidated longs/shorts) who exit at worst possible prices",
+  "expectedSharpe": 1.4,
+  "expectedWinRate": 0.62,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "5m",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

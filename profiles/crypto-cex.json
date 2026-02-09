@@ -1,0 +1,66 @@
+{
+  "profileId": "crypto-cex",
+  "displayName": "Crypto CEX (Centralized Exchange)",
+  "marketType": "crypto-cex",
+  "dataProvider": {
+    "adapter": "ccxt",
+    "exchange": "binance",
+    "apiKeyEnv": "BINANCE_API_KEY",
+    "secretEnv": "BINANCE_SECRET",
+    "sampleDataDir": "data/crypto-cex/",
+    "sampleFiles": ["BTCUSDT_5min_sample.csv", "ETHUSDT_5min_sample.csv"]
+  },
+  "symbols": {
+    "mode": "dynamic",
+    "discovery": {
+      "method": "volume_rank",
+      "minDailyVolumeUSD": 50000000,
+      "maxSymbols": 20,
+      "refreshInterval": "24h"
+    },
+    "pinned": [],
+    "excluded": ["USTCUSDT", "LUNAUSDT"],
+    "current": []
+  },
+  "costs": {
+    "model": "percentage",
+    "makerFee": 0.0002,
+    "takerFee": 0.0005,
+    "slippageBps": 5,
+    "fundingRateAvg": 0.0001,
+    "alwaysInclude": true
+  },
+  "compliance": {
+    "type": "exchange-rules",
+    "maxLeverage": 20,
+    "liquidationBuffer": 0.005,
+    "positionLimitUSD": 100000,
+    "leverageTiers": [
+      { "notional": 50000, "maxLeverage": 125 },
+      { "notional": 250000, "maxLeverage": 100 },
+      { "notional": 1000000, "maxLeverage": 50 }
+    ]
+  },
+  "researchSources": {
+    "people": ["MoonDev", "CryptoCred", "SmartContracter", "Cobie", "GCR", "Hsaka"],
+    "web": ["TradingView", "CryptoQuant", "Glassnode", "DeFi Llama", "Dune Analytics"],
+    "books": ["Crypto Trading (Glen Goodman)", "Cryptoassets (Burniske)"]
+  },
+  "tradingHours": "24/7",
+  "specificFeatures": {
+    "fundingRate": true,
+    "onChainMetrics": true,
+    "liquidationCascades": true,
+    "openInterest": true
+  },
+  "paperTrading": {
+    "engine": "freqtrade",
+    "config": {
+      "tradingMode": "futures",
+      "marginMode": "isolated"
+    }
+  },
+  "output": {
+    "validatedDir": "output/strategies/exchange_validated"
+  }
+}

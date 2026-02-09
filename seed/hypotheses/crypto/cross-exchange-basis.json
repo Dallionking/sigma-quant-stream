@@ -1,0 +1,14 @@
+{
+  "id": "CRYPTO-H004",
+  "hypothesis": "When basis between CEX perpetual and spot exceeds 0.5%, arbitrage the spread by going long spot and short perp (or vice versa) until convergence",
+  "edgeType": "structural",
+  "edgeSource": "Fragmented liquidity across exchanges creates temporary mispricings that arbitrageurs correct",
+  "counterparty": "Directional traders who push perp premium/discount beyond fair value",
+  "expectedSharpe": 1.6,
+  "expectedWinRate": 0.70,
+  "marketType": "crypto-cex",
+  "symbols": ["BTCUSDT", "ETHUSDT"],
+  "timeframe": "1h",
+  "status": "seed",
+  "createdAt": "2026-02-08"
+}

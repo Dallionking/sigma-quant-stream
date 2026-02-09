@@ -1,0 +1,2670 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © theATR
+
+//@version=5
+strategy("THE DON - Strategy [SigmaAlgo™]", "THE DON - Strategy [SigmaAlgo™]", true, max_lines_count=500, max_labels_count=500, max_boxes_count=500, max_bars_back=541, calc_on_every_tick = true)
+
+//#region [ --- ALL IMPORTS --- ]
+
+import thealgorithmictrader/HALib/7 as HALib
+import thealgorithmictrader/SessionInBoxesPro/11 as SessInBoxes
+import thealgorithmictrader/MMDonLib/1 as MMDon
+
+//#endregion
+
+//#region [ --- ALL GLOBAL FUNCTIONS --- ]
+
+F_GLOBAL_MT_ROUND(float _val)=>
+    val = math.round_to_mintick(_val)
+    val
+
+F_GLOBAL_TO_MT(float _to_conv)=>
+    conv = 0.0
+    if syminfo.type == "forex" //We convert from PIPS to TICKS
+        conv := _to_conv * syminfo.mintick
+    else if syminfo.type == "futures" 
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "cfd"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "index"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "stock"
+        conv := _to_conv/syminfo.mintick
+    else if syminfo.type == "crypto"
+        conv := _to_conv/syminfo.mintick
+    conv
+
+F_GLOBAL_TF_CONV(string _tf)=>
+    tf_conv = ""
+    if _tf == "1"
+        tf_conv := "1-MIN"
+    if _tf == "2"
+        tf_conv := "2-MIN"
+    if _tf == "3"
+        tf_conv := "3-MIN"
+    else if _tf == "5"
+        tf_conv := "5-MIN"
+    if _tf == "10"
+        tf_conv := "10-MIN"
+    if _tf == "15"
+        tf_conv := "15-MIN"
+    if _tf == "30"
+        tf_conv := "30-MIN"
+    if _tf == "45"
+        tf_conv := "45-MIN"
+    if _tf == "60"
+        tf_conv := "1-HOUR"
+    if _tf == "120"
+        tf_conv := "2-HOUR"
+    if _tf == "180"
+        tf_conv := "3-HOUR"
+    if _tf == "240"
+        tf_conv := "4-HOUR"
+    if _tf == "480"
+        tf_conv := "8-HOUR"
+    if _tf == "720"
+        tf_conv := "12-HOUR"
+    if _tf == "D"
+        tf_conv := "1-DAY"
+    if _tf == "W"
+        tf_conv := "1-WEEK"
+    if _tf == "M"
+        tf_conv := "1-MONTH"
+    if _tf == "3M"
+        tf_conv := "3-MONTH"
+    if _tf == "6M"
+        tf_conv := "6-MONTH"
+    if _tf == "Y"
+        tf_conv := "1-YEAR"
+    else
+        tf_conv := "NA"
+    tf_conv
+
+//#endregion
+
+//#region [ --- ALL INPUTS --- ]
+
+//#region [ --- USER CONSENSUS --- ]
+
+i_user_consensus = input.string(defval="", title="TYPE 'agree' TO ADD TO CHART. \nTrading involves substantial risk and may not be suitable for everyone. Past performance is not indicative of future results, and all signals or automated trading functions provided by this system are for educational purposes only. By typing ‘agree,’ you acknowledge that you are responsible for any trades executed manually or automatically, and you accept that Sigma Algo LLC is not liable for any financial losses. \nRELEASE INFORMATION 2021 © Sigma Algo LLC", confirm = true, group="consensus", inline="consensus-00")
+if i_user_consensus != "agree"
+    runtime.error("You must type 'agree' in our 'User Consensus' input (bottom of the settings menu) to continue and run the Algo.")
+
+//#endregion
+
+//#region [ --- TRADE DASHBOARD --- ]
+
+g_td = "🔵⚪🔵 TRADE DASHBOARD 🔵⚪🔵"
+
+
+i_td_bridge = input.bool(false, "Bridge", group = g_td, inline = "td-000")
+i_td_bridge_acct_id = input.string("", "| Account", group = g_td, inline = "td-000")
+i_td_bridge_sym = input.string("", "Symbol", group = g_td, inline = "td-000")
+i_td_show = input.bool(true, "Show Trades", group = g_td, inline = "td-00")
+i_td_labels = input.bool(false, "Labels", group = g_td, inline = "td-00")
+i_td_alerts = input.bool(false, "Alerts", group = g_td, inline = "td-00")
+i_td_dir_bias = input.string("Both", "Direction Bias", ["Both", "Long", "Short"], group = g_td, inline = "td-004")
+i_td_comp = input.bool(true, "Compound", group = g_td, inline = "td-01")
+i_td_acct = input.float(10000.0, "| Initial Balance", group = g_td, inline = "td-01")
+i_td_bt_from = input.time(timestamp("07 Oct 2024 00:00 +0300"), "Backtest → From", group = g_td, inline="td-02")
+i_td_bt_to = input.time(timestamp("07 Nov 2030 00:00 +0300"), "To", group = g_td, inline="td-02")
+i_td_risk_t = input.string("Percentage", "Risk → Type", ["Percentage", "Fixed"], group = g_td, inline="td-03")
+i_td_risk_v = input.float(2.0, "Value", group = g_td, inline="td-03")
+i_td_ce = input.bool(false, "Cash Exit", group = g_td, inline="td-04")
+i_td_ce_amt = input.float(2000.0, "| $ Amount", group = g_td, inline="td-04")
+i_td_mw = input.bool(false, "Max Wins/Losses", group = g_td, inline="td-05")
+i_td_mw_w = input.int(3, "| W", group = g_td, inline="td-05")
+i_td_mw_l = input.int(1, "L", group = g_td, inline="td-05")
+
+i_td_col_win = input.color(color.blue, "Colors → Win", group = g_td, inline = "td-cols")
+i_td_col_loss = input.color(color.white, "Loss", group = g_td, inline = "td-cols")
+
+//#endregion
+
+//#region [ --- TABLE --- ]
+
+g_tbl = "🔵⚪🔵 TABLE 🔵⚪🔵"
+
+i_tbl_on = input.bool(true, "", group = g_tbl, inline = "tbl-00")
+i_tbl_t = input.string("Desktop", "| ", ["Desktop", "Mobile"], group = g_tbl, inline = "tbl-00")
+//i_tbl_pset = input.string("Custom", "| Preset", ["Custom", "Ghost"], group = g_tbl, inline = "tbl-00")
+i_tbl_x_pos = input.string("Right", "X", ["Left", "Right", "Center"], group = g_tbl, inline = "tbl-00")
+i_tbl_y_pos = input.string("Top", "Y", ["Top", "Bottom", "Middle"], group = g_tbl, inline = "tbl-00")
+tbl_pos = 
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Top" ? position.top_left :
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Bottom" ? position.bottom_left :
+  i_tbl_x_pos == "Left" and i_tbl_y_pos == "Middle" ? position.middle_left :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Top" ? position.top_right :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Bottom" ? position.bottom_right :
+  i_tbl_x_pos == "Right" and i_tbl_y_pos == "Middle" ? position.middle_right :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Top" ? position.top_center :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Bottom" ? position.bottom_center :
+  i_tbl_x_pos == "Center" and i_tbl_y_pos == "Middle" ? position.middle_center : position.middle_center 
+
+i_tbl_bg = input.color(color.new(color.black, 50), "Bg", group = g_tbl, inline = "tbl-02")
+i_tbl_fr = input.color(color.new(color.gray, 0), "| Frame", group = g_tbl, inline = "tbl-02")
+i_tbl_bor = input.color(color.new(color.gray, 0), "| Borders", group = g_tbl, inline = "tbl-02")
+i_tbl_txt = input.color(color.new(color.white, 0), "| Text", group = g_tbl, inline = "tbl-02")
+
+
+//#endregion
+
+//#region [ --- DOW FILTERING --- ]
+
+g_dow = "🔵⚪🔵 DOW FILTERING 🔵⚪🔵"
+
+i_dow_tt_1 = "Select the days of the week you want to filter. No Trades will be taken during those days."
+
+i_dow_mon = input.bool(false, "Mon", group = g_dow, inline = "dow-00")
+i_dow_tue = input.bool(false, "Tue", group = g_dow, inline = "dow-00")
+i_dow_wed = input.bool(false, "Wed", group = g_dow, inline = "dow-00")
+i_dow_thu = input.bool(false, "Thu", group = g_dow, inline = "dow-00")
+i_dow_fri = input.bool(false, "Fri", group = g_dow, inline = "dow-00")
+i_dow_sat = input.bool(false, "Sat", group = g_dow, inline = "dow-00")
+i_dow_sun = input.bool(false, "Sun", group = g_dow, inline = "dow-00", tooltip = i_dow_tt_1)
+
+//#endregion
+
+//#region [ --- ADD. ENTRY STRICTS --- ]
+
+g_add_entry = "🔵⚪🔵 ADD. ENTRY STRICTS 🔵⚪🔵"
+
+i_add_entry_strict_cc = input.bool(false, "CC", group = g_add_entry, inline = "add-00", tooltip = "Candle Direction confirmation.")
+
+i_add_entry_strict_vc = input.bool(false, "VC", group = g_add_entry, inline = "add-01", tooltip = "Volume confirmation")
+i_add_entry_strict_vc_len = input.int(3, "| Len", group = g_add_entry, inline = "add-01")
+i_add_entry_strict_vc_mult = input.float(1.5, "Mult", group = g_add_entry, inline = "add-01", tooltip = "Volatility Canfle confirmation.")
+
+//#endregion
+
+//#region [ --- STOP LOSS --- ]
+
+g_sl = "🔵⚪🔵 STOP LOSS 🔵⚪🔵"
+
+i_sl_m = input.string("Fixed", "Type", ["Fixed", "ATR", "Signal Baseline"], group = g_sl, inline = "tsl-00")
+i_sl_fix = input.float(50.0, "Fixed", group = g_sl, inline = "tsl-02")
+i_sl_atr_lb = input.int(14, "ATR → Len", group = g_sl, inline = "tsl-03")
+i_sl_atr_m = input.float(1.5, "Mult", group = g_sl, inline = "tsl-03")
+i_sl_off = input.float(0.0, "Offset", group = g_sl, inline = "tsl-04")
+
+i_sl_fix := syminfo.type == "forex"? i_sl_fix * syminfo.mintick : i_sl_fix
+//#endregion
+
+//#region [ --- TRAILING STOP --- ]
+
+g_ts = "🔵⚪🔵 TRAILING STOP 🔵⚪🔵"
+
+i_ts_tt_1 = "SB → Trailing Trigger 'Since Beginning', makes the Trailing active since the trade starts."
+
+i_be_tr = input.string("TP1", "BE → Trigger", ["None", "TP1", "TP2", "TP3"], group = g_ts, inline = "be-00")
+i_be_off = input.float(5.0, "Offset", group = g_ts, inline = "be-00")
+i_ts_m = input.string("Fixed", "TS → Model", ["None", "Fixed", "ATR", "Baseline 1", "Baseline 2", "SL"], group = g_ts, inline = "tts-00")
+i_ts_tr = input.string("TP1", "Trigger", ["SB", "TP1", "TP2", "TP3"], group = g_ts, inline = "tts-00", tooltip = i_ts_tt_1)
+i_ts_fix = input.float(25.0, "Fixed", group = g_ts, inline = "tts-02")
+i_ts_atr_lb = input.int(14, "ATR → Len", group = g_ts, inline = "tts-03")
+i_ts_atr_m = input.float(1.5, "Mult", group = g_ts, inline = "tts-03")
+
+i_be_off := syminfo.type == "forex" ? i_be_off * syminfo.mintick : i_be_off
+i_ts_fix := syminfo.type == "forex" ? i_ts_fix * syminfo.mintick : i_ts_fix
+//#endregion
+
+//#region [ --- TAKE PROFITS --- ]
+
+g_tp = "🔵⚪🔵 TAKE PROFITS 🔵⚪🔵"
+
+i_tp_tt_1 = "Make sure the TP1 value field is coherent with the Model selected."
+
+i_tp_run = input.bool(false, "Runner", group = g_tp, inline = "tpp-00")
+i_tp_m = input.string("Fixed", "| Model", ["Fixed", "RRR"], group = g_tp, inline = "tpp-00", tooltip = i_tp_tt_1)
+i_tp1_v = input.float(25.0, "TP1", group = g_tp, inline = "tpp-02")
+i_tp1_pct = input.float(50.0, "%", group = g_tp, inline = "tpp-02")
+i_tp2_on = input.bool(true, "", group = g_tp, inline = "tpp-03")
+i_tp2_v = input.float(50.0, "| TP2", group = g_tp, inline = "tpp-03")
+i_tp2_pct = input.float(20.0, "%", group = g_tp, inline = "tpp-03")
+i_tp3_on = input.bool(true, "", group = g_tp, inline = "tpp-04")
+i_tp3_v = input.float(100.0, "| TP3", group = g_tp, inline = "tpp-04")
+i_tp3_pct = input.float(10.0, "%", group = g_tp, inline = "tpp-04")
+
+i_tp1_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp1_v * syminfo.mintick : i_tp1_v
+i_tp2_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp2_v * syminfo.mintick : i_tp2_v
+i_tp3_v := syminfo.type == "forex" and i_tp_m == "Fixed" ? i_tp3_v * syminfo.mintick : i_tp3_v
+//#endregion
+
+//#region [ --- MM DON CTF --- ]
+
+g_mmdon = "🔵⚪🔵 MM DON CTF 🔵⚪🔵"
+
+i_mmdon_tt_1 = "Any Trade → The 'Any Trade' makes it easier for Main Signal to trigger, but remember that an additional strict enabled is required."
+
+i_mmdon_any_t = input.bool(true, "Any Trade", group = g_mmdon, inline = "mmdon-00")
+i_mmdon_sign_t = input.string("Baseline 1", "| Entry", ["Baseline 1", "Baseline 1 + 2"], group = g_mmdon, inline = "mmdon-00")
+i_mmdon_exit = input.string("None", "Exit", ["None", "Baseline 1", "Baseline 2"], group = g_mmdon, inline = "mmdon-00", tooltip = i_mmdon_tt_1)
+i_mmdon_bl1_show = input.bool(true, "Show Baseline 1", group = g_mmdon, inline = "mmdon-01")
+i_mmdon_bl1_t = input.string("SSL", "| Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon, inline = "mmdon-01")
+i_mmdon_bl1_len = input.int(100, "Length", group = g_mmdon, inline = "mmdon-01")
+i_mmdon_bl2_show = input.bool(false, "Show Baseline 2", group = g_mmdon, inline = "mmdon-02")
+i_mmdon_bl2_t = input.string("ALMA", "| Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon, inline = "mmdon-02")
+i_mmdon_bl2_len = input.int(100, "Length", group = g_mmdon, inline = "mmdon-02")
+
+i_mmdon_bl1_col_bull = input.color(color.blue, "Baseline 1 Colors → Bullish", group = g_mmdon, inline = "mmdon-cols")
+i_mmdon_bl1_col_bear = input.color(color.white, "Bearish", group = g_mmdon, inline = "mmdon-cols")
+i_mmdon_bl2_col_bull = input.color(#010178, "Baseline 2 Colors → Bullish", group = g_mmdon, inline = "mmdon-cols-2")
+i_mmdon_bl2_col_bear = input.color(#5d5d5d, "Bearish", group = g_mmdon, inline = "mmdon-cols-2")
+
+//#endregion
+
+//#region [ --- MM DON HTF --- ]
+
+g_mmdon_htf = "🔵⚪🔵 MM DON HTF 🔵⚪🔵"
+
+i_mmdon_htf1_show = input.bool(false, "Show HTF1", group = g_mmdon_htf, inline = "mmdon-htf-000")
+i_mmdon_htf2_show = input.bool(false, "Show HTF2", group = g_mmdon_htf, inline = "mmdon-htf-000")
+i_mmdon_htf3_show = input.bool(false, "Show HTF3", group = g_mmdon_htf, inline = "mmdon-htf-001")
+i_mmdon_htf4_show = input.bool(false, "Show HTF4", group = g_mmdon_htf, inline = "mmdon-htf-001")
+
+i_mmdon_htf1_strict = input.bool(false, "Strict", group = g_mmdon_htf, inline = "mmdon-htf1-00")
+i_mmdon_htf1_exit = input.bool(false, "Exit", group = g_mmdon_htf, inline = "mmdon-htf1-00")
+i_mmdon_htf1_alerts = input.bool(false, "Alerts ← HTF1", group = g_mmdon_htf, inline = "mmdon-htf1-00")
+i_mmdon_htf1_tf = input.timeframe("D", "HTF1 → TF", group = g_mmdon_htf, inline = "mmdon-htf1-01")
+i_mmdon_htf1_t = input.string("MMMA", "Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon_htf, inline = "mmdon-htf1-01")
+i_mmdon_htf1_len = input.int(100, "Length", group = g_mmdon_htf, inline = "mmdon-htf1-01")
+i_mmdon_htf1_col_bull = input.color(color.blue, "HTF1 Colors → Bullish", group = g_mmdon_htf, inline = "mmdon-htf1-cols")
+i_mmdon_htf1_col_bear = input.color(color.white, "Bearish", group = g_mmdon_htf, inline = "mmdon-htf1-cols")
+
+i_mmdon_htf2_strict = input.bool(false, "Strict", group = g_mmdon_htf, inline = "mmdon-htf2-00")
+i_mmdon_htf2_exit = input.bool(false, "Exit", group = g_mmdon_htf, inline = "mmdon-htf2-00")
+i_mmdon_htf2_alerts = input.bool(false, "Alerts ← HTF2", group = g_mmdon_htf, inline = "mmdon-htf2-00")
+i_mmdon_htf2_tf = input.timeframe("15", "HTF2 → TF", group = g_mmdon_htf, inline = "mmdon-htf2-01")
+i_mmdon_htf2_t = input.string("MMMA", "Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon_htf, inline = "mmdon-htf2-01")
+i_mmdon_htf2_len = input.int(100, "Length", group = g_mmdon_htf, inline = "mmdon-htf2-01")
+i_mmdon_htf2_col_bull = input.color(#0202d7, "HTF2 Colors → Bullish", group = g_mmdon_htf, inline = "mmdon-htf2-cols")
+i_mmdon_htf2_col_bear = input.color(#929292, "Bearish", group = g_mmdon_htf, inline = "mmdon-htf2-cols")
+
+i_mmdon_htf3_strict = input.bool(false, "Strict", group = g_mmdon_htf, inline = "mmdon-htf3-00")
+i_mmdon_htf3_exit = input.bool(false, "Exit", group = g_mmdon_htf, inline = "mmdon-htf3-00")
+i_mmdon_htf3_alerts = input.bool(false, "Alerts ← HTF3", group = g_mmdon_htf, inline = "mmdon-htf3-00")
+i_mmdon_htf3_tf = input.timeframe("60", "HTF3 → TF", group = g_mmdon_htf, inline = "mmdon-htf3-01")
+i_mmdon_htf3_t = input.string("MMMA", "Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon_htf, inline = "mmdon-htf3-01")
+i_mmdon_htf3_len = input.int(100, "Length", group = g_mmdon_htf, inline = "mmdon-htf3-01")
+i_mmdon_htf3_col_bull = input.color(#0101a5, "HTF3 Colors → Bullish", group = g_mmdon_htf, inline = "mmdon-htf3-cols")
+i_mmdon_htf3_col_bear = input.color(#4f4f4f, "Bearish", group = g_mmdon_htf, inline = "mmdon-htf3-cols")
+
+i_mmdon_htf4_strict = input.bool(false, "Strict", group = g_mmdon_htf, inline = "mmdon-htf4-00")
+i_mmdon_htf4_exit = input.bool(false, "Exit", group = g_mmdon_htf, inline = "mmdon-htf4-00")
+i_mmdon_htf4_alerts = input.bool(false, "Alerts ← HTF4", group = g_mmdon_htf, inline = "mmdon-htf4-00")
+i_mmdon_htf4_tf = input.timeframe("240", "HTF4 → TF", group = g_mmdon_htf, inline = "mmdon-htf4-01")
+i_mmdon_htf4_t = input.string("MMMA", "Type", ["SMA", "EMA", "DEMA", "TEMA", "LSMA", "WMA", "TMA", "HMA", "EDSMA", "McGinley", "ALMA", "SSL", "MMMA"], group = g_mmdon_htf, inline = "mmdon-htf4-01")
+i_mmdon_htf4_len = input.int(100, "Length", group = g_mmdon_htf, inline = "mmdon-htf4-01")
+i_mmdon_htf4_col_bull = input.color(#00006f, "HTF4 Colors → Bullish", group = g_mmdon_htf, inline = "mmdon-htf4-cols")
+i_mmdon_htf4_col_bear = input.color(#292929, "Bearish", group = g_mmdon_htf, inline = "mmdon-htf4-cols")
+
+//#endregion
+
+//#region [ --- MM DON MMMA --- ]
+
+g_mmdon_mmma = "🔵⚪🔵 MM DON MMMA 🔵⚪🔵"
+
+i_mmdon_mmma_strict = input.bool(true, "Strict", group = g_mmdon_mmma, inline = "mmdon-mmma-00")
+i_mmdon_mmma_exit = input.bool(false, "Exit", group = g_mmdon_mmma, inline = "mmdon-mmma-00")
+i_mmdon_mmma_alerts = input.bool(false, "Alerts", group = g_mmdon_mmma, inline = "mmdon-mmma-00")
+
+i_mmdon_mmma_show = input.bool(true, "Show", group = g_mmdon_mmma, inline = "mmdon-mmma-01")
+i_mmdon_mmma_len = input.int(13, "| Length", group = g_mmdon_mmma, inline = "mmdon-mmma-01")
+i_mmdon_mmma_col_bull = input.color(color.blue, "Colors → Bullish", group = g_mmdon_mmma, inline = "mmdon-mmma-cols")
+i_mmdon_mmma_col_bear = input.color(color.white, "Bearish", group = g_mmdon_mmma, inline = "mmdon-mmma-cols")   
+
+//#endregion
+
+//#region [ --- VOLUMETRIC TREND --- ]
+
+g_vt = "🔵⚪🔵 VOLUMETRIC TREND 🔵⚪🔵"
+
+i_vt_strict = input.bool(true, "Strict", group = g_vt, inline = "vt-000")
+i_vt_exit = input.bool(false, "Exit", group = g_vt, inline = "vt-000")
+i_vt_alerts = input.bool(false, "Alerts", group = g_vt, inline = "vt-000")
+i_vt_show = input.bool(true, "Show", group = g_vt, inline = "vt-00")
+i_vt_src = input.source(close, "| Source", group = g_vt, inline = "vt-00")
+i_vt_len = input.int(10, "Lenght", group = g_vt, inline = "vt-01")
+i_vt_momentum = input.int(20, "Momentum", group = g_vt, inline = "vt-01")
+i_vt_distance = input.int(2, "Band Distance", group = g_vt, inline = "vt-02")
+i_vt_col_bull = input.color(color.blue, "Colors → Bullish", group = g_vt, inline = "vt-cols")
+i_vt_col_bear = input.color(color.white, "Bearish", group = g_vt, inline = "vt-cols")
+
+//#endregion
+
+//#region [ --- CAPO OSC. --- ]
+
+g_capo_osc = "🔵⚪🔵 CAPO OSC. 🔵⚪🔵"
+
+i_capo_osc_tt_1 = "L1 → LVL 1 Strict\nL2 → LVL 2 Strict\nL3 → LVL 3 Strict\nBBSQ → BB Squeeze Strict"
+i_capo_osc_l1_strict = input.bool(false, "L1", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_l2_strict = input.bool(false, "L2", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_l3_strict = input.bool(false, "L3", group = g_capo_osc, inline = "capo-str")
+i_capo_osc_bbsq_strict = input.bool(false, "BBSQ ← Stricts", group = g_capo_osc, inline = "capo-str", tooltip = i_capo_osc_tt_1)
+
+i_capo_osc_tt_2 = "L1 → LVL 1 Exit\nL2 → LVL 2 Exit\nL3 → LVL 3 Exit\nBBSQ → BB Squeeze Exit"
+i_capo_osc_l1_exit = input.bool(false, "L1", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_l2_exit = input.bool(false, "L2", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_l3_exit = input.bool(false, "L3", group = g_capo_osc, inline = "capo-exi")
+i_capo_osc_bbsq_exit = input.bool(false, "BBSQ ← Exits", group = g_capo_osc, inline = "capo-exi", tooltip = i_capo_osc_tt_2)
+
+i_capo_osc_tf = input.timeframe("60", "Timeframe", group = g_capo_osc, inline = "capo-00")
+i_capo_osc_src = input.source(close, "Source", group = g_capo_osc, inline = "capo-00")
+
+i_capo_osc_ma_type = input.string("EMA", "MA Type", ["SMA", "EMA", "WMA", "HMA", "SSL", "SMOOTH"], group = g_capo_osc, inline = "capo-01")
+i_capo_osc_bblen = input.int(20, "BB Length", group = g_capo_osc, inline = "capo-01")
+i_capo_osc_bbmult = input.float(1.5, "BB Mult", group = g_capo_osc, inline = "capo-01")
+
+//#endregion
+
+//#region [ --- CHOPPER --- ]
+
+g_chop = "🔵⚪🔵 CHOPPER 🔵⚪🔵"
+
+i_chop_strict = input.bool(false, "Strict", group = g_chop, inline = "chop-000")
+i_chop_exit = input.bool(false, "Exit", group = g_chop, inline = "chop-000")
+i_chop_alerts = input.bool(false, "Alerts", group = g_chop, inline = "chop-000")
+
+i_chop_show = input.bool(true, "Show", group = g_chop, inline = "chop-00")
+i_chop_src = input.source(close, "| Source", group = g_chop, inline = "chop-00")
+
+i_chop_ma_type = input.string("EMA", "Smooth → MA", ["SMA", "EMA", "WMA", "VWMA", "DEMA", "TEMA", "HMA", "RMA", "JMA", "ALMA", "ATRWWMA"], group = g_chop, inline = "chop-01")
+i_chop_ma_len = input.int(50, "Length", group = g_chop, inline = "chop-01")
+
+i_chop_tt_1 = "UT → Range Upper Threshold\nLT → Range Lower Threshold"
+i_chop_ut = input.float(60.0, "UT", group = g_chop, inline = "chop-02")
+i_chop_lt = input.float(40.0, "LT", group = g_chop, inline = "chop-02", tooltip = i_chop_tt_1)
+
+i_chop_col = input.color(color.gray, "Color", group = g_chop, inline = "chop-cols")
+
+//#endregion
+
+//#region [ --- SESSIONS --- ]
+
+g_sessd = "🔵⚪🔵 SESSIONS DASHBOARD 🔵⚪🔵"
+
+bool SHOW = timeframe.isintraday and timeframe.multiplier <= 60 and timeframe.multiplier >= 1
+int LOOKBACKMINS = (9 * 60)
+
+i_sessd_h = input.bool(true, "History", group = g_sessd, inline = "sessd-00")
+i_sessd_alerts = input.bool(false, "Alerts", group = g_sessd, inline = "sessd-00")
+i_sessd_tz = input.string('America/New_York', title='| Timezone', options=["America/Los_Angeles", "America/New_York","America/El_Salvador","America/Chicago","America/Argentina/Buenos_Aires","Europe/London","Europe/Berlin","Europe/Moscow","Asia/Dubai","Asia/Ashkhabad","Asia/Bangkok","Asia/Hong_Kong","Asia/Tokyo","Australia/Brisbane","Australia/Sydney"], group=g_sessd, inline = "sessd-00", tooltip = "Make sure your chart timezone matches with the option selected to have reliable sessions identification.")
+
+sessd_psr_tt = "Show Pre Session Range\nStrict Pre Session Range\nLookback for PSR calculation"
+i_sessd_psr = input.bool(true, "Show PSR", group = g_sessd, inline = "sessd-01")
+i_sessd_psr_str = input.bool(false, "Strict PSR", group = g_sessd, inline = "sessd-01")
+i_sessd_psr_tf = input.string("1h", "| Lookback", ["15m","30m","45m","1h","2h","4h"], group=g_sessd, inline = "sessd-01", tooltip = sessd_psr_tt)
+
+sessd_or_tt = "Show Opening Range\nStrict Opening Range"
+sessd_or_tt_2 = "Lookback for OR calculation (minutes)\nOpacity for OR"
+i_sessd_or = input.bool(false, "Show OR", group = g_sessd, inline = "sessd-02")
+i_sessd_or_str = input.bool(false, "Strict OR", group = g_sessd, inline = "sessd-02", tooltip = sessd_or_tt)
+i_sessd_or_lb = input.int(15, "OR Lookback", minval=1, step=1, group=g_sessd, inline = "sessd-03")
+i_sessd_or_op = input.int(50, "OR Opacity", minval=0, maxval=100, step=1, group=g_sessd, inline = "sessd-03", tooltip = sessd_or_tt_2)
+
+i_sessd_fib = false//input.bool(false, "Show FIB", group = g_sessd, inline = "sessd-04")
+i_sessd_fib_ls = "Solid"//input.string("Solid", "| Linestyle", ["Solid", "Dot", "Dash"], group = g_sessd, inline = "sessd-04")
+i_sessd_fib_lw = 1//input.int(1, "Width", minval=1, group = g_sessd, inline = "sessd-04")
+
+g_sess_sty = "🔵⚪🔵 SESSIONS STYLE 🔵⚪🔵"
+
+i_sess_sty_lbl = input.bool(true, "Labels", group = g_sess_sty, inline = "sess-sty-00") and SHOW
+i_sess_sty_lbl_sz = size.normal //input.string(size.auto, "Size", ["Auto", "Tiny", "Small", "Normal", "Large", "Huge"], group = g_sess_sty, inline = "sess-sty-00")
+i_sess_sty_lbl_pos = input.string("Inside", "| Position", ["Inside", "Outside"], group = g_sess_sty, inline = "sess-sty-00") == "Inside" ? label.style_label_upper_left : label.style_label_lower_left
+i_sess_sty_lbl_chg = input.string("NO", "Change Value", ["NO", "YES", "YESPIP"], group = g_sess_sty, inline = "sess-sty-01")
+i_sess_sty_lbl_fmt_day = input.bool(false, "Day", group = g_sess_sty, inline = "sess-sty-01")
+
+
+i_sess_sty_bs = input.string("Solid", "Linestyle", ["Solid", "Dot", "Dash"], group = g_sess_sty, inline = "sess-sty-02")
+i_sess_sty_bw = input.int(1, "Width", minval=1, group = g_sess_sty, inline = "sess-sty-02")
+i_sess_sty_bg = input.int(94, "Opacity", minval=0, maxval=100, step=1, group = g_sess_sty, inline = "sess-sty-03", tooltip = "Setting the 100 is no background color")
+i_sess_sty_sc = input.string("NO", "Closed Icon", ["YES", "NO"], group = g_sess_sty, inline = "sess-sty-03") == "YES"
+
+g_sess_lon = "🔵⚪🔵 SESSION - LONDON 🔵⚪🔵"
+
+i_sess_lon_strict = input.bool(false, "Strict", group = g_sess_lon, inline = "sess-lon-000")
+i_sess_lon_exit = input.bool(false, "Exit", group = g_sess_lon, inline = "sess-lon-000")
+i_sess_lon_show = input.bool(false, "Show", group = g_sess_lon, inline = "sess-lon-00") and SHOW
+i_sess_lon_col = input.color(color.green, "", group = g_sess_lon, inline = "sess-lon-00")
+i_sess_lon_sess = input.session('0300-1100', "| ", group = g_sess_lon, inline = "sess-lon-00")
+
+g_sess_ny = "🔵⚪🔵 SESSION - NEW YORK 🔵⚪🔵"
+
+i_sess_ny_strict = input.bool(false, "Strict", group = g_sess_ny, inline = "sess-ny-000")
+i_sess_ny_exit = input.bool(false, "Exit", group = g_sess_ny, inline = "sess-ny-000")
+i_sess_ny_show = input.bool(true, "Show", group = g_sess_ny, inline = "sess-ny-00") and SHOW
+i_sess_ny_col = input.color(color.red, "", group = g_sess_ny, inline = "sess-ny-00")
+i_sess_ny_sess = input.session('0800-1600', "| ", group = g_sess_ny, inline = "sess-ny-00")
+
+g_sess_tok = "🔵⚪🔵 SESSION - TOKIO 🔵⚪🔵"
+
+i_sess_tok_strict = input.bool(false, "Strict", group = g_sess_tok, inline = "sess-tok-000")
+i_sess_tok_exit = input.bool(false, "Exit", group = g_sess_tok, inline = "sess-tok-000")
+i_sess_tok_show = input.bool(false, "Show", group = g_sess_tok, inline = "sess-tok-00") and SHOW
+i_sess_tok_col = input.color(color.yellow, "", group = g_sess_tok, inline = "sess-tok-00")
+i_sess_tok_sess = input.session('1900-0300', "| ", group = g_sess_tok, inline = "sess-tok-00")
+
+RECT_LINESTYLE = i_sess_sty_bs == "Solid"?line.style_solid:(i_sess_sty_bs == "Dot"?line.style_dotted:line.style_dashed)
+FIB_LINESTYLE = i_sessd_fib_ls == "Solid"?line.style_solid:(i_sessd_fib_ls == "Dot"?line.style_dotted:line.style_dashed)
+string tz = (i_sessd_tz == "NO" or i_sessd_tz == '') ? na : i_sessd_tz
+
+//#endregion
+
+//#region [ --- INPUTS ERROR HANDLING --- ]
+
+if i_mmdon_any_t
+    strict_any = 
+      i_mmdon_htf1_strict or
+      i_mmdon_htf2_strict or
+      i_mmdon_htf3_strict or
+      i_mmdon_htf4_strict or
+      i_mmdon_mmma_strict or
+      i_vt_strict or
+      i_capo_osc_l1_strict or
+      i_capo_osc_l2_strict or
+      i_capo_osc_l3_strict or
+      i_capo_osc_bbsq_strict or
+      i_chop_strict
+    if not strict_any
+        runtime.error("You must enable at least one of the core strict conditions to run the 'Any Trade' option.\nThese include: HTF Stricts, MMMA Strict, Volume Trend Strict, CAPO Stricts, and CHOP Strict.")
+
+//#endregion
+
+//#endregion
+
+
+
+
+//#region [ --- ALL LOGIC --- ]
+
+//#region [ --- MM DON CTF --- ]
+
+mmdon_kidiv =  1
+mmdon_jurik_power = 1
+mmdon_atr = ta.atr(50)
+
+var mmdon_bl1_dir = 0
+var color mmdon_bl1_col = na
+mmdon_bl1 = MMDon.ma(i_mmdon_bl1_t, close, i_mmdon_bl1_len, high, low, ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_bl1_dir := ohlc4 > mmdon_bl1 ? 1 : ohlc4 < mmdon_bl1 ? -1 : mmdon_bl1_dir[1]
+mmdon_bl1_col := mmdon_bl1_dir > 0 ? i_mmdon_bl1_col_bull : i_mmdon_bl1_col_bear
+mmdon_bl1_top = mmdon_bl1 + (mmdon_atr * 0.5)
+mmdon_bl1_bot = mmdon_bl1 - (mmdon_atr * 0.5)
+
+mmdon_bl1_p = plot(i_mmdon_bl1_show ? mmdon_bl1 : na, "MMDON BL1", mmdon_bl1_col, 1)
+mmdon_bl1_sm_top_p = plot(i_mmdon_bl1_show ? mmdon_bl1_top : na, "MMDON BL1 TOP", color.new(mmdon_bl1_col, 100))
+mmdon_bl1_sm_bot_p = plot(i_mmdon_bl1_show ? mmdon_bl1_bot : na, "MMDON BL1 BOT", color.new(mmdon_bl1_col, 100))
+fill(mmdon_bl1_p, mmdon_bl1_sm_top_p, top_value = mmdon_bl1_top, bottom_value = mmdon_bl1, bottom_color = color.new(mmdon_bl1_col, 60), top_color = color.new(mmdon_bl1_col, 90))
+fill(mmdon_bl1_p, mmdon_bl1_sm_bot_p, top_value = mmdon_bl1, bottom_value = mmdon_bl1_bot, top_color = color.new(mmdon_bl1_col, 60), bottom_color = color.new(mmdon_bl1_col, 90))
+
+var mmdon_bl2_dir = 0
+var color mmdon_bl2_col = na
+mmdon_bl2 = MMDon.ma(i_mmdon_bl2_t, close, i_mmdon_bl2_len, high, low, ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_bl2_dir := ohlc4 > mmdon_bl2 ? 1 : ohlc4 < mmdon_bl2 ? -1 : mmdon_bl2_dir[1]
+mmdon_bl2_col := mmdon_bl2_dir > 0 ? i_mmdon_bl2_col_bull : i_mmdon_bl2_col_bear
+mmdon_bl2_top = mmdon_bl2 + (mmdon_atr * 0.5)
+mmdon_bl2_bot = mmdon_bl2 - (mmdon_atr * 0.5)
+
+mmdon_bl2_p = plot(i_mmdon_bl2_show ? mmdon_bl2 : na, "MMDON BL2", mmdon_bl2_col, 1)
+mmdon_bl2_sm_top_p = plot(i_mmdon_bl2_show ? mmdon_bl2_top : na, "MMDON BL2 TOP", color.new(mmdon_bl2_col, 100))
+mmdon_bl2_sm_bot_p = plot(i_mmdon_bl2_show ? mmdon_bl2_bot : na, "MMDON BL2 BOT", color.new(mmdon_bl2_col, 100))
+fill(mmdon_bl2_p, mmdon_bl2_sm_top_p, top_value = mmdon_bl2_top, bottom_value = mmdon_bl2, bottom_color = color.new(mmdon_bl2_col, 60), top_color = color.new(mmdon_bl2_col, 90))
+fill(mmdon_bl2_p, mmdon_bl2_sm_bot_p, top_value = mmdon_bl2, bottom_value = mmdon_bl2_bot, top_color = color.new(mmdon_bl2_col, 60), bottom_color = color.new(mmdon_bl2_col, 90))
+
+
+
+//#endregion
+
+//#region [ --- MM DON HTF --- ]
+
+[mmdon_htf1_open,mmdon_htf1_close,mmdon_htf1_high,mmdon_htf1_low,mmdon_htf1_ohlc4,mmdon_htf1_hlc3]=request.security(syminfo.tickerid, i_mmdon_htf1_tf, [open,close,high,low,ohlc4,hlc3])
+[mmdon_htf2_open,mmdon_htf2_close,mmdon_htf2_high,mmdon_htf2_low,mmdon_htf2_ohlc4,mmdon_htf2_hlc3]=request.security(syminfo.tickerid, i_mmdon_htf2_tf, [open,close,high,low,ohlc4,hlc3])
+[mmdon_htf3_open,mmdon_htf3_close,mmdon_htf3_high,mmdon_htf3_low,mmdon_htf3_ohlc4,mmdon_htf3_hlc3]=request.security(syminfo.tickerid, i_mmdon_htf3_tf, [open,close,high,low,ohlc4,hlc3])
+[mmdon_htf4_open,mmdon_htf4_close,mmdon_htf4_high,mmdon_htf4_low,mmdon_htf4_ohlc4,mmdon_htf4_hlc3]=request.security(syminfo.tickerid, i_mmdon_htf4_tf, [open,close,high,low,ohlc4,hlc3])
+
+var mmdon_htf1_bl1_dir = 0
+var color mmdon_htf1_bl1_col = na
+mmdon_htf1_bl1 = MMDon.ma(i_mmdon_htf1_t, mmdon_htf1_close, i_mmdon_htf1_len, mmdon_htf1_high, mmdon_htf1_low, mmdon_htf1_ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_htf1_bl1_dir := mmdon_htf1_close > mmdon_htf1_bl1 ? 1 : mmdon_htf1_close < mmdon_htf1_bl1 ? -1 : mmdon_htf1_bl1_dir[1]
+mmdon_htf1_bl1_col := mmdon_htf1_bl1_dir > 0 ? i_mmdon_bl1_col_bull : i_mmdon_bl1_col_bear
+mmdon_htf1_bl1_top = mmdon_htf1_bl1 + (ta.ema(ta.tr, i_mmdon_htf1_len) * 0.2)
+mmdon_htf1_bl1_bot = mmdon_htf1_bl1 - (ta.ema(ta.tr, i_mmdon_htf1_len) * 0.2)
+
+if i_mmdon_htf1_alerts 
+    if mmdon_htf1_bl1_dir != mmdon_htf1_bl1_dir[1]
+        alert_msg = "🚨 MMDON HTF1 BASELINE 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+mmdon_htf1_bl1_p = plot(i_mmdon_htf1_show and not na(mmdon_htf1_bl1) and mmdon_htf1_bl1 != 0.0 ? mmdon_htf1_bl1 : na, "MMDON HTF1 BL1", mmdon_htf1_bl1_col, 4)
+//mmdon_htf1_bl1_sm_top_p = plot(i_mmdon_htf1_show ? mmdon_htf1_bl1_top : na, "MMDON HTF1 BL1 TOP", mmdon_htf1_bl1_col)
+//mmdon_htf1_bl1_sm_bot_p = plot(i_mmdon_htf1_show ? mmdon_htf1_bl1_bot : na, "MMDON HTF1 BL1 BOT", mmdon_htf1_bl1_col)
+//fill(mmdon_htf1_bl1_sm_top_p, mmdon_htf1_bl1_sm_bot_p, color.new(mmdon_htf1_bl1_col, 80))
+
+var mmdon_htf2_bl1_dir = 0
+var color mmdon_htf2_bl1_col = na
+mmdon_htf2_bl1 = MMDon.ma(i_mmdon_htf2_t, mmdon_htf2_close, i_mmdon_htf2_len, mmdon_htf2_high, mmdon_htf2_low, mmdon_htf2_ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_htf2_bl1_dir := mmdon_htf2_close > mmdon_htf2_bl1 ? 1 : mmdon_htf2_close < mmdon_htf2_bl1 ? -1 : mmdon_htf2_bl1_dir[1]
+mmdon_htf2_bl1_col := mmdon_htf2_bl1_dir > 0 ? i_mmdon_bl1_col_bull : i_mmdon_bl1_col_bear
+mmdon_htf2_bl1_top = mmdon_htf2_bl1 + (ta.ema(ta.tr, i_mmdon_htf2_len) * 0.2)
+mmdon_htf2_bl1_bot = mmdon_htf2_bl1 - (ta.ema(ta.tr, i_mmdon_htf2_len) * 0.2)
+
+if i_mmdon_htf2_alerts  
+    if mmdon_htf2_bl1_dir != mmdon_htf2_bl1_dir[1]
+        alert_msg = "🚨 MMDON HTF2 BASELINE 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+mmdon_htf2_bl1_p = plot(i_mmdon_htf2_show and not na(mmdon_htf2_bl1) and mmdon_htf2_bl1 != 0.0 ? mmdon_htf2_bl1 : na, "MMDON HTF2 BL1", mmdon_htf2_bl1_col, 4)
+//mmdon_htf2_bl1_sm_top_p = plot(i_mmdon_htf2_show ? mmdon_htf2_bl1_top : na, "MMDON HTF2 BL1 TOP", mmdon_htf2_bl1_col)
+//mmdon_htf2_bl1_sm_bot_p = plot(i_mmdon_htf2_show ? mmdon_htf2_bl1_bot : na, "MMDON HTF2 BL1 BOT", mmdon_htf2_bl1_col)
+//fill(mmdon_htf2_bl1_sm_top_p, mmdon_htf2_bl1_sm_bot_p, color.new(mmdon_htf2_bl1_col, 80))
+
+var mmdon_htf3_bl1_dir = 0
+var color mmdon_htf3_bl1_col = na
+mmdon_htf3_bl1 = MMDon.ma(i_mmdon_htf3_t, mmdon_htf3_close, i_mmdon_htf3_len, mmdon_htf3_high, mmdon_htf3_low, mmdon_htf3_ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_htf3_bl1_dir := mmdon_htf3_close > mmdon_htf3_bl1 ? 1 : mmdon_htf3_close < mmdon_htf3_bl1 ? -1 : mmdon_htf3_bl1_dir[1]
+mmdon_htf3_bl1_col := mmdon_htf3_bl1_dir > 0 ? i_mmdon_bl1_col_bull : i_mmdon_bl1_col_bear
+mmdon_htf3_bl1_top = mmdon_htf3_bl1 + (ta.ema(ta.tr, i_mmdon_htf3_len) * 0.2)
+mmdon_htf3_bl1_bot = mmdon_htf3_bl1 - (ta.ema(ta.tr, i_mmdon_htf3_len) * 0.2)
+
+if i_mmdon_htf3_alerts
+    if mmdon_htf3_bl1_dir != mmdon_htf3_bl1_dir[1]
+        alert_msg = "🚨 MMDON HTF3 BASELINE 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+mmdon_htf3_bl1_p = plot(i_mmdon_htf3_show and not na(mmdon_htf3_bl1) and mmdon_htf3_bl1 != 0.0 ? mmdon_htf3_bl1 : na, "MMDON HTF3 BL1", mmdon_htf3_bl1_col, 4)
+//mmdon_htf3_bl1_sm_top_p = plot(i_mmdon_htf3_show ? mmdon_htf3_bl1_top : na, "MMDON HTF3 BL1 TOP", mmdon_htf3_bl1_col)
+//mmdon_htf3_bl1_sm_bot_p = plot(i_mmdon_htf3_show ? mmdon_htf3_bl1_bot : na, "MMDON HTF3 BL1 BOT", mmdon_htf3_bl1_col)
+//fill(mmdon_htf3_bl1_sm_top_p, mmdon_htf3_bl1_sm_bot_p, color.new(mmdon_htf3_bl1_col, 80))
+
+var mmdon_htf4_bl1_dir = 0
+var color mmdon_htf4_bl1_col = na
+mmdon_htf4_bl1 = MMDon.ma(i_mmdon_htf4_t, mmdon_htf4_close, i_mmdon_htf4_len, mmdon_htf4_high, mmdon_htf4_low, mmdon_htf4_ohlc4, mmdon_jurik_power, mmdon_kidiv)
+mmdon_htf4_bl1_dir := mmdon_htf4_close > mmdon_htf4_bl1 ? 1 : mmdon_htf4_close < mmdon_htf4_bl1 ? -1 : mmdon_htf4_bl1_dir[1]
+mmdon_htf4_bl1_col := mmdon_htf4_bl1_dir > 0 ? i_mmdon_bl1_col_bull : i_mmdon_bl1_col_bear
+mmdon_htf4_bl1_top = mmdon_htf4_bl1 + (ta.ema(ta.tr, i_mmdon_htf4_len) * 0.2)
+mmdon_htf4_bl1_bot = mmdon_htf4_bl1 - (ta.ema(ta.tr, i_mmdon_htf4_len) * 0.2)
+
+if i_mmdon_htf4_alerts
+    if mmdon_htf4_bl1_dir != mmdon_htf4_bl1_dir[1]
+        alert_msg = "🚨 MMDON HTF4 BASELINE 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+mmdon_htf4_bl1_p = plot(i_mmdon_htf4_show and not na(mmdon_htf4_bl1) and mmdon_htf4_bl1 != 0.0 ? mmdon_htf4_bl1 : na, "MMDON HTF4 BL1", mmdon_htf4_bl1_col, 4)
+//mmdon_htf4_bl1_sm_top_p = plot(i_mmdon_htf4_show ? mmdon_htf4_bl1_top : na, "MMDON HTF4 BL1 TOP", mmdon_htf4_bl1_col)
+//mmdon_htf4_bl1_sm_bot_p = plot(i_mmdon_htf4_show ? mmdon_htf4_bl1_bot : na, "MMDON HTF4 BL1 BOT", mmdon_htf4_bl1_col)
+//fill(mmdon_htf4_bl1_sm_top_p, mmdon_htf4_bl1_sm_bot_p, color.new(mmdon_htf4_bl1_col, 80))
+
+
+//log.info("bs_tf2 -> "+str.tostring(bs_tf2))
+//log.info("bs_tf3 -> "+str.tostring(bs_tf3))
+//log.info("bs_tf4 -> "+str.tostring(bs_tf4))
+//log.info("ss_tf2 -> "+str.tostring(ss_tf2))
+//log.info("ss_tf3 -> "+str.tostring(ss_tf3))
+//log.info("ss_tf4 -> "+str.tostring(ss_tf4))
+
+//#endregion
+
+//#region [ --- MM DON MMMA --- ]
+
+var mmdon_mmma = 0.0
+var mmdon_mmma_op = 0.0
+var mmdon_mmma_dir = 0
+var color mmdon_mmma_col = na
+
+mmdon_mmma := MMDon.MMMA_Close(ohlc4, i_mmdon_mmma_len)
+mmdon_mmma_op := MMDon.MMMA_Open(open, i_mmdon_mmma_len)
+
+mmdon_mmma_dir := mmdon_mmma > mmdon_mmma_op[1] ? 1 : -1
+mmdon_mmma_col := mmdon_mmma_dir > 0 ? i_mmdon_mmma_col_bull : i_mmdon_mmma_col_bear
+
+if i_mmdon_mmma_alerts
+    if mmdon_mmma_dir != mmdon_mmma_dir[1]
+        alert_msg = "🚨 MMDON MMMA 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+plot(i_mmdon_mmma_show and not na(mmdon_mmma) and mmdon_mmma != 0.0 ? mmdon_mmma : na, "MMMA", color.new(mmdon_mmma_col, 80), 6, plot.style_circles)
+plot(i_mmdon_mmma_show and not na(mmdon_mmma) and mmdon_mmma != 0.0 ? mmdon_mmma : na, "MMMA", mmdon_mmma_col, 2, plot.style_circles)
+
+//#endregion
+
+//#region [ --- VOLUMETRIC TREND --- ]
+
+var vol_trend_v = 0.0
+var vol_trend_dir = 0
+var color vol_trend_col = na
+
+//#region [ --- FUNCTIONS --- ]
+
+F_VT_CALC(float _src, int _len, int _momentum)=>
+    float momentum         = ta.change(_src)
+    float sum_pos_momentum = math.sum((momentum >= 0) ? momentum : 0.0, _momentum)
+    float sum_neg_momentum = math.sum((momentum >= 0) ? 0.0 : -momentum, _momentum)
+    float abs_cmo          = math.abs(100 * (sum_pos_momentum - sum_neg_momentum) / (sum_pos_momentum + sum_neg_momentum))
+    float alpha            = 2 / (_len + 1)
+    var float vidya_value  = 0.0
+    vidya_value           := alpha * abs_cmo / 100 * _src + (1 - alpha * abs_cmo / 100) * nz(vidya_value[1])
+
+    ta.sma(vidya_value, 15)
+
+//#endregion
+
+vol_trend_vt = F_VT_CALC(i_vt_src, i_vt_len, i_vt_momentum)
+vol_trend_atr = ta.atr(200)
+
+float vol_trend_upper_band = vol_trend_vt + vol_trend_atr * i_vt_distance
+float vol_trend_lower_band = vol_trend_vt - vol_trend_atr * i_vt_distance
+
+if i_vt_src > vol_trend_upper_band and vol_trend_dir<=0
+    vol_trend_dir := 1
+
+if i_vt_src < vol_trend_lower_band and vol_trend_dir>=0
+    vol_trend_dir := -1
+
+vol_trend_v := vol_trend_dir > 0 ? vol_trend_lower_band : vol_trend_upper_band
+vol_trend_col := vol_trend_dir > 0 ? i_vt_col_bull : i_vt_col_bear
+vol_trend_col := vol_trend_dir != vol_trend_dir[1] ? na : vol_trend_col
+
+if vol_trend_dir != vol_trend_dir[1]
+    if i_vt_alerts
+        alert_msg = "🚨 VOLUMETRIC TREND 🚨\n🔃 Direction Change 🔃"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+p_vol = plot(i_vt_show ? vol_trend_v : na, color = vol_trend_col,style = plot.style_linebr, title = "VOLUMETRIC TREND")
+p_vol_p = plot(i_vt_show ? ohlc4 : na, color = color.new(vol_trend_col, 100), title = "VOLUMETRIC TREND GHOST", editable = false)
+fill(p_vol, p_vol_p, top_value = vol_trend_dir > 0 ? ohlc4 : vol_trend_v, bottom_value = vol_trend_dir > 0 ? vol_trend_v : ohlc4, top_color = color.new(vol_trend_col, vol_trend_dir > 0 ? 100 : 80), bottom_color = color.new(vol_trend_col, vol_trend_dir > 0 ? 80 : 100))
+
+//#endregion
+
+//#region [ --- CAPO OSC --- ]
+
+//#region [ --- FUNCTIONS --- ]
+
+ma_capo_oscMTF(type, src, len) =>
+    almaCalc = request.security(syminfo.tickerid, i_capo_osc_tf, ta.alma(src, len, 0.85, 6), lookahead=barmerge.lookahead_on)
+    stDev = request.security(syminfo.tickerid, i_capo_osc_tf, ta.stdev(src, i_capo_osc_bblen), lookahead=barmerge.lookahead_on)
+    [almaCalc,stDev]
+    
+ma_capo_osc(type, src, len) =>
+    float result = 0
+    [smaCalc, emaCalc, wmaCalc, hmaCalc, emaHigh, emaLow, stDev, tf_src] = request.security(syminfo.tickerid, i_capo_osc_tf, [ta.sma(src, len),ta.ema(src, len),ta.wma(src, len),ta.hma(src, len), ta.hma(high, len), ta.hma(low, len), ta.stdev(src, i_capo_osc_bblen), src], lookahead=barmerge.lookahead_off)
+    
+    Hlv = int(na)
+    Hlv := tf_src > emaHigh ? 1 : tf_src < emaLow ? -1 : Hlv[1]
+    
+    if type=="SMA" // Simple
+        result := smaCalc
+    if type=="EMA" // Exponential
+        result := emaCalc
+    if type=="WMA" // Weighted
+        result := wmaCalc
+    if type=="HMA" // Hull
+        result := hmaCalc
+    if type=="SSL"
+        result:= Hlv < 0 ? emaHigh : emaLow
+    if type=="SMOOTH"
+        result := na(result[1]) ? smaCalc : (result[1] * (len - 1) + src) / len
+    
+    [result, stDev]
+
+//#endregion
+
+[capo_basis, capo_stDev] = ma_capo_osc(i_capo_osc_ma_type, i_capo_osc_src, i_capo_osc_bblen)
+capo_dev = i_capo_osc_bbmult * capo_stDev
+capo_upper = capo_basis + capo_dev
+capo_lower = capo_basis - capo_dev
+capo_upper1 = capo_basis + capo_dev/2
+capo_lower1 = capo_basis - capo_dev/2
+capo_upper3 = capo_basis + capo_dev*1.5
+capo_lower3 = capo_basis - capo_dev*1.5
+capo_up_bar=open<=close
+capo_up_break2=high-capo_upper
+capo_low_break2=low-capo_lower
+capo_up_break1=high-capo_upper1
+capo_low_break1=low-capo_lower1
+capo_up_break3=high-capo_upper3
+capo_low_break3=low-capo_lower3
+
+//#endregion
+
+//#region [ --- CHOPPER --- ]
+
+var chop_act = false
+var chop_cond = false
+var chop_status = 0
+
+chop_up = HALib.anyma(math.max(ta.change(i_chop_src), 0),i_chop_ma_len,i_chop_ma_type)
+chop_down = HALib.anyma(-math.min(ta.change(i_chop_src), 0),i_chop_ma_len,i_chop_ma_type)
+chop_rsi = chop_down == 0 ? 100 : chop_up == 0 ? 0 : 100 - (100 / (1 + chop_up / chop_down))
+
+chop_cond := chop_rsi >= i_chop_lt and chop_rsi <= i_chop_ut
+if chop_cond and not chop_act[1]
+    chop_act := true
+else if chop_cond and chop_act[1] and chop_act
+    chop_status := 1
+else
+    chop_act := false
+
+if i_chop_alerts
+    if chop_act and not chop_act[1]
+        alert_msg = "🚨 CHOPPER 🚨\n💤 Entering Chop Zone 💤"
+        alert(alert_msg, alert.freq_once_per_bar)
+    if not chop_act and chop_act[1]
+        alert_msg = "🚨 CHOPPER 🚨\n⚡ Exiting Chop Zone ⚡"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+barcolor(i_chop_show and chop_act ? i_chop_col : na, title = "CHOPPER")
+
+//#endregion
+
+//#region [ --- SESSIONS --- ]
+
+int sess1 = time(timeframe.period, i_sess_lon_sess,tz)
+int sess2 = time(timeframe.period, i_sess_ny_sess,tz)
+int sess3 = time(timeframe.period, i_sess_tok_sess,tz)
+
+int sess1_str = time(timeframe.period, i_sess_lon_sess,tz)
+int sess2_str = time(timeframe.period, i_sess_ny_sess,tz)
+int sess3_str = time(timeframe.period, i_sess_tok_sess,tz)
+
+[sess1T, sess1B] = SessInBoxes.get_positions_func(sess1, LOOKBACKMINS)
+[sess2T, sess2B] = SessInBoxes.get_positions_func(sess2, LOOKBACKMINS)
+[sess3T, sess3B] = SessInBoxes.get_positions_func(sess3, LOOKBACKMINS)
+
+[lon_co_s, lon_cu_s] = SessInBoxes.get_op_stricts(sess1, SessInBoxes.is_start(sess1), sess1T, sess1B,i_sessd_or_lb)
+[ny_co_s, ny_cu_s] = SessInBoxes.get_op_stricts(sess2, SessInBoxes.is_start(sess2), sess2T, sess2B,i_sessd_or_lb)
+[tok_co_s, tok_cu_s] = SessInBoxes.get_op_stricts(sess3, SessInBoxes.is_start(sess3), sess3T, sess3B,i_sessd_or_lb)
+
+[lon_pmt_s_, lon_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_lon_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess1)
+[ny_pmt_s_, ny_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_ny_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess2)
+[tok_pmt_s_, tok_pmb_s_] = SessInBoxes.get_pm_stricts(i_sess_tok_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess3)
+
+
+lon_pmt_s =0.0 
+lon_pmb_s =0.0
+ny_pmt_s  =0.0
+ny_pmb_s  =0.0
+tok_pmt_s =0.0
+tok_pmb_s =0.0
+
+lon_pmt_s := sess1 and not sess1[1] ? lon_pmt_s_:lon_pmt_s[1]
+lon_pmb_s := sess1 and not sess1[1] ? lon_pmb_s_:lon_pmb_s[1]
+ny_pmt_s  := sess2 and not sess2[1] ?ny_pmt_s_:ny_pmt_s[1] 
+ny_pmb_s  := sess2 and not sess2[1] ?ny_pmb_s_:ny_pmb_s[1] 
+tok_pmt_s := sess3 and not sess3[1] ? tok_pmt_s_:tok_pmt_s[1]
+tok_pmb_s := sess3 and not sess3[1] ? tok_pmb_s_:tok_pmb_s[1]
+
+
+lon_s = SessInBoxes.draw(i_sess_lon_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess1, i_sess_lon_col, "London", "NO", i_sessd_fib, i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess1T, sess1B,tz,i_sess_sty_lbl_fmt_day)
+ny_s = SessInBoxes.draw(i_sess_ny_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess2, i_sess_ny_col, "New York", "NO", i_sessd_fib, i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess2T, sess2B,tz,i_sess_sty_lbl_fmt_day)
+tok_s = SessInBoxes.draw(i_sess_tok_show,i_sessd_psr,i_sessd_psr_tf, timeframe.period, sess3, i_sess_tok_col, "Tokyo", "NO", i_sessd_fib,  i_sessd_or,i_sess_sty_lbl_chg,i_sess_sty_lbl_sz,i_sess_sty_lbl_pos,i_sessd_or_lb,i_sessd_or_op,RECT_LINESTYLE,i_sess_sty_bw,i_sess_sty_bg,i_sessd_h,i_sess_sty_sc,i_sess_sty_lbl,i_sessd_fib_lw,FIB_LINESTYLE, sess3T, sess3B,tz,i_sess_sty_lbl_fmt_day)
+
+if i_sessd_alerts
+
+    if lon_s and not lon_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇬🇧 London Session Started 🇬🇧"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+    if not lon_s and lon_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇬🇧 London Session Ended 🇬🇧"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+    if ny_s and not ny_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇺🇸 New York Session Started 🇺🇸"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+    if not ny_s and ny_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇺🇸 New York Session Ended 🇺🇸"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+    if tok_s and not tok_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇯🇵 Tokyo Session Started 🇯🇵"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+    if not tok_s and tok_s[1]
+        alert_msg = "🚨 SESSIONS 🚨\n🇯🇵 Tokyo Session Ended 🇯🇵"
+        alert(alert_msg, alert.freq_once_per_bar)
+
+
+//#endregion
+
+//#endregion
+
+//#region [ --- TRADE MANAGEMENT --- ]
+
+type TRADE 
+    int id 
+    string id_str
+    string id_str_bridge
+    int dt_0
+    int dt_1
+    int idx_1 
+    int idx_2
+    int dir 
+    int st
+    float ps
+    float ep
+    float sl
+    float sl_abs
+    bool sl_tb
+    bool ts_act
+    float ts
+    float ts_abs
+    int ts_upd
+    float tp1
+    float tp1_abs
+    bool tp1_hit
+    float tp2
+    float tp2_abs
+    bool tp2_hit
+    float tp3
+    float tp3_abs
+    bool tp3_hit
+    box[] profit_box
+    box[] loss_box
+    line[] ep_line
+    label[] ep_label
+    line[] sl_line
+    label[] sl_label
+    line[] ts_line
+    label[] ts_label
+    line[] tp1_line
+    label[] tp1_label
+    line[] tp2_line
+    label[] tp2_label
+    line[] tp3_line
+    label[] tp3_label
+    label[] misc_label
+    float pnl
+    int result 
+
+var is_trade = false
+var trades = array.new<TRADE>()
+var signal = 0
+var trade_mxwl = false
+var trade_mxwl_w = 0
+var trade_mxwl_l = 0
+
+if i_td_mw
+    if timeframe.change('D')
+        trade_mxwl := false
+        trade_mxwl_w := 0
+        trade_mxwl_l := 0
+    else 
+
+        if not trade_mxwl
+            if trade_mxwl_w >= i_td_mw_w
+                trade_mxwl := true
+            if trade_mxwl_l >= i_td_mw_l
+                trade_mxwl := true
+
+
+//#region [ --- FUNCTIONS --- ]
+
+//#region [ --- OBJ FUNCTIONS --- ]
+
+//---
+method F_TRADE_MNGMT_LINE_GEN(
+  line[] _line,
+  bool _is_line,
+  int _t0,
+  int _t1,
+  float _v,
+  color _col,
+  string _sty,
+  int _w
+  )=>
+    _line.push(
+      _is_line ?
+      line.new(
+      _t0,
+      _v,
+      _t1,
+      _v,
+      xloc.bar_time,
+      extend.none,
+      _col,
+      _sty,
+      _w
+      )
+      :na
+      )
+//---
+method F_TRADE_MNGMT_LINE_UPD(
+  line[] _line,
+  bool _is_line,
+  float _v
+  )=>
+    if _is_line
+        _line.last().set_y1(_v)
+        _line.last().set_y2(_v)
+//---
+method F_TRADE_MNGMT_LABEL_GEN(
+  label[] _label,
+  bool _is_lbl,
+  int _t0,
+  float _v,
+  string _txt,
+  color _col,
+  string _sty,
+  color _col_txt,
+  string _yloc = "yloc.price"
+  )=>
+    _label.push(
+      _is_lbl ?
+      label.new(
+      _t0,
+      _v,
+      _txt,
+      xloc.bar_time,
+      _yloc,
+      _col,
+      _sty,
+      _col_txt
+      )
+      : na
+      )
+//---
+method F_TRADE_MNGMT_LABEL_UPD(
+  label[] _label,
+  bool _is_lbl,
+  float _v
+  )=>
+    if _is_lbl
+        _label.last().set_y(_v)
+//---
+
+//#endregion
+
+atr_vc = ta.atr(i_add_entry_strict_vc_len)*i_add_entry_strict_vc_mult
+F_SIGNAL_ENTRY()=>
+
+    //signal = renko_final > renko_final[1] ? 1 : renko_final < renko_final[1] ? -1 : 0
+    signal_bl1 = i_mmdon_any_t ? (close > mmdon_bl1 ? 1 : close < mmdon_bl1 ? -1 : 0) :
+      ((close > mmdon_bl1 and close[1] < mmdon_bl1[1]) ? 1 : (close < mmdon_bl1 and close[1] > mmdon_bl1[1]) ? -1 : 0) 
+    signal_bl2 = i_mmdon_any_t ? (close > mmdon_bl2 ? 2 : close < mmdon_bl2 ? -2 : 0) :
+      ((close > mmdon_bl2 and close[1] < mmdon_bl2[1]) ? 2 : (close < mmdon_bl2 and close[1] > mmdon_bl2[1]) ? -2 : 0) 
+    
+    signal = 0
+
+    if i_mmdon_sign_t == "Baseline 1" and signal_bl1 != 0
+        signal := signal_bl1
+    else if i_mmdon_sign_t == "Baseline 1 + 2" and signal_bl2 != 0
+        signal := signal_bl2
+
+    //if i_mmdon_any_t
+    //    signal_bl1_any_t = close > mmdon_bl1 ? 1 : close < mmdon_bl1 ? -1 : 0
+    //    signal_bl2_any_t = close > mmdon_bl2 ? 2 : close < mmdon_bl2 ? -2 : 0
+    //    signal_any_t = 0
+    //    if i_mmdon_sign_t == "Baseline 1" and signal_bl1_any_t != 0
+    //        signal_any_t := signal_bl1_any_t
+    //    else if i_mmdon_sign_t == "Baseline 1 + 2" and signal_bl2_any_t != 0
+    //        signal_any_t := signal_bl2_any_t
+    //    strict_htf1_any_t = signal_any_t > 0 ? mmdon_htf1_bl1_dir > 0 and mmdon_htf1_bl1_dir[1] < 0 : mmdon_htf1_bl1_dir < 0 and mmdon_htf1_bl1_dir[1] > 0
+    //    strict_htf2_any_t = signal_any_t > 0 ? mmdon_htf2_bl1_dir > 0 and mmdon_htf2_bl1_dir[1] < 0 : mmdon_htf2_bl1_dir < 0 and mmdon_htf2_bl1_dir[1] > 0
+    //    strict_htf3_any_t = signal_any_t > 0 ? mmdon_htf3_bl1_dir > 0 and mmdon_htf3_bl1_dir[1] < 0 : mmdon_htf3_bl1_dir < 0 and mmdon_htf3_bl1_dir[1] > 0
+    //    strict_htf4_any_t = signal_any_t > 0 ? mmdon_htf4_bl1_dir > 0 and mmdon_htf4_bl1_dir[1] < 0 : mmdon_htf4_bl1_dir < 0 and mmdon_htf4_bl1_dir[1] > 0
+    //    strict_mmma_any_t = signal_any_t > 0 ? mmdon_mmma_dir > 0 and mmdon_mmma_dir[1] < 0 : mmdon_mmma_dir < 0 and mmdon_mmma_dir[1] > 0
+    //    strict_vt_any_t = signal_any_t > 0 ? vol_trend_dir > 0 and vol_trend_dir[1] < 0 : vol_trend_dir < 0 and vol_trend_dir[1] > 0
+    //    strict_capo_osc_l1_any_t = signal_any_t > 0 ? capo_up_break1 >= 0 and capo_up_break1[1] < 0 : capo_up_break1 <= 0 and capo_up_break1[1] > 0
+    //    strict_capo_osc_l2_any_t = signal_any_t > 0 ? capo_up_break2 >= 0 and capo_up_break2[1] < 0 : capo_up_break2 <= 0 and capo_up_break2[1] > 0
+    //    strict_capo_osc_l3_any_t = signal_any_t > 0 ? capo_up_break3 >= 0 and capo_up_break3[1] < 0 : capo_up_break3 <= 0 and capo_up_break3[1] > 0
+    //    strict_chopper_any_t = not chop_act and chop_act[1]
+    //    strict_any_t = 
+    //      (i_mmdon_htf1_strict ? strict_htf1_any_t : false) or
+    //      (i_mmdon_htf2_strict ? strict_htf2_any_t : false) or
+    //      (i_mmdon_htf3_strict ? strict_htf3_any_t : false) or
+    //      (i_mmdon_htf4_strict ? strict_htf4_any_t : false) or
+    //      (i_mmdon_mmma_strict ? strict_mmma_any_t : false) or
+    //      (i_vt_strict ? strict_vt_any_t : false) or
+    //      (i_capo_osc_l1_strict ? strict_capo_osc_l1_any_t : false) or
+    //      (i_capo_osc_l2_strict ? strict_capo_osc_l2_any_t : false) or
+    //      (i_capo_osc_l3_strict ? strict_capo_osc_l3_any_t : false) or
+    //      (i_chop_strict ? strict_chopper_any_t : false)
+    //    log.info("strict_any_t_vt: " + str.tostring(strict_vt_any_t))
+    //    log.info("strict_any_t_mmma: " + str.tostring(strict_mmma_any_t))
+    //    log.info("strict_any_t: " + str.tostring(strict_any_t))
+    //    signal := signal_any_t != 0 and strict_any_t ? signal_any_t : 0
+
+    if signal != 0
+
+        strict_any = 
+          i_add_entry_strict_cc or
+          i_add_entry_strict_vc or
+          i_mmdon_htf1_strict or
+          i_mmdon_htf2_strict or
+          i_mmdon_htf3_strict or
+          i_mmdon_htf4_strict or
+          i_mmdon_mmma_strict or
+          i_vt_strict or
+          i_capo_osc_l1_strict or
+          i_capo_osc_l2_strict or
+          i_capo_osc_l3_strict or
+          i_capo_osc_bbsq_strict or
+          i_chop_strict or
+          i_dow_mon or
+          i_dow_tue or 
+          i_dow_wed or
+          i_dow_thu or
+          i_dow_fri or
+          i_dow_sat or
+          i_dow_sun or
+          i_td_dir_bias != "Both"
+
+        strict_cc = signal > 0 ? close > open : close < open
+        strict_vc = math.abs(high-low) > atr_vc
+        strict_htf1 = signal > 0 ? mmdon_htf1_bl1_dir > 0 : mmdon_htf1_bl1_dir < 0
+        strict_htf2 = signal > 0 ? mmdon_htf2_bl1_dir > 0 : mmdon_htf2_bl1_dir < 0
+        strict_htf3 = signal > 0 ? mmdon_htf3_bl1_dir > 0 : mmdon_htf3_bl1_dir < 0
+        strict_htf4 = signal > 0 ? mmdon_htf4_bl1_dir > 0 : mmdon_htf4_bl1_dir < 0
+        strict_mmma = signal > 0 ? mmdon_mmma_dir > 0 : mmdon_mmma_dir < 0
+        strict_vt = signal > 0 ? vol_trend_dir > 0 : vol_trend_dir < 0
+        strict_capo_osc_l1 = signal > 0 ? capo_up_break1 >= 0 : capo_up_break1 <= 0
+        strict_capo_osc_l2 = signal > 0 ? capo_up_break2 >= 0 : capo_up_break2 <= 0
+        strict_capo_osc_l3 = signal > 0 ? capo_up_break3 >= 0 : capo_up_break3 <= 0
+        strict_chopper = not chop_act
+
+        strict_dow = i_dow_mon or i_dow_tue or i_dow_wed or i_dow_thu or i_dow_fri or i_dow_sat or i_dow_sun
+        strict_dow_conf = (i_dow_mon ? dayofweek == 2 : false) or (i_dow_tue ? dayofweek == 3 : false) or (i_dow_wed ? dayofweek == 4 : false) or (i_dow_thu ? dayofweek == 5 : false) or (i_dow_fri ? dayofweek == 6 : false) or (i_dow_sat ? dayofweek == 7 : false) or (i_dow_sun ? dayofweek == 1 : false)
+
+        strict_td_dir_bias = i_td_dir_bias != "Both" 
+        strict_td_dir_bias_conf = i_td_dir_bias == "Long" ? signal > 0 : i_td_dir_bias == "Short" ? signal < 0 : true
+
+        strictTimeframe = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str) or (i_sess_lon_strict and sess1_str  ) or (i_sess_ny_strict and sess2_str  )) : true
+        strictTimeframeORb = i_sessd_or_str ? ((i_sessd_or_str and tok_co_s) or (i_sessd_or_str and lon_co_s) or (i_sessd_or_str and ny_co_s)) : true 
+        strictTimeframeORs = i_sessd_or_str ? ((i_sessd_or_str and tok_cu_s) or (i_sessd_or_str and lon_cu_s) or (i_sessd_or_str and ny_cu_s)) : true
+
+        strictTimeframePMT = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str and (i_sessd_psr_str? (close>tok_pmt_s) :true )) or (i_sess_lon_strict and sess1_str and (i_sessd_psr_str? (close>lon_pmt_s) :true ) ) or (i_sess_ny_strict and sess2_str and (i_sessd_psr_str? (close>ny_pmt_s) :true ) )) : true
+        strictTimeframePMB = i_sess_tok_strict or i_sess_lon_strict or i_sess_ny_strict ? ((i_sess_tok_strict and sess3_str and (i_sessd_psr_str? (close<tok_pmb_s) :true )) or (i_sess_lon_strict and sess1_str and (i_sessd_psr_str? (close<lon_pmb_s) :true ) ) or (i_sess_ny_strict and sess2_str and (i_sessd_psr_str? (close<ny_pmb_s) :true ) )) : true
+
+
+
+        strict = 
+          (i_add_entry_strict_cc ? strict_cc : true) and
+          (i_add_entry_strict_vc ? strict_vc : true) and
+          (i_mmdon_htf1_strict ? strict_htf1 : true) and
+          (i_mmdon_htf2_strict ? strict_htf2 : true) and
+          (i_mmdon_htf3_strict ? strict_htf3 : true) and
+          (i_mmdon_htf4_strict ? strict_htf4 : true) and
+          (i_mmdon_mmma_strict ? strict_mmma : true) and
+          (i_vt_strict ? strict_vt : true) and
+          (i_capo_osc_l1_strict ? strict_capo_osc_l1 : true) and
+          (i_capo_osc_l2_strict ? strict_capo_osc_l2 : true) and
+          (i_capo_osc_l3_strict ? strict_capo_osc_l3 : true) and
+          (i_chop_strict ? strict_chopper : true) and
+          (strict_dow ? not strict_dow_conf : true) and
+          (strict_td_dir_bias ? strict_td_dir_bias_conf : true)
+
+        signal := strict_any ? strict ? signal : 0 : signal
+
+        if signal > 0
+            if strictTimeframe and strictTimeframeORb and strictTimeframePMT
+                signal := signal
+            else
+                signal := 0
+        else if signal < 0
+            if strictTimeframe and strictTimeframeORs and strictTimeframePMB
+                signal := signal
+            else
+                signal := 0
+
+
+    signal
+
+F_SIGNAL_EXIT(int _dir)=>
+    exit_any = 
+      i_mmdon_exit != "None" or
+      i_mmdon_htf1_exit or
+      i_mmdon_htf2_exit or
+      i_mmdon_htf3_exit or
+      i_mmdon_htf4_exit or
+      i_mmdon_mmma_exit or
+      i_vt_exit or
+      i_capo_osc_l1_exit or
+      i_capo_osc_l2_exit or
+      i_capo_osc_l3_exit or
+      i_capo_osc_bbsq_exit or
+      i_chop_exit or
+      i_sess_tok_exit or
+      i_sess_lon_exit or
+      i_sess_ny_exit
+
+    exit_mmdon = _dir > 0 ? (i_mmdon_exit == "Baseline 1" ? close < mmdon_bl1 : close < mmdon_bl2) : (i_mmdon_exit == "Baseline 1" ? close > mmdon_bl1 : close > mmdon_bl2)
+    exit_htf1 = _dir > 0 ? mmdon_htf1_bl1_dir < 0 : mmdon_htf1_bl1_dir > 0
+    exit_htf2 = _dir > 0 ? mmdon_htf2_bl1_dir < 0 : mmdon_htf2_bl1_dir > 0
+    exit_htf3 = _dir > 0 ? mmdon_htf3_bl1_dir < 0 : mmdon_htf3_bl1_dir > 0
+    exit_htf4 = _dir > 0 ? mmdon_htf4_bl1_dir < 0 : mmdon_htf4_bl1_dir > 0
+    exit_mmma = _dir > 0 ? mmdon_mmma_dir < 0 : mmdon_mmma_dir > 0
+    exit_vt = _dir > 0 ? vol_trend_dir < 0 : vol_trend_dir > 0
+    exit_capo_osc_l1 = _dir > 0 ? capo_low_break1 <= 0 : capo_low_break1 >= 0
+    exit_capo_osc_l2 = _dir > 0 ? capo_low_break2 <= 0 : capo_low_break2 >= 0
+    exit_capo_osc_l3 = _dir > 0 ? capo_low_break3 <= 0 : capo_low_break3 >= 0
+    exit_chopper = chop_act
+
+    exit_session = i_sess_tok_exit or i_sess_lon_exit or i_sess_ny_exit
+    exit_session_conf = 
+      (i_sess_tok_exit and (not sess3_str) and sess3_str[1]) or 
+      (i_sess_lon_exit and (not sess1_str) and sess1_str[1]) or 
+      (i_sess_ny_exit and (not sess2_str) and sess2_str[1])
+
+    exit = 
+      (i_mmdon_exit != "None" ? exit_mmdon : false) or
+      (i_mmdon_htf1_exit ? exit_htf1 : false) or
+      (i_mmdon_htf2_exit ? exit_htf2 : false) or
+      (i_mmdon_htf3_exit ? exit_htf3 : false) or
+      (i_mmdon_htf4_exit ? exit_htf4 : false) or
+      (i_mmdon_mmma_exit ? exit_mmma : false) or
+      (i_vt_exit ? exit_vt : false) or
+      (i_capo_osc_l1_exit ? exit_capo_osc_l1 : false) or
+      (i_capo_osc_l2_exit ? exit_capo_osc_l2 : false) or
+      (i_capo_osc_l3_exit ? exit_capo_osc_l3 : false) or
+      (i_chop_exit ? exit_chopper : false) or
+      (exit_session ? exit_session_conf : false)
+
+    exit := exit_any ? exit : false
+    exit
+
+var id_str_ch_arr = array.new_string()
+if barstate.isfirst
+    id_str_ch_arr.push("a")
+    id_str_ch_arr.push("b")
+    id_str_ch_arr.push("c")
+    id_str_ch_arr.push("d")
+    id_str_ch_arr.push("e")
+    id_str_ch_arr.push("f")
+    id_str_ch_arr.push("g")
+    id_str_ch_arr.push("h")
+    id_str_ch_arr.push("i")
+    id_str_ch_arr.push("j")
+    id_str_ch_arr.push("k")
+    id_str_ch_arr.push("l")
+    id_str_ch_arr.push("m")
+    id_str_ch_arr.push("n")
+    id_str_ch_arr.push("o")
+    id_str_ch_arr.push("p")
+    id_str_ch_arr.push("q")
+    id_str_ch_arr.push("r")
+    id_str_ch_arr.push("s")
+    id_str_ch_arr.push("t")
+    id_str_ch_arr.push("u")
+    id_str_ch_arr.push("v")
+    id_str_ch_arr.push("w")
+    id_str_ch_arr.push("x")
+    id_str_ch_arr.push("y")
+    id_str_ch_arr.push("z")
+    id_str_ch_arr.push("0")
+    id_str_ch_arr.push("1")
+    id_str_ch_arr.push("2")
+    id_str_ch_arr.push("3")
+    id_str_ch_arr.push("4")
+    id_str_ch_arr.push("5")
+    id_str_ch_arr.push("6")
+    id_str_ch_arr.push("7")
+    id_str_ch_arr.push("8")
+    id_str_ch_arr.push("9")
+    
+F_TRADE_ID_STR_GEN(int _id)=>
+    
+    id_str_f = ""
+    for i = 0 to 16
+        idx = 0
+        idx := math.ceil( math.random(0, array.size(id_str_ch_arr)-1) )
+        id_str_f := id_str_f + id_str_ch_arr.get(idx)
+    if id_str_f == ""
+        runtime.error("Failure in generating Trade ID for Trade[" + str.tostring(_id) + "]. Please Reload the Strategy on your Chart.")
+    id_str_f:="id-"+id_str_f
+    id_str_f
+
+
+atr_sl = ta.atr(i_sl_atr_lb)*i_sl_atr_m
+atr_ts = ta.atr(i_ts_atr_lb)*i_ts_atr_m
+
+var id_string = ""
+
+F_TRADE_OPEN(int _dir)=>
+
+    var TRADE new_trade = TRADE.new()
+    new_trade.id := array.size(trades)
+    new_trade.id_str := str.tostring(new_trade.id)
+    new_trade.id_str_bridge := id_string  
+    new_trade.dt_0 := time
+    new_trade.dt_1 := time + ((time-time[1])*5)
+    new_trade.idx_1 := bar_index
+    new_trade.idx_2 := bar_index
+    new_trade.dir := _dir
+    new_trade.st := _dir > 0 ? 1 : -1
+    new_trade.ep := close
+
+    //#region [ --- SL --- ]
+
+    sl_fix = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * i_sl_fix)
+    sl_atr = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * atr_sl)
+    sl_bl = F_GLOBAL_MT_ROUND(new_trade.ep + (_dir*-1) * math.abs(close - ((_dir == 1 or _dir == -1)?mmdon_bl1:mmdon_bl2)))
+   
+    sl = 
+      i_sl_m == "Fixed" ? sl_fix :
+      i_sl_m == "ATR" ? sl_atr :
+      i_sl_m == "Signal Baseline" ? sl_bl :
+      na
+
+    
+    new_trade.sl := F_GLOBAL_MT_ROUND(_dir > 0 ? sl - (i_sl_m == "Signal Baseline" ? i_sl_off : 0) : sl + (i_sl_m == "Signal Baseline" ? i_sl_off : 0))
+      
+    new_trade.sl_abs := math.abs(new_trade.sl-new_trade.ep)
+
+    //#endregion
+
+    //#region [ --- TS --- ]
+
+    new_trade.sl_tb := false
+    new_trade.ts_act := i_ts_tr == "SB" and i_ts_m != "None"
+
+    ts_fix = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * i_ts_fix)
+    ts_atr = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * atr_ts)
+    ts_bl1 = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * math.abs(close - mmdon_bl1))
+    ts_bl2 = F_GLOBAL_MT_ROUND(new_trade.ep + _dir * math.abs(close - mmdon_bl2))
+
+    ts = 
+      i_ts_m == "Fixed" ? ts_fix :
+      i_ts_m == "ATR" ? ts_atr :
+      i_ts_m == "Baseline 1" ? ts_bl1 :
+      i_ts_m == "Baseline 2" ? ts_bl2 :
+      i_ts_m == "SL" ? new_trade.sl :
+      na
+
+    new_trade.ts :=  new_trade.ts_act ? ts : _dir > 0 ? 0.0 : 100000000000.0
+    new_trade.ts_abs := math.abs(new_trade.ts-new_trade.ep)
+    new_trade.ts_upd := 0
+
+    //#endregion
+
+    //#region [ --- TP1 --- ]
+
+    tp1 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp1_v : new_trade.ep - i_tp1_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp1_v*new_trade.sl_abs) : new_trade.ep - (i_tp1_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp1 := tp1
+    new_trade.tp1_abs := math.abs(new_trade.tp1-new_trade.ep)
+    new_trade.tp1_hit := false
+
+    //#endregion
+
+    //#region [ --- TP2 --- ]
+
+    tp2 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp2_v : new_trade.ep - i_tp2_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp2_v*new_trade.sl_abs) : new_trade.ep - (i_tp2_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp2 := i_tp2_on ? tp2 : na
+    new_trade.tp2_abs := i_tp2_on ? math.abs(new_trade.tp2-new_trade.ep) : na
+    new_trade.tp2_hit := false
+
+    //#endregion
+
+    //#region [ --- TP3 --- ]
+
+    tp3 = 
+      F_GLOBAL_MT_ROUND(
+      i_tp_m == "Fixed" ? ( _dir > 0 ? new_trade.ep + i_tp3_v : new_trade.ep - i_tp3_v ) :
+      ( _dir > 0 ? new_trade.ep + (i_tp3_v*new_trade.sl_abs) : new_trade.ep - (i_tp3_v*new_trade.sl_abs) )
+      )
+
+    new_trade.tp3 := i_tp3_on ? tp3 : na
+    new_trade.tp3_abs := i_tp3_on ? math.abs(new_trade.tp3-new_trade.ep) : na
+    new_trade.tp3_hit := false
+
+    //#endregion
+
+    //#region [ --- OBJ --- ]
+
+    new_trade.misc_label := array.new<label>()
+
+    new_trade.profit_box := array.new<box>()
+    new_trade.profit_box.push(
+      box.new(
+      new_trade.dt_0,
+      new_trade.ep,
+      new_trade.dt_1,
+      new_trade.ep,
+      i_td_col_win,
+      1,
+      line.style_solid,
+      extend.none,
+      xloc.bar_time,
+      color.new(i_td_col_win, 75)
+      )
+      )
+
+    new_trade.loss_box := array.new<box>()
+    new_trade.loss_box.push(
+      box.new(
+      new_trade.dt_0,
+      new_trade.st > 0 ? new_trade.ep : new_trade.sl,
+      new_trade.dt_1,
+      new_trade.st > 0 ? new_trade.sl : new_trade.ep,
+      i_td_col_loss,
+      1,
+      line.style_solid,
+      extend.none,
+      xloc.bar_time,
+      color.new(i_td_col_loss, 75)
+      )
+      )
+
+    new_trade.ep_line := array.new<line>()
+    new_trade.ep_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.ep, color.new(color.white, 50), line.style_solid, 1)
+
+    new_trade.sl_line := array.new<line>()
+    new_trade.sl_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.sl, color.new(i_td_col_loss, 50), line.style_solid, 1)
+
+    new_trade.sl_label := array.new<label>()
+    new_trade.sl_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, new_trade.dt_1, new_trade.sl, "❌ SL: " + str.tostring(new_trade.sl, format.mintick) + " / " + str.tostring(new_trade.sl_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+
+    new_trade.ts_line := array.new<line>()
+    new_trade.ts_line.F_TRADE_MNGMT_LINE_GEN(new_trade.ts_act, new_trade.dt_0, new_trade.dt_1, new_trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+
+    new_trade.ts_label := array.new<label>()
+    new_trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(new_trade.ts_act and i_td_labels, new_trade.dt_1, new_trade.ts, "🔴 TS: " + str.tostring(new_trade.ts, format.mintick) + " / " + str.tostring(new_trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+
+    new_trade.tp1_line := array.new<line>()
+    new_trade.tp1_line.F_TRADE_MNGMT_LINE_GEN(true, new_trade.dt_0, new_trade.dt_1, new_trade.tp1, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp1_label := array.new<label>()
+    new_trade.tp1_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, new_trade.dt_1, new_trade.tp1, str.format("🎯 TP1 [{0, number, percent}]: ", i_tp1_pct/100) + str.tostring(new_trade.tp1, format.mintick) + " / " + str.tostring(new_trade.tp1_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+    new_trade.tp2_line := array.new<line>()
+    new_trade.tp2_line.F_TRADE_MNGMT_LINE_GEN(i_tp2_on, new_trade.dt_0, new_trade.dt_1, new_trade.tp2, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp2_label := array.new<label>()
+    new_trade.tp2_label.F_TRADE_MNGMT_LABEL_GEN(i_tp2_on and i_td_labels, new_trade.dt_1, new_trade.tp2, str.format("🎯 TP2 [{0, number, percent}]: ", i_tp2_pct/100) + str.tostring(new_trade.tp2, format.mintick) + " / " + str.tostring(new_trade.tp2_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+    new_trade.tp3_line := array.new<line>()
+    new_trade.tp3_line.F_TRADE_MNGMT_LINE_GEN(i_tp3_on, new_trade.dt_0, new_trade.dt_1, new_trade.tp3, color.new(i_td_col_win, 50), line.style_solid, 1)
+
+    new_trade.tp3_label := array.new<label>()
+    new_trade.tp3_label.F_TRADE_MNGMT_LABEL_GEN(i_tp3_on and i_td_labels, new_trade.dt_1, new_trade.tp3, str.format("🎯 TP3 [{0, number, percent}]: ", i_tp3_pct/100) + str.tostring(new_trade.tp3, format.mintick) + " / " + str.tostring(new_trade.tp3_abs, format.mintick), #00000000, label.style_label_left, i_td_col_win, yloc.price)
+
+
+    //#endregion
+
+    //#region [ --- ALERT --- ]
+
+    if i_td_alerts
+        alert_msg = 
+          "🚨 TRADE SIGNAL 🚨\n" + 
+          "ID: " + str.tostring(new_trade.id) + "\n" +
+          "DIR: " + (new_trade.dir>0?"LONG":"SHORT") + "\n" +
+          "EP: " + str.tostring(new_trade.ep, format.mintick) + "\n" +
+          "SL: " + str.tostring(new_trade.sl, format.mintick) + "\n" +
+          (new_trade.ts_act ? ("TS: " + str.tostring(new_trade.ts, format.mintick) + "\n") : "") +
+          "TP1: " + str.tostring(new_trade.tp1, format.mintick) + "\n" +
+          (i_tp2_on ? ("TP2: " + str.tostring(new_trade.tp2, format.mintick) + "\n") : "") +
+          (i_tp3_on ? ("TP3: " + str.tostring(new_trade.tp3, format.mintick) + "\n") : "")
+
+        alert(alert_msg, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    //#region [ --- STRATEGY --- ]
+
+    ps_rk = 
+      i_td_risk_t == "Fixed" ? 
+      i_td_risk_v : 
+      (strategy.initial_capital + (i_td_comp ? strategy.netprofit : 0.0)) * i_td_risk_v/100
+    new_trade.ps := 
+      i_td_risk_t == "Fixed" ?
+      i_td_risk_v :
+      ps_rk / (syminfo.pointvalue * new_trade.sl_abs)
+    strategy.entry(new_trade.id_str, new_trade.st > 0 ? strategy.long : strategy.short, new_trade.ps, stop = new_trade.sl, comment = new_trade.st > 0 ? "[L]" : "[S]")
+    
+    strategy.exit(new_trade.id_str+"|TP1", new_trade.id_str, qty_percent=i_tp1_pct, limit=new_trade.tp1, stop=new_trade.sl, comment_profit = "TP1", comment_loss = "SL")
+    if i_tp2_on
+        strategy.exit(new_trade.id_str+"|TP2", new_trade.id_str, qty_percent=i_tp2_pct, limit=new_trade.tp2, stop=new_trade.sl, comment_profit = "TP2", comment_loss = "SL")
+    if i_tp3_on
+        strategy.exit(new_trade.id_str+"|TP3", new_trade.id_str, qty_percent=i_tp3_pct, limit=new_trade.tp3, stop=new_trade.sl, comment_profit = "TP3", comment_loss = "SL")
+    strategy.exit(new_trade.id_str+"|SL", new_trade.id_str, qty_percent=100, limit = new_trade.st > 0 ? 10000000.0 : 0.0, stop=new_trade.sl, comment_loss = "SL")
+
+    //#endregion
+
+    //#region [ --- BRIDGE --- ]
+
+    if i_td_bridge
+
+        //bridge_json = str.format(
+        //  "BRIDGE,action=entry,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},risk_t={6},risk_v={7},ep={8},sl_abs={9},sl_abs_ticks={10},tp_abs={11},tp2_on={12},tp2_abs={13},tp3_on={14},tp3_abs={15},type={16}",
+        //  "THE-DON",  // strat_id (0)
+        //  i_td_bridge_acct_id,  // acct_id (1)
+        //  i_td_bridge_sym,  // sym (2)
+        //  timeframe.period, // tf (3)
+        //  new_trade.id_str_bridge, // id (4)
+        //  new_trade.dir,    // dir (5)
+        //  str.lower(i_td_risk_t), // risk_t (6) - will be "fixed" or "%"
+        //  i_td_risk_v,     // risk_v (7)
+        //  new_trade.ep,     // ep (8)
+        //  new_trade.sl_abs, // sl_abs (9)
+        //  math.round(new_trade.sl_abs/syminfo.mintick), // sl_abs_ticks (10)
+        //  new_trade.tp1_abs, // tp_abs (11)
+        //  str.tostring(i_tp2_on), // tp2_on (12)
+        //  new_trade.tp2_abs,  // tp2_abs (13)
+        //  str.tostring(i_tp3_on), // tp3_on (14)
+        //  new_trade.tp3_abs,  // tp3_abs (15)
+        //  "market"  // type (16) - will be "market" or "limit"
+        //  )
+        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+        bridge_json_f = 
+          "{ \"entry\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+          "\", \"sym\" : \"" + i_td_bridge_sym + 
+          "\", \"tf\" : \"" + timeframe.period + 
+          "\", \"id\" : \"" + new_trade.id_str_bridge + 
+          "\", \"dir\" : \"" + str.tostring(new_trade.dir) + 
+          "\", \"risk_t\" : \"" + i_td_risk_t + 
+          "\", \"risk_v\" : \"" + str.tostring(i_td_risk_v) + 
+          "\", \"ep\" : \"" + str.tostring(new_trade.ep) + 
+          "\", \"sl_abs\" : \"" + str.tostring(new_trade.sl_abs) + 
+          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(new_trade.sl_abs/syminfo.mintick)) + 
+          "\", \"tp_abs\" : \"" + str.tostring(new_trade.tp1_abs) + 
+          "\", \"tp2_on\" : \"" + str.tostring(i_tp2_on) + 
+          "\", \"tp2_abs\" : \"" + str.tostring(new_trade.tp2_abs) + 
+          "\", \"tp3_on\" : \"" + str.tostring(i_tp3_on) + 
+          "\", \"tp3_abs\" : \"" + str.tostring(new_trade.tp3_abs) + 
+          "\", \"type\" : \"market\" } }"
+        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    new_trade.pnl := 0.0
+    new_trade.result := 0
+
+    array.push(trades, new_trade)
+
+F_TRADE_MANAGE()=>
+    
+    result = 0
+
+    var TRADE trade = trades.last()
+    trade.dt_1 := time + math.abs(time-time[1])*5
+
+    //#region [ --- TMP VARS --- ]
+
+    trade_reinit = false
+
+    trade_sl_hit = false
+    trade_ts_hit = false
+
+    trade_tp1_hit = false
+    trade_tp2_hit = false
+    trade_tp3_hit = false
+    trade_tp4_hit = false
+
+    trade_ts_tr = false
+    trade_sltb_tr = false
+
+    trade_exit = false
+
+    //#endregion
+    
+    //#region [ --- UPDATE TRADE OBJECTS --- ]
+
+    trade.profit_box.last().set_right(trade.dt_1)
+    trade.loss_box.last().set_right(trade.dt_1)
+
+    trade.ep_line.last().set_x2(trade.dt_1)
+    
+    trade.sl_line.last().set_x2(trade.dt_1)
+    if i_td_labels
+        trade.sl_label.last().set_x(trade.dt_1)
+
+    if trade.ts_act
+        trade.ts_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.ts_label.last().set_x(trade.dt_1)
+
+    
+    trade.tp1_line.last().set_x2(trade.dt_1)
+    if i_td_labels
+        trade.tp1_label.last().set_x(trade.dt_1)
+
+    if i_tp2_on
+        trade.tp2_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.tp2_label.last().set_x(trade.dt_1)
+
+    if i_tp3_on
+        trade.tp3_line.last().set_x2(trade.dt_1)
+        if i_td_labels
+            trade.tp3_label.last().set_x(trade.dt_1)
+
+
+    //#endregion
+
+    //#region [ --- EXIT --- ]
+
+    exit = F_SIGNAL_EXIT(trade.dir)
+    if exit and barstate.isconfirmed
+        trade_exit := true
+        trade_reinit := true
+        strategy.close_all(comment = "EXIT")
+        trade_rr = math.abs(trade.ep - close) / trade.sl_abs
+        trade_rr_pr = trade.st > 0 ? close > trade.ep ? 1 : -1 : close < trade.ep ? 1 : -1
+
+        trade.pnl := trade.pnl + (i_td_risk_v*(-1)) * trade_rr * trade_rr_pr
+
+        if i_td_alerts
+            alert_msg = 
+              "🚨 TRADE MANAGEMENT 🚨\n" +
+              "ID: " + trade.id_str + "\n" +
+              "🚫 EXIT SIGNAL HIT 🚫"
+            alert(alert_msg, alert.freq_once_per_bar)
+ 
+        if i_td_bridge
+
+            //bridge_json = str.format(
+            //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+            //  "THE-DON",  // strat_id (0)
+            //  i_td_bridge_acct_id, // acct_id (1)
+            //  i_td_bridge_sym, // sym (2)
+            //  timeframe.period, // tf (3)
+            //  trade.id_str_bridge,     // id (4)
+            //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+            //  )
+            //alert(bridge_json, alert.freq_once_per_bar_close)    
+
+            bridge_json_f = 
+              "{ \"close_all\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+              "\", \"sym\" : \"" + i_td_bridge_sym + 
+              "\", \"tf\" : \"" + timeframe.period + 
+              "\", \"id\" : \"" + trade.id_str_bridge + 
+              "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+              "\" } }"
+            alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+            
+    //#endregion
+
+    //#region [ --- CASH EXIT --- ]
+
+    cash_exit = false
+    if i_td_ce and barstate.isconfirmed
+        if strategy.openprofit >= i_td_ce_amt
+            cash_exit := true
+            trade_reinit := true
+            strategy.close_all(comment = "C.E.")
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+                //  "THE-DON",  // strat_id (0)
+                //  i_td_bridge_acct_id, // acct_id (1)
+                //  i_td_bridge_sym, // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar_close)  
+
+                bridge_json_f = 
+                  "{ \"close_all\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+    //#endregion
+
+    //#region [ --- SL/TS --- ]
+
+	if trade.ts_act or trade.sl_tb 
+        if trade.st > 0 ? low <= trade.ts : high >= trade.ts
+            //label.new(bar_index,close, str.tostring(TRADE.st)+"/"+str.tostring(TRADE.ts)+"/"+str.tostring(high))
+            trade_reinit := true
+            trade_ts_hit := true
+
+            trade_rr = math.abs(trade.ep - trade.ts) / trade.sl_abs
+            trade_rr_pr = trade.st > 0 ? trade.ts > trade.ep ? 1 : -1 : trade.ts < trade.ep ? 1 : -1
+
+            trade.pnl := trade.pnl + (i_td_risk_v*(-1)) * trade_rr * trade_rr_pr
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "❌ TS HIT ❌"
+                alert(alert_msg, alert.freq_once_per_bar)   
+
+    if (trade.st > 0 ? low <= trade.sl : high >= trade.sl) and not trade_reinit
+        trade_reinit := true
+        trade_sl_hit := true
+
+        trade.pnl := trade.pnl + (i_td_risk_v*(-1))
+
+        log.info("[TRADE-MNGMT] - ❌ SL HIT | TRADE: " + trade.id_str + " ❌")
+        if i_td_alerts
+
+            alert_msg = 
+              "🚨 TRADE MANAGEMENT 🚨\n" +
+              "ID: " + trade.id_str + "\n" +
+              "❌ SL HIT ❌"
+            alert(alert_msg, alert.freq_once_per_bar)
+
+    //#endregion
+
+    if not trade_reinit
+
+        //#region [ --- TP1 --- ]
+
+        if not trade.tp1_hit and (trade.st > 0 ? high >= trade.tp1 : low <= trade.tp1) and (trade.st > 0 ? trade.st == 1 : trade.st == -1)
+            trade.tp1_hit := true
+            trade_tp1_hit := true
+            trade.tp1_line.last().set_width(2)
+
+            if i_ts_tr == "TP1"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP1"
+                trade_sltb_tr := true
+
+            trade.pnl := trade.pnl + (i_td_risk_v * i_tp1_pct/100) * i_tp1_v
+
+            if i_tp1_pct == 100
+                trade_reinit := true
+            else
+                
+                tp1_ps = trade.ps*i_tp1_pct/100
+                trade.st := 
+                  i_tp2_on ? (trade.st > 0 ? 2 : -2) : (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP1 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+			
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "THE-DON",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp1_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp3_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+        //#endregion
+
+        //#region [ --- TP2 --- ]
+
+        if not trade.tp2_hit and (trade.st > 0 ? high >= trade.tp2 : low <= trade.tp2) and (trade.st > 0 ? trade.st == 2 : trade.st == -2)
+            trade.tp2_hit := true
+            trade_tp2_hit := true
+            trade.tp2_line.last().set_width(2)
+
+            if i_ts_tr == "TP2"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP2"
+                trade_sltb_tr := true
+
+            trade.pnl := trade.pnl + (i_td_risk_v * i_tp2_pct/100) * i_tp2_v
+
+            if i_tp2_pct == 100
+                trade_reinit := true
+            else
+                
+                tp2_ps = trade.ps*i_tp2_pct/100
+                trade.st := 
+                  i_tp2_on ? (trade.st > 0 ? 3 : -3) : (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP2 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+			
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "THE-DON",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp2_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp3_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+
+        //#endregion
+
+        //#region [ --- TP3 --- ]
+
+        if not trade.tp3_hit and (trade.st > 0 ? high >= trade.tp3 : low <= trade.tp3) and (trade.st > 0 ? trade.st == 3 : trade.st == -3)
+            trade.tp3_hit := true
+            trade_tp3_hit := true
+            trade.tp3_line.last().set_width(2)
+
+            if i_ts_tr == "TP3"
+                trade_ts_tr := true
+            
+            if i_be_tr == "TP3"
+                trade_sltb_tr := true
+
+            trade.pnl := trade.pnl + (i_td_risk_v * i_tp3_pct/100) * i_tp3_v
+
+            if i_tp3_pct == 100
+                trade_reinit := true
+            else
+                
+                tp3_ps = trade.ps*i_tp3_pct/100
+                trade.st := 
+                  (not i_tp_run) ? (10) : (trade.st > 0 ? 5 : -5)
+                if trade.st == 10
+                    trade_reinit := true
+
+            if i_td_alerts
+                alert_msg = 
+                  "🚨 TRADE MANAGEMENT 🚨\n" +
+                  "ID: " + trade.id_str + "\n" +
+                  "💰 TP3 HIT 💰"
+                alert(alert_msg, alert.freq_once_per_bar)
+			
+            if i_td_bridge
+
+                //bridge_json = str.format(
+                //  "BRIDGE,action=partial,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},pct={6}",
+                //  "THE-DON",  // strat_id (0)
+                //  "default",        // acct_id (1)
+                //  i_td_bridge_sym,  // sym (2)
+                //  timeframe.period, // tf (3)
+                //  trade.id_str_bridge,     // id (4)
+                //  trade.dir * -1,   // dir (5) - multiplied by -1 for closing in opposite direction
+                //  i_tp3_pct         // pct (6) - percentage to close
+                //  )
+                //alert(bridge_json, alert.freq_once_per_bar)
+
+                bridge_json_f = 
+                  "{ \"close_partials\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                  "\", \"sym\" : \"" + i_td_bridge_sym + 
+                  "\", \"tf\" : \"" + timeframe.period + 
+                  "\", \"id\" : \"" + trade.id_str_bridge + 
+                  "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+                  "\", \"pct\" : \"" + str.tostring(i_tp3_pct) + 
+                  "\" } }"
+                alert(bridge_json_f, alert.freq_once_per_bar)
+
+			
+        //#endregion
+
+        //#region [ --- SLTB --- ]
+
+        if i_be_tr != "None" and not trade.sl_tb and barstate.isconfirmed
+            if trade_sltb_tr
+
+                sl_new = 
+                  F_GLOBAL_MT_ROUND(
+                  trade.st > 0 ? trade.ep + i_be_off : trade.ep - i_be_off
+                  )
+
+                if trade.st > 0 ? sl_new > trade.sl and (trade.ts_act ? sl_new > trade.ts : true) and (close > sl_new) : sl_new < trade.sl and (trade.ts_act ? sl_new < trade.ts : true) and (close < sl_new)
+
+
+                    trade.sl_tb := true
+                    trade.ts := sl_new
+                    trade.ts_abs := math.abs(sl_new - close)
+                    trade.ts_upd := trade.ts_upd + 1
+
+                    if i_td_alerts
+                        alert_msg = 
+                          "🚨 TRADE MANAGEMENT 🚨\n" +
+                          "ID: " + trade.id_str + "\n" +
+                          "🆕 SL TO BE UPDATE 🆕"
+                        alert(alert_msg, alert.freq_once_per_bar)
+
+                    if na(trade.ts_line.last())
+                        trade.ts_line.F_TRADE_MNGMT_LINE_GEN(true, trade.dt_0, trade.dt_1, trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+                        trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, trade.dt_1, trade.ts, "🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+                    else
+                        trade.ts_line.last().set_y1(trade.ts)
+                        trade.ts_line.last().set_y2(trade.ts)
+                        trade.ts_label.last().set_y(trade.ts)
+                        trade.ts_label.last().set_text("🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick))
+
+                    if (not trade.tp1_hit)
+                        strategy.exit(trade.id_str+"|TP1", trade.id_str, qty_percent=i_tp1_pct, limit=trade.tp1, stop=trade.ts, comment_profit = "TP1", comment_loss = "TS")
+                    if i_tp2_on and (not trade.tp2_hit)
+                        strategy.exit(trade.id_str+"|TP2", trade.id_str, qty_percent=i_tp2_pct, limit=trade.tp2, stop=trade.ts, comment_profit = "TP2", comment_loss = "TS")
+                    if i_tp3_on and (not trade.tp3_hit)
+                        strategy.exit(trade.id_str+"|TP3", trade.id_str, qty_percent=i_tp3_pct, limit=trade.tp3, stop=trade.ts, comment_profit = "TP3", comment_loss = "TS")
+                    strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, limit = trade.st > 0 ? 10000000.0 : 0.0, stop=trade.ts, comment_loss = "SL")
+
+                    if i_td_bridge
+
+                        //bridge_json = str.format(
+                        //  "BRIDGE,action=sl-upd,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},sl_abs={6},sl_abs_ticks={7}",
+                        //  "THE-DON",  // strat_id (0)
+                        //  "default",        // acct_id (1)
+                        //  i_td_bridge_sym,  // sym (2)
+                        //  timeframe.period, // tf (3)
+                        //  trade.id_str_bridge,     // id (4)
+                        //  trade.dir,        // dir (5)
+                        //  trade.ts_abs,     // sl_abs (6) - in currency units
+                        //  math.round(trade.ts_abs/syminfo.mintick)  // sl_abs_ticks (7) - converted to ticks
+                        //  )
+                        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+                        bridge_json_f = 
+                          "{ \"sl_update\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                          "\", \"sym\" : \"" + i_td_bridge_sym + 
+                          "\", \"tf\" : \"" + timeframe.period + 
+                          "\", \"id\" : \"" + trade.id_str_bridge + 
+                          "\", \"dir\" : \"" + str.tostring(trade.dir) +
+                          "\", \"cp\" : \"" + str.tostring(close) +  
+                          "\", \"sl_abs\" : \"" + str.tostring(trade.ts_abs) + 
+                          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(trade.ts_abs/syminfo.mintick)) + 
+                          "\" } }"
+                        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+
+                    
+
+        //#endregion
+
+        //#region [ --- TS --- ]
+
+        if i_ts_tr != "None"
+
+            if not trade.ts_act
+                trade.ts_act := trade_ts_tr
+
+            if trade.ts_act and barstate.isconfirmed
+
+                dir = trade.st > 0 ? 1 : -1
+
+                ts_fix = F_GLOBAL_MT_ROUND(close + (dir*-1) * i_ts_fix)
+                ts_atr = F_GLOBAL_MT_ROUND(close + (dir*-1) * atr_ts)
+                ts_bl1 = F_GLOBAL_MT_ROUND(close + (dir*-1) * math.abs(close - mmdon_bl1))
+                ts_bl2 = F_GLOBAL_MT_ROUND(close + (dir*-1) * math.abs(close - mmdon_bl2))
+                ts_sl = F_GLOBAL_MT_ROUND(close + (dir*-1) * trade.sl_abs)
+                
+                ts = 
+                  i_ts_m == "Fixed" ? ts_fix :
+                  i_ts_m == "ATR" ? ts_atr :
+                  i_ts_m == "Baseline 1" ? ts_bl1 :
+                  i_ts_m == "Baseline 2" ? ts_bl2 :
+                  i_ts_m == "SL" ? ts_sl :
+                  na
+
+                cond_trigger = trade.st > 0 ? ts > trade.ts : ts < trade.ts
+
+                if cond_trigger
+                    
+                    trade.ts := ts
+                    trade.ts_abs := math.abs(F_GLOBAL_MT_ROUND(trade.ts - close))
+                    trade.ts_upd := trade.ts_upd + 1
+
+                    if i_td_alerts
+                        alert_msg = 
+                          "🚨 TRADE MANAGEMENT 🚨\n" +
+                          "ID: " + trade.id_str + "\n" +
+                          "🆕 TS UPDATE 🆕"
+                        alert(alert_msg, alert.freq_once_per_bar_close)
+
+                    if not na(trade.ts_line.last())
+                        trade.ts_line.last().set_y1(trade.ts)
+                        trade.ts_line.last().set_y2(trade.ts)
+                        trade.ts_label.last().set_y(trade.ts)
+                        trade.ts_label.last().set_text("🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick))
+                    else
+                        trade.ts_line.F_TRADE_MNGMT_LINE_GEN(true, trade.dt_0, trade.dt_1, trade.ts, color.new(i_td_col_loss, 50), line.style_solid, 1)
+                        trade.ts_label.F_TRADE_MNGMT_LABEL_GEN(i_td_labels, trade.dt_1, trade.ts, "🔴 TS: " + str.tostring(trade.ts, format.mintick) + " / " + str.tostring(trade.ts_abs, format.mintick), #00000000, label.style_label_left, i_td_col_loss, yloc.price)
+                    
+
+                    if (not trade.tp1_hit)
+                        strategy.exit(trade.id_str+"|TP1", trade.id_str, qty_percent=i_tp1_pct, limit=trade.tp1, stop=trade.ts, comment_profit = "TP1", comment_loss = "TS")
+                    if i_tp2_on and (not trade.tp2_hit)
+                        strategy.exit(trade.id_str+"|TP2", trade.id_str, qty_percent=i_tp2_pct, limit=trade.tp2, stop=trade.ts, comment_profit = "TP2", comment_loss = "TS")
+                    if i_tp3_on and (not trade.tp3_hit)
+                        strategy.exit(trade.id_str+"|TP3", trade.id_str, qty_percent=i_tp3_pct, limit=trade.tp3, stop=trade.ts, comment_profit = "TP3", comment_loss = "TS")
+                    strategy.exit(trade.id_str+"|SL", trade.id_str, qty_percent=100, limit = trade.st > 0 ? 10000000.0 : 0.0, stop=trade.ts, comment_loss = "SL")
+
+                    if i_td_bridge
+
+                        //bridge_json = str.format(
+                        //  "BRIDGE,action=sl-upd,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5},sl_abs={6},sl_abs_ticks={7}",
+                        //  "THE-DON",  // strat_id (0)
+                        //  "default",        // acct_id (1)
+                        //  i_td_bridge_sym,  // sym (2)
+                        //  timeframe.period, // tf (3)
+                        //  trade.id_str_bridge,     // id (4)
+                        //  trade.dir,        // dir (5)
+                        //  trade.ts_abs,     // sl_abs (6) - in currency units
+                        //  math.round(trade.ts_abs/syminfo.mintick)  // sl_abs_ticks (7) - converted to ticks
+                        //  )
+                        //alert(bridge_json, alert.freq_once_per_bar_close)
+
+                        bridge_json_f = 
+                          "{ \"sl_update\" : { \"strat_id\" : \"THE-DON\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+                          "\", \"sym\" : \"" + i_td_bridge_sym + 
+                          "\", \"tf\" : \"" + timeframe.period + 
+                          "\", \"id\" : \"" + trade.id_str_bridge + 
+                          "\", \"dir\" : \"" + str.tostring(trade.dir) + 
+                          "\", \"cp\" : \"" + str.tostring(close) +
+                          "\", \"sl_abs\" : \"" + str.tostring(trade.ts_abs) + 
+                          "\", \"sl_abs_ticks\" : \"" + str.tostring(math.round(trade.ts_abs/syminfo.mintick)) + 
+                          "\" } }"
+                        alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+        //#endregion
+
+    //#region [ --- LABELS --- ]
+
+    if trade_exit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "🚫 EXIT 🚫", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    if cash_exit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "💰 C.E. 💰", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+
+    if trade_sl_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.sl, "❌ SL ❌", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    if trade_ts_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, trade.ts, "🔴 TS 🔴", #00000000, label.style_label_center, i_td_col_loss, trade.st > 0 ? yloc.belowbar : yloc.abovebar)
+
+    trade_tp1_tp2_hit = trade_tp1_hit and trade_tp2_hit
+    trade_tp1_tp2_tp3_hit = trade_tp1_tp2_hit and trade_tp3_hit
+    trade_tp1_tp2_tp3_tp4_hit = trade_tp1_tp2_tp3_hit and trade_tp4_hit
+
+    trade_tp2_tp3_hit = trade_tp2_hit and trade_tp3_hit
+    trade_tp2_tp3_tp4_hit = trade_tp2_tp3_hit and trade_tp4_hit
+
+    trade_tp3_tp4_hit = trade_tp3_hit and trade_tp4_hit
+
+    trade_tp_mult_hit = 
+      trade_tp1_tp2_hit or 
+      trade_tp1_tp2_tp3_hit or 
+      trade_tp1_tp2_tp3_tp4_hit or 
+      trade_tp2_tp3_hit or 
+      trade_tp2_tp3_tp4_hit or 
+      trade_tp3_tp4_hit
+
+    if trade_tp1_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP1 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp2_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP2 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp3_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP3 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp4_hit and (not trade_tp_mult_hit)
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🎯 TP4 🎯", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+    if trade_tp_mult_hit
+        trade.misc_label.F_TRADE_MNGMT_LABEL_GEN(true, time, close, "🚀 MTP 🚀", #00000000, label.style_label_center, i_td_col_win, trade.st > 0 ? yloc.abovebar : yloc.belowbar)
+
+
+    //#endregion
+
+    //#region [ --- REINIT --- ]
+        
+    if trade_reinit
+        //if _S_TRADE_MNGMT.INP.bt
+        //    strategy.close_all(comment = "REINIT")
+
+        if i_td_bridge and strategy.opentrades != 0
+            //bridge_json = str.format(
+            //  "BRIDGE,action=exit,strat_id={0},acct_id={1},sym={2},tf={3},id={4},dir={5}",
+            //  "MM-SIGMA-ALGO",  // strat_id (0)
+            //  i_td_bridge_acct_id, // acct_id (1)
+            //  i_td_bridge_sym, // sym (2)
+            //  timeframe.period, // tf (3)
+            //  trade.id_str_bridge,     // id (4)
+            //  trade.dir * -1    // dir (5) - multiplied by -1 to close in opposite direction
+            //  )
+            //alert(bridge_json, alert.freq_once_per_bar_close)
+
+            bridge_json_f = 
+              "{ \"close_all\" : { \"strat_id\" : \"MM-SIGMA-ALGO\", \"acct_id\" : \"" + i_td_bridge_acct_id + 
+              "\", \"sym\" : \"" + i_td_bridge_sym + 
+              "\", \"tf\" : \"" + timeframe.period + 
+              "\", \"id\" : \"" + trade.id_str_bridge + 
+              "\", \"dir\" : \"" + str.tostring(trade.dir * -1) + 
+              "\" } }"
+            alert(bridge_json_f, alert.freq_once_per_bar_close)
+
+        if strategy.opentrades != 0
+            strategy.close_all(comment = "REINIT")
+
+        if trade.dir > 0 ? close > trade.ep : close < trade.ep
+            trade.result := 1
+        else
+            trade.result := -1
+
+        trade.sl_label.last().delete()
+        trade.ts_label.last().delete()
+        trade.tp1_label.last().delete()
+        trade.tp2_label.last().delete()
+        trade.tp3_label.last().delete()
+        
+        //TRADE.pnl_label_obj.shift().delete()
+        trade.profit_box.shift().delete()
+        trade.loss_box.shift().delete()
+        trade.ep_line.shift().delete()
+        trade.sl_line.shift().delete()
+        trade.sl_label.shift()
+        trade.ts_line.shift().delete()
+        trade.ts_label.shift()
+        if trade.ts_line.size() > 0
+            for ts in trade.ts_line
+                ts.delete()
+            trade.ts_line.clear()
+        if trade.ts_label.size() > 0
+            for ts in trade.ts_label
+                ts.delete()
+            trade.ts_label.clear()
+        trade.tp1_line.shift().delete()
+        trade.tp1_label.shift()
+        trade.tp2_line.shift().delete()
+        trade.tp2_label.shift()
+        trade.tp3_line.shift().delete()
+        trade.tp3_label.shift()
+
+        if trade.misc_label.size() > 0
+            trade.misc_label.clear()
+
+        trade.result := trade.dir > 0 ? close > trade.ep ? 1 : -1 : close < trade.ep ? 1 : -1
+
+        result := -1
+
+    //#endregion
+
+    [result, trade.result]
+
+
+
+//#endregion
+
+
+signal := F_SIGNAL_ENTRY()
+if not is_trade and (time >= i_td_bt_from and time <= i_td_bt_to) and signal!=0 and i_td_show and (i_td_mw ? not trade_mxwl : true)
+    if barstate.isconfirmed
+        F_TRADE_OPEN(signal)
+        is_trade := true
+else if is_trade 
+    [result, trade_wl] = F_TRADE_MANAGE()
+    if result == -1 
+        is_trade := false
+        id_string := F_TRADE_ID_STR_GEN(trades.last().id)
+
+        if trade_wl > 0
+            trade_mxwl_w := trade_mxwl_w + 1
+        else
+            trade_mxwl_l := trade_mxwl_l + 1
+
+plotshape(signal>0 and is_trade and not is_trade[1], "LONGS", shape.labelup, location.belowbar, i_td_col_win, text = "LONG", textcolor = color.white)
+plotshape(signal<0 and is_trade and not is_trade[1], "SHORTS", shape.labeldown, location.abovebar, i_td_col_loss, text = "SHORT", textcolor =color.black)
+
+
+
+
+//#endregion
+
+//#region [ --- TABLES --- ]
+
+tbl_rows_comp_dkt = 
+  1 +
+  (i_mmdon_bl1_show ? 2 : 0) + 
+  (i_mmdon_bl2_show ? 2 : 0) + 
+  (i_mmdon_htf1_show ? 2 : 0) + 
+  (i_mmdon_htf2_show ? 2 : 0) + 
+  (i_mmdon_htf3_show ? 2 : 0) +
+  (i_mmdon_htf4_show ? 2 : 0) + 
+  (i_mmdon_mmma_show ? 2 : 0) +
+  (i_vt_show ? 2 : 0) + 
+  (i_chop_show ? 2 : 0)
+
+tbl_rows_sess_dkt = 
+  1 +
+  (i_sess_lon_show ? 2 : 0) +
+  (i_sess_ny_show ? 2 : 0) + 
+  (i_sess_tok_show ? 2 : 0)
+
+tbl_rows_trade_dkt = 
+  4 +
+  (i_tp2_on ? 1 : 0) +
+  (i_tp3_on ? 1 : 0) 
+
+tbl_row_tot_dkt = tbl_rows_comp_dkt + tbl_rows_sess_dkt + tbl_rows_trade_dkt
+
+var table trades_tbl = na
+trades_tbl := table.new(tbl_pos, 4, tbl_row_tot_dkt, i_tbl_bg, i_tbl_fr, 1, i_tbl_bor, 1)
+
+table.delete(trades_tbl[1])
+
+//mmdon_bl1_st = mmdon_bl1_dir > 0 ? "▲" : "▼"
+
+if i_tbl_t == "Desktop"
+
+    row_idx = 0
+    col_idx = 0
+
+    trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+    trades_tbl.cell(col_idx,row_idx,"📈 The DON Table 📈", text_color = i_tbl_txt)
+    
+    row_idx := row_idx + 1
+
+    if i_mmdon_bl1_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL1", text_color = i_tbl_txt, tooltip = "Baseline 1")
+
+        mmdon_bl1_st = mmdon_bl1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_bl1_st, text_color = mmdon_bl1_col, bgcolor = color.new(mmdon_bl1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_bl1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+        
+    if i_mmdon_bl2_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL2", text_color = i_tbl_txt, tooltip = "Baseline 2")
+
+        mmdon_bl2_st = mmdon_bl2_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_bl2_st, text_color = mmdon_bl2_col, bgcolor = color.new(mmdon_bl2_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_bl2, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_mmdon_htf1_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL HTF1", text_color = i_tbl_txt, tooltip = "Baseline HTF 1")
+
+        mmdon_htf1_st = mmdon_htf1_bl1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf1_st, text_color = mmdon_htf1_bl1_col, bgcolor = color.new(mmdon_htf1_bl1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_htf1_bl1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_mmdon_htf2_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL HTF2", text_color = i_tbl_txt, tooltip = "Baseline HTF 2")
+
+        mmdon_htf2_st = mmdon_htf2_bl1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf2_st, text_color = mmdon_htf2_bl1_col, bgcolor = color.new(mmdon_htf2_bl1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_htf2_bl1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_mmdon_htf3_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL HTF3", text_color = i_tbl_txt, tooltip = "Baseline HTF 3")
+
+        mmdon_htf3_st = mmdon_htf3_bl1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf3_st, text_color = mmdon_htf3_bl1_col, bgcolor = color.new(mmdon_htf3_bl1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_htf3_bl1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_mmdon_htf4_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"BL HTF4", text_color = i_tbl_txt, tooltip = "Baseline HTF 4")
+
+        mmdon_htf4_st = mmdon_htf4_bl1_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf4_st, text_color = mmdon_htf4_bl1_col, bgcolor = color.new(mmdon_htf4_bl1_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_htf4_bl1, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_mmdon_mmma_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"MMMA", text_color = i_tbl_txt, tooltip = "MoneyMoves OG MA")
+
+        mmdon_mmma_st = mmdon_mmma_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_mmma_st, text_color = mmdon_mmma_col, bgcolor = color.new(mmdon_mmma_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(mmdon_mmma, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_vt_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"VT", text_color = i_tbl_txt, tooltip = "Volumetric Trend")
+
+        vol_trend_st = vol_trend_dir > 0 ? "BULL" : "BEAR"
+
+        trades_tbl.cell(col_idx,row_idx+1,vol_trend_st, text_color = vol_trend_col, bgcolor = color.new(vol_trend_col, 75))
+        trades_tbl.cell(col_idx+1,row_idx+1,str.tostring(vol_trend_v, format.mintick), text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if i_chop_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"CHOP", text_color = i_tbl_txt, tooltip = "Chopper Indicator")
+
+        chop_st = chop_act ? "CHOPPY" : "TRENDING"
+
+        trades_tbl.cell(col_idx,row_idx+1,"STATUS", text_color = i_tbl_txt)
+        trades_tbl.cell(col_idx+1,row_idx+1,chop_st, text_color = i_tbl_txt)
+
+        row_idx := col_idx == 0 ? row_idx : row_idx + 2
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    if col_idx != 0
+
+        trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+        trades_tbl.cell(col_idx,row_idx," ", text_color = i_tbl_txt)
+
+        trades_tbl.cell(col_idx,row_idx+1," ", text_color = i_tbl_txt)
+        trades_tbl.cell(col_idx+1,row_idx+1," ", text_color = i_tbl_txt)
+
+        col_idx := col_idx == 0 ? col_idx + 2 : 0
+
+    row_idx := row_idx + 2
+
+    if i_sess_lon_show or i_sess_ny_show or i_sess_tok_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"🕐 Sessions 🕔", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if i_sess_lon_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"LON", text_color = i_tbl_txt)
+
+            sess_lon_st = lon_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_lon_col = lon_s ? i_sess_lon_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_lon_st, text_color = sess_lon_col, bgcolor = color.new(sess_lon_col, 75))
+
+
+            row_idx := row_idx + 1
+        
+        if i_sess_ny_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"NY", text_color = i_tbl_txt)
+
+            sess_ny_st = ny_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_ny_col = ny_s ? i_sess_ny_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_ny_st, text_color = sess_ny_col, bgcolor = color.new(sess_ny_col, 75))
+
+            row_idx := row_idx + 1
+
+        if i_sess_tok_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"TOK", text_color = i_tbl_txt)
+
+            sess_tok_st = tok_s ? "IN-SESSION" : "NOT ACTIVE"
+            sess_tok_col = tok_s ? i_sess_tok_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_tok_st, text_color = sess_tok_col, bgcolor = color.new(sess_tok_col, 75))
+
+            row_idx := row_idx + 1
+
+    if i_td_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"💰 Trades 💰", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if is_trade 
+
+            var TRADE trade = trades.last()
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+
+            trade_dir = trade.dir > 0 ? " ▲ LONG ▲ " : " ▼ SHORT ▼ "
+            trade_dir_col = trade.dir > 0 ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx,row_idx,trade_dir, text_color = trade_dir_col, bgcolor = color.new(trade_dir_col, 75))
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+
+            trade_pnl_curr = str.tostring(math.abs(close - trade.ep), format.mintick)
+            trade_pnl_curr_col = trade.dir > 0 ? close > trade.ep ? i_td_col_win : i_td_col_loss : close < trade.ep ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx+2,row_idx,trade_pnl_curr, text_color = trade_pnl_curr_col, bgcolor = color.new(trade_pnl_curr_col, 75))
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"SL", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,str.tostring((trade.ts_upd > 0 ? trade.ts : trade.sl), format.mintick) + " ❌", text_color = i_tbl_txt)
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.sl_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.ts_upd > 0 ? "Updates: " + str.tostring(trade.ts_upd) + " 🔎" : "Initial 🔒", text_color = i_tbl_txt)
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"TP1", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,str.tostring(trade.tp1, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.tp1_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.tp1_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+            row_idx := row_idx + 1
+
+            if i_tp2_on
+
+                trades_tbl.cell(0,row_idx,"TP2", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,str.tostring(trade.tp2, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp2_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp2_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+                row_idx := row_idx + 1
+
+            if i_tp3_on
+
+                trades_tbl.cell(0,row_idx,"TP3", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,str.tostring(trade.tp3, format.mintick) + " 🚀", text_color = i_tbl_txt)
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp3_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp3_hit ? "Reached 🎯" : "Progress... 🧲", text_color = i_tbl_txt)
+
+                row_idx := row_idx + 1
+
+        else
+            trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"🛑 Trade Not Active 🛑", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+    trades_tbl.merge_cells(0,row_idx,3,row_idx)
+    trades_tbl.cell(0,row_idx,"💎 Licenced By SigmaAlgo™ 💎", text_color = i_tbl_txt)
+else
+
+    row_idx = 0
+    col_idx = 0
+
+    trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+    trades_tbl.cell(col_idx,row_idx,"📈 DON 📈", text_color = i_tbl_txt)
+    
+    row_idx := row_idx + 1
+
+    if i_mmdon_bl1_show
+
+        trades_tbl.cell(col_idx,row_idx,"BL1", text_color = i_tbl_txt, tooltip = "Baseline 1")
+        mmdon_bl1_st = mmdon_bl1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_bl1_st, text_color = mmdon_bl1_col, bgcolor = color.new(mmdon_bl1_col, 75), tooltip = mmdon_bl1_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+        
+    if i_mmdon_bl2_show
+
+        trades_tbl.cell(col_idx,row_idx,"BL2", text_color = i_tbl_txt, tooltip = "Baseline 2")
+        mmdon_bl2_st = mmdon_bl2_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_bl2_st, text_color = mmdon_bl2_col, bgcolor = color.new(mmdon_bl2_col, 75), tooltip = mmdon_bl2_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_mmdon_htf1_show
+
+        trades_tbl.cell(col_idx,row_idx,"HTF1", text_color = i_tbl_txt, tooltip = "HTF 1 Baseline")
+        mmdon_htf1_st = mmdon_htf1_bl1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf1_st, text_color = mmdon_htf1_bl1_col, bgcolor = color.new(mmdon_htf1_bl1_col, 75), tooltip = mmdon_htf1_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+
+    if i_mmdon_htf2_show
+
+        trades_tbl.cell(col_idx,row_idx,"HTF2", text_color = i_tbl_txt, tooltip = "HTF 2 Baseline")
+        mmdon_htf2_st = mmdon_htf2_bl1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf2_st, text_color = mmdon_htf2_bl1_col, bgcolor = color.new(mmdon_htf2_bl1_col, 75), tooltip = mmdon_htf2_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_mmdon_htf3_show
+
+        trades_tbl.cell(col_idx,row_idx,"HTF3", text_color = i_tbl_txt, tooltip = "HTF 3 Baseline")
+        mmdon_htf3_st = mmdon_htf3_bl1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf3_st, text_color = mmdon_htf3_bl1_col, bgcolor = color.new(mmdon_htf3_bl1_col, 75), tooltip = mmdon_htf3_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_mmdon_htf4_show
+
+        trades_tbl.cell(col_idx,row_idx,"HTF4", text_color = i_tbl_txt, tooltip = "HTF 4 Baseline")
+        mmdon_htf4_st = mmdon_htf4_bl1_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_htf4_st, text_color = mmdon_htf4_bl1_col, bgcolor = color.new(mmdon_htf4_bl1_col, 75), tooltip = mmdon_htf4_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_mmdon_mmma_show
+
+        trades_tbl.cell(col_idx,row_idx,"MMMA", text_color = i_tbl_txt, tooltip = "MoneyMoves OG MA")
+        mmdon_mmma_st = mmdon_mmma_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,mmdon_mmma_st, text_color = mmdon_mmma_col, bgcolor = color.new(mmdon_mmma_col, 75), tooltip = mmdon_mmma_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_vt_show
+
+        trades_tbl.cell(col_idx,row_idx,"VT", text_color = i_tbl_txt, tooltip = "Volumetric Trend")
+        vol_trend_st = vol_trend_dir > 0 ? " ▲ " : " ▼ "
+        trades_tbl.cell(col_idx,row_idx+1,vol_trend_st, text_color = vol_trend_col, bgcolor = color.new(vol_trend_col, 75), tooltip = vol_trend_st == " ▲ " ? "Bullish" : "Bearish")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if i_chop_show
+
+        trades_tbl.cell(col_idx,row_idx,"CHOP", text_color = i_tbl_txt, tooltip = "Chopper Indicator")
+        chop_st = chop_act ? "↝" : "⇵"
+        trades_tbl.cell(col_idx,row_idx+1,chop_st, text_color = i_tbl_txt, tooltip = chop_act ? "Choppy" : "Trending")
+
+        row_idx := col_idx != 3 ? row_idx : row_idx + 2
+        col_idx := col_idx == 3 ? 0 : col_idx + 1
+
+    if col_idx != 0
+
+        while col_idx != 3
+
+            trades_tbl.cell(col_idx,row_idx," ", text_color = i_tbl_txt)
+            trades_tbl.cell(col_idx,row_idx+1," ", text_color = i_tbl_txt)
+
+            col_idx := col_idx + 1
+
+    col_idx := 0
+    row_idx := row_idx + 2
+
+    if i_sess_lon_show or i_sess_ny_show or i_sess_tok_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"🕐 Sessions 🕔", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if i_sess_lon_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"LON", text_color = i_tbl_txt)
+
+            sess_lon_st = lon_s ? "⚡" : "😴"
+            sess_lon_tt = lon_s ? "In-Session" : "Not Active"
+            sess_lon_col = lon_s ? i_sess_lon_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_lon_st, text_color = sess_lon_col, bgcolor = color.new(sess_lon_col, 75), tooltip = sess_lon_tt)
+
+
+            row_idx := row_idx + 1
+        
+        if i_sess_ny_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"NY", text_color = i_tbl_txt)
+
+            sess_ny_st = ny_s ? "⚡" : "😴"
+            sess_ny_tt = ny_s ? "In-Session" : "Not Active"
+            sess_ny_col = ny_s ? i_sess_ny_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_ny_st, text_color = sess_ny_col, bgcolor = color.new(sess_ny_col, 75), tooltip = sess_ny_tt)
+
+            row_idx := row_idx + 1
+
+        if i_sess_tok_show
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"TOK", text_color = i_tbl_txt)
+
+            sess_tok_st = tok_s ? "⚡" : "😴"
+            sess_tok_tt = tok_s ? "In-Session" : "Not Active"
+            sess_tok_col = tok_s ? i_sess_tok_col : i_tbl_txt
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+            trades_tbl.cell(col_idx+2,row_idx,sess_tok_st, text_color = sess_tok_col, bgcolor = color.new(sess_tok_col, 75), tooltip = sess_tok_tt)
+
+            row_idx := row_idx + 1
+
+    if i_td_show
+
+        trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+        trades_tbl.cell(col_idx,row_idx,"💰 Trades 💰", text_color = i_tbl_txt)
+
+        row_idx := row_idx + 1
+
+        if is_trade 
+
+            var TRADE trade = trades.last()
+
+            trades_tbl.merge_cells(col_idx,row_idx,col_idx+1,row_idx)
+
+            trade_dir = trade.dir > 0 ? " ▲ " : " ▼ "
+            trade_dir_col = trade.dir > 0 ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx,row_idx,trade_dir, text_color = trade_dir_col, bgcolor = color.new(trade_dir_col, 75))
+
+            trades_tbl.merge_cells(col_idx+2,row_idx,col_idx+3,row_idx)
+
+            trade_pnl_curr = str.tostring(math.abs(close - trade.ep), format.mintick)
+            trade_pnl_curr_col = trade.dir > 0 ? close > trade.ep ? i_td_col_win : i_td_col_loss : close < trade.ep ? i_td_col_win : i_td_col_loss
+
+            trades_tbl.cell(col_idx+2,row_idx,trade_pnl_curr, text_color = trade_pnl_curr_col, bgcolor = color.new(trade_pnl_curr_col, 75))
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"SL", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,"❌", text_color = i_tbl_txt, tooltip = str.tostring((trade.ts_upd > 0 ? trade.ts : trade.sl), format.mintick) + " ❌")
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.sl_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.ts_upd > 0 ? "🔛" : "🔒", text_color = i_tbl_txt, tooltip = trade.ts_upd > 0 ? "Updates: " + str.tostring(trade.ts_upd) + " 🔎" : "Initial 🔒")
+
+            row_idx := row_idx + 1
+
+            trades_tbl.cell(0,row_idx,"TP1", text_color = i_tbl_txt)
+            trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp1, format.mintick) + " 🚀")
+
+            trades_tbl.cell(2,row_idx,str.tostring(trade.tp1_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+            trades_tbl.cell(3,row_idx, trade.tp1_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp1_hit ? "Reached 🎯" : "Progress... 🧲")
+
+            row_idx := row_idx + 1
+
+            if i_tp2_on
+
+                trades_tbl.cell(0,row_idx,"TP2", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp2, format.mintick) + " 🚀")
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp2_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp2_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp2_hit ? "Reached 🎯" : "Progress... 🧲")
+
+                row_idx := row_idx + 1
+
+            if i_tp3_on
+
+                trades_tbl.cell(0,row_idx,"TP3", text_color = i_tbl_txt)
+                trades_tbl.cell(1,row_idx,"🚀", text_color = i_tbl_txt, tooltip = str.tostring(trade.tp3, format.mintick) + " 🚀")
+
+                trades_tbl.cell(2,row_idx,str.tostring(trade.tp3_abs, format.mintick) + "📐", text_color = i_tbl_txt)
+                trades_tbl.cell(3,row_idx, trade.tp3_hit ? "🎯" : "🧲", text_color = i_tbl_txt, tooltip = trade.tp3_hit ? "Reached 🎯" : "Progress... 🧲")
+
+                row_idx := row_idx + 1
+
+        else
+            trades_tbl.merge_cells(col_idx,row_idx,3,row_idx)
+            trades_tbl.cell(col_idx,row_idx,"🛑 NA 🛑", text_color = i_tbl_txt, tooltip = "No Active Trades")
+
+    trades_tbl.merge_cells(0,row_idx,3,row_idx)
+    trades_tbl.cell(0,row_idx,"💎 SigmaAlgo™ 💎", text_color = i_tbl_txt)
+
+
+
+    
+
+//#endregion

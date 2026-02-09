@@ -1,0 +1,23 @@
+{
+  "id": "conv-seed-010",
+  "name": "ATR Trailing Stop",
+  "description": "Dynamic trailing stop based on ATR, adapts to volatility",
+  "source_url": "https://www.tradingview.com/script/example-atr-trail/",
+  "pinescript_version": "v5",
+  "complexity": "low",
+  "priority": 1,
+  "reason": "Essential risk management tool for trend following",
+  "indicatorType": "overlay",
+  "parameters": {
+    "atr_period": 14,
+    "atr_multiplier": 2.0,
+    "source": "close"
+  },
+  "signals": {
+    "long_stop": "ATR trail below price",
+    "short_stop": "ATR trail above price",
+    "exit": "Price crosses trail"
+  },
+  "created": "2026-01-26T00:00:00Z",
+  "seeded": true
+}

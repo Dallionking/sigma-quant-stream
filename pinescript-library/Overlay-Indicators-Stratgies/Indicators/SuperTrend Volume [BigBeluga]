@@ -1,0 +1,113 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International  
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © BigBeluga
+
+//@version=6
+indicator("SuperTrend Volume [BigBeluga]", overlay = true, max_lines_count = 500, max_labels_count = 500)
+import TradingView/ta/9
+
+// ＩＮＰＵＴＳ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+float  multip  = input.float(4, "Bands", step = 0.01)
+bool   option_ = input.string("Bars", "Volume Type", ["Bars", "Area"]) == "Bars"
+color  col_up  = input.color(color.lime, "", group = "Color", inline = "color")
+color  col_dn  = input.color(color.fuchsia, "", group = "Color", inline = "color")
+color  col_mv  = input.color(color.blue, "", group = "Color", inline = "color")
+
+
+var   line1       = line(na)
+label labl        = label(na)
+float volume_line = float(na)
+// }
+
+
+// ＣＡＬＣＵＬＡＴＩＯＮＳ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+[supertrend, direction] = ta.supertrend(multip, 25)
+float distance     = ta.sma(high - low, 200)
+float supertrend1  = supertrend + distance * direction 
+float n_vol        = math.min(4, (volume / ta.stdev(volume, 200)))
+float step         = (supertrend - supertrend1)/4
+bool  trend_change = direction != direction[1]
+// }
+
+
+// ＰＬＯＴ ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――{
+color trend_col    = (direction < 0 ? col_up : col_dn)
+trend_col := n_vol >= 4 ? col_mv : trend_col
+color bars_col     = color.from_gradient(n_vol, 0, 4, color.new(trend_col, 60), trend_col)
+
+
+// Volume Histogram
+upper = not trend_change ? supertrend1 +step*n_vol : na
+lower = not trend_change ? supertrend1 : na
+
+if not trend_change
+    labl  := label.new(bar_index, upper, str.tostring(n_vol, "#.##"), style = label.style_label_left, color = trend_col)
+label.delete(labl[1])
+
+plotcandle(upper, upper, lower, lower, "", bars_col, bars_col, bordercolor = bars_col)
+
+// Main Plot
+float vol_val = trend_change ? na : (option_ ? na : line1.get_y1())
+
+vol_line   = plot(vol_val, color = trend_col, style = plot.style_linebr)
+super_line1= plot(trend_change ? na : supertrend1, linewidth = 2, color = trend_col, style = plot.style_linebr)
+super_line = plot(trend_change ? na : supertrend, color = color.new(trend_col, 30), style = plot.style_steplinebr)
+
+fill(vol_line, super_line1, vol_val, supertrend1, trend_col, color.new(trend_col, 50))
+
+// Max Vol points
+if n_vol == 4 
+    source = direction < 0 ? high : low
+    style  = direction < 0 ? label.style_label_down : label.style_label_up
+    label.new(bar_index, direction < 0 ? high : low, "o", color = color.new(color.black, 100), textcolor = trend_col, style = style)
+// }
+
+///
+SuperTrend Volume [BigBeluga] is an advanced trend-following indicator that combines the traditional SuperTrend method with a normalized volume visualization inside trend bands, offering enhanced insight into market dynamics and volume activity.
+
+🔵Key Features:
+Dynamic Trend Bands: The indicator uses the SuperTrend methodology to plot upper and lower trend bands, which adapt dynamically to price movements. Green bands indicate an uptrend, while purple bands indicate a downtrend.
+Normalized Volume Visualization:
+Inside the trend bands, normalized volume is displayed to highlight the intensity of market participation during trends.
+Users can choose between two visualization types:
+Bars: Displays volume as vertical bars within the bands.
+snapshot
+Area: Represents volume as a shaded area for a smoother look.
+snapshot
+Color-Coded Trends: Trend direction is color-coded:
+Green for bullish trends.
+Purple for bearish trends.
+snapshot
+Volume Labels: Each bar or area has a label showing the normalized volume value 0-4 for easier interpretation.
+snapshot
+Trend Change Detection: Automatically identifies trend reversals by recalculating the SuperTrend levels and adjusting volume visualization accordingly.
+
+
+🔵Usage:
+Trend Identification: Use the color-coded trend bands to confirm the current market direction and identify potential reversals.
+Volume Confirmation: Assess the strength of trends using normalized volume inside the bands. Higher normalized volume indicates stronger market conviction.
+Peak Volume can be a signal of the mean reversion of price
+snapshot
+Customization: Adjust the visualization type (bars or area) based on personal preference or analysis needs.
+Dynamic Updates: Use volume labels and trend bands to stay updated on market shifts and trading opportunities in real time.
+
+
+SuperTrend Volume [BigBeluga] is a versatile tool suitable for traders who want to combine trend analysis with volume dynamics for a more comprehensive view of the market. It is ideal for identifying trend strength, detecting reversals, and gauging the participation of market players during directional moves.
+Dec 29, 2024
+Release Notes
+- Added Colors
+snapshot
+Dec 29, 2024
+Release Notes
+- Added Colors
+snapshot
+Dec 29, 2024
+Release Notes
+- Max Volume Color
+Feb 4, 2025
+Release Notes
+- Volume Bars Update (now indicator displays more then 500 vol. bars)
+snapshot
+Feb 4, 2025
+Release Notes
+-

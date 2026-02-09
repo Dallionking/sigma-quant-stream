@@ -1,0 +1,34 @@
+{
+  "trading_mode": "futures",
+  "margin_mode": "isolated",
+  "dry_run": true,
+  "dry_run_wallet": 10000,
+  "exchange": {
+    "name": "binance",
+    "key": "",
+    "secret": "",
+    "ccxt_config": {"enableRateLimit": true},
+    "ccxt_sync_config": {"enableRateLimit": true}
+  },
+  "stake_currency": "USDT",
+  "stake_amount": "unlimited",
+  "tradable_balance_ratio": 0.99,
+  "max_open_trades": 3,
+  "timeframe": "5m",
+  "minimal_roi": {"0": 0.1},
+  "stoploss": -0.05,
+  "trailing_stop": true,
+  "trailing_stop_positive": 0.01,
+  "trailing_stop_positive_offset": 0.02,
+  "order_types": {
+    "entry": "limit",
+    "exit": "limit",
+    "stoploss": "market",
+    "stoploss_on_exchange": true
+  },
+  "telegram": {
+    "enabled": false,
+    "token": "",
+    "chat_id": ""
+  }
+}
